@@ -278,7 +278,7 @@ Creates a closure that captures the current lexical environment. Parameters are 
 (fn [x] [x * x])
 
 ; variadic: & rest collects remaining args into a list
-(fn [a & rest] (println a rest))
+(fn [a & rest] (println! a rest))
 ```
 
 When called, the closure checks that the argument count matches the parameter count. If `& rest` is present, it accepts at least that many arguments.
@@ -311,7 +311,7 @@ Defines a macro in the current environment. Macros receive their arguments **une
         nil))
 
 (when [x > 0]
-  (println "positive"))
+  (println! "positive"))
 ```
 
 ### 4.8 `set!`
@@ -375,9 +375,9 @@ Evaluates `expr`, then tries each clause in order. The first pattern that matche
 
 ```lisp
 (match status
-  :ok    (println "success")
-  :error (println "failed")
-  _      (println "unknown"))
+  :ok    (println! "success")
+  :error (println! "failed")
+  _      (println! "unknown"))
 ```
 
 **[Planned]** Nested structural patterns (lists, vectors) and pattern variables (`?name`).
@@ -422,7 +422,7 @@ A `&` before the last parameter collects remaining arguments into a list:
 
 ```lisp
 (const log-all (fn [level & messages]
-  (println "[" level "]" messages)))
+  (println! "[" level "]" messages)))
 
 (log-all :info "connected" "ready")
 ```
@@ -458,8 +458,8 @@ Built-in categories:
 **I/O**
 | Function | Signature | Behaviour |
 |----------|-----------|-----------|
-| `print` | `(print a*)` | Print values to stdout (no newline) |
-| `println` | `(println a*)` | Print values to stdout with trailing newline |
+| `print!` | `(print! a*)` | Print values to stdout (no newline) |
+| `println!` | `(println! a*)` | Print values to stdout with trailing newline |
 | `slurp` | `(slurp path)` | Read file at `path` into a string |
 
 **Introspection**
@@ -494,8 +494,8 @@ Because macros return code that must not be evaluated until the call site, they 
 Macro expansion is recursive: the result of expanding a macro is itself scanned for further macros. The public API is `macroexpand_all`:
 
 ```lisp
-(macroexpand_all '(unless false (println "hi")))
-; => (if false nil (do (println "hi")))
+(macroexpand_all '(unless false (println! "hi")))
+; => (if false nil (do (println! "hi")))
 ```
 
 **[Planned]** `macroexpand` as a built-in accessible from within Glyph.
@@ -532,11 +532,22 @@ Glyph is designed to run embedded in a host application (currently: the Xlyph ro
 
 `SandboxOptions` carries a `max_depth` (default 1024). Each nested evaluation call consumes one unit. When exhausted, evaluation signals `RecursionLimit`.
 
-### 8.2 I/O gating
+### 8.2 Virtual filesystem
 
-Built-in I/O functions (`slurp`, `print`, `println`) exist in the default environment but a host may omit or replace them. The host can construct any environment before evaluation.
+`SandboxOptions` accepts an optional `vfs: Option<Arc<dyn VirtualFileSystem>>`. When set, I/O built-ins (`slurp`) read through the virtual filesystem instead of touching the real filesystem. This lets the host sandbox file access or inject synthetic file contents for testing.
 
-### 8.3 Capabilities **[planned]**
+```rust
+// Host-side (Rust)
+let mut opts = SandboxOptions::default();
+opts.vfs = Some(Arc::new(MyVirtualFS));
+eval_with_opts(&form, &env, opts);
+```
+
+### 8.3 I/O gating
+
+Built-in I/O functions (`slurp`, `print!`, `println!`) exist in the default environment but a host may omit or replace them. The host can construct any environment before evaluation.
+
+### 8.4 Capabilities **[planned]**
 
 The spec envisions explicit capability sets:
 
@@ -547,7 +558,7 @@ The spec envisions explicit capability sets:
 
 Attempting an operation without the required capability would yield a structured fault. This is not yet enforced by the runtime.
 
-### 8.4 Determinism **[planned]**
+### 8.5 Determinism **[planned]**
 
 The spec recommends that hosts make randomness and time explicit rather than ambient:
 
@@ -628,7 +639,9 @@ Planned operations: `replace`, `insert-before`, `insert-after`, `wrap`, `remove`
 These are not enforced by the language but are used throughout the standard environment and recommended for user code:
 
 - `name?` — predicate functions returning booleans (`empty?`, `ready?`)
-- `name!` — destructive or effectful operations (`set!`, `println`)
+- `name!` — destructive or effectful operations (`set!`, `print!`, `println!`)
+
+Note: `slurp` is a pure query (reads a file, returns contents) and intentionally lacks the `!` suffix.
 - `foo.bar` — property access (lowers to `(. foo :bar)`)
 - `kebab-case` — multi-word identifiers
 - Keywords for enum-like tags: `:ok`, `:error`, `:missing-capability`
@@ -665,7 +678,7 @@ comment   := ;.*$
 | Arithmetic | `+`, `-`, `*`, `/`, `%` |
 | Comparison | `=`, `!=`, `<`, `>`, `<=`, `>=` |
 | Collections | `list`, `vector`, `cons`, `first`, `rest`, `empty?`, `.`, `map` |
-| I/O | `print`, `println`, `slurp` |
+| I/O | `print!`, `println!`, `slurp` |
 | Introspection | `type`, `str` |
 | Meta | `eval`, `apply` |
 | Reader sugar | `'form` → `(quote form)`, `a.b` → `(. a :b)`, `[a + b]` → `(+ a b)` |

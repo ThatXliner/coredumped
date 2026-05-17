@@ -2,6 +2,18 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::sync::Arc;
+
+// ============================================================================
+// Virtual File System
+// ============================================================================
+
+/// Host-provided filesystem abstraction. When set on `SandboxOptions`,
+/// I/O built-ins (`slurp`, etc.) read through this instead of the real
+/// filesystem.
+pub trait VirtualFileSystem: Send + Sync {
+    fn read_to_string(&self, path: &str) -> Result<String, String>;
+}
 
 // ============================================================================
 // Errors
@@ -104,12 +116,15 @@ pub type EvalResult<T> = Result<T, EvalError>;
 
 /// Configuration for the evaluator's safety boundaries.
 /// Passed by value; each recursive call decrements `depth`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone)]
 pub struct SandboxOptions {
     /// Maximum recursion depth before RecursionLimit error.
     pub max_depth: usize,
     /// Remaining recursion budget (counts down from max_depth).
     pub depth: usize,
+    /// Optional virtual filesystem for I/O sandboxing.
+    /// When set, I/O built-ins read through this instead of the real filesystem.
+    pub vfs: Option<Arc<dyn VirtualFileSystem>>,
 }
 
 impl SandboxOptions {
@@ -117,6 +132,7 @@ impl SandboxOptions {
         SandboxOptions {
             max_depth,
             depth: max_depth,
+            vfs: None,
         }
     }
 
@@ -127,6 +143,7 @@ impl SandboxOptions {
         } else {
             Some(SandboxOptions {
                 depth: self.depth - 1,
+                vfs: self.vfs.clone(),
                 ..*self
             })
         }
@@ -136,6 +153,16 @@ impl SandboxOptions {
 impl Default for SandboxOptions {
     fn default() -> Self {
         SandboxOptions::new(1024)
+    }
+}
+
+impl fmt::Debug for SandboxOptions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SandboxOptions")
+            .field("max_depth", &self.max_depth)
+            .field("depth", &self.depth)
+            .field("vfs", &self.vfs.is_some())
+            .finish()
     }
 }
 
@@ -166,7 +193,7 @@ pub struct Keyword {
 #[derive(Clone)]
 pub struct BuiltinFn {
     pub name: &'static str,
-    pub func: fn(&[Value], &super::env::Env) -> EvalResult<Value>,
+    pub func: fn(&[Value], &super::env::Env, &SandboxOptions) -> EvalResult<Value>,
 }
 
 impl fmt::Debug for BuiltinFn {

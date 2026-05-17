@@ -215,7 +215,7 @@ fn apply_inner(
     opts: SandboxOptions,
 ) -> EvalResult<Value> {
     match callee {
-        Value::Builtin(b) => (b.func)(args, env),
+        Value::Builtin(b) => (b.func)(args, env, &opts),
         Value::Closure(c) => {
             let closure_env = Env::extend(&c.env);
             bind_params(&c.params, args, &closure_env)?;
@@ -686,7 +686,7 @@ fn as_float(v: &Value) -> EvalResult<f64> {
 
 macro_rules! arith_binop {
     ($name:ident, $op:tt) => {
-        fn $name(args: &[Value], _env: &Env) -> EvalResult<Value> {
+        fn $name(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
             if args.is_empty() { return Ok(Value::I64(0)); }
             let mut acc = args[0].clone();
             for arg in &args[1..] {
@@ -702,7 +702,7 @@ arith_binop!(builtin_add, +);
 arith_binop!(builtin_sub, -);
 arith_binop!(builtin_mul, *);
 
-fn builtin_div(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_div(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     if args.is_empty() {
         return Ok(Value::I64(0));
     }
@@ -723,47 +723,32 @@ fn builtin_div(args: &[Value], _env: &Env) -> EvalResult<Value> {
     Ok(acc)
 }
 
-fn builtin_eq(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_eq(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     Ok(Value::Bool(args.windows(2).all(|w| w[0] == w[1])))
 }
 
-fn builtin_neq(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_neq(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     Ok(Value::Bool(args.len() == 2 && args[0] != args[1]))
 }
 
-fn builtin_lt(args: &[Value], _env: &Env) -> EvalResult<Value> {
-    let vals: Vec<f64> = args
-        .iter()
-        .map(|a| as_float(a))
-        .collect::<EvalResult<_>>()?;
-    Ok(Value::Bool(vals.windows(2).all(|w| w[0] < w[1])))
+macro_rules! cmp_binop {
+    ($name:ident, $op:tt) => {
+        fn $name(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+            let vals: Vec<f64> = args
+                .iter()
+                .map(|a| as_float(a))
+                .collect::<EvalResult<_>>()?;
+            Ok(Value::Bool(vals.windows(2).all(|w| w[0] $op w[1])))
+        }
+    };
 }
 
-fn builtin_gt(args: &[Value], _env: &Env) -> EvalResult<Value> {
-    let vals: Vec<f64> = args
-        .iter()
-        .map(|a| as_float(a))
-        .collect::<EvalResult<_>>()?;
-    Ok(Value::Bool(vals.windows(2).all(|w| w[0] > w[1])))
-}
+cmp_binop!(builtin_lt, <);
+cmp_binop!(builtin_gt, >);
+cmp_binop!(builtin_lte, <=);
+cmp_binop!(builtin_gte, >=);
 
-fn builtin_lte(args: &[Value], _env: &Env) -> EvalResult<Value> {
-    let vals: Vec<f64> = args
-        .iter()
-        .map(|a| as_float(a))
-        .collect::<EvalResult<_>>()?;
-    Ok(Value::Bool(vals.windows(2).all(|w| w[0] <= w[1])))
-}
-
-fn builtin_gte(args: &[Value], _env: &Env) -> EvalResult<Value> {
-    let vals: Vec<f64> = args
-        .iter()
-        .map(|a| as_float(a))
-        .collect::<EvalResult<_>>()?;
-    Ok(Value::Bool(vals.windows(2).all(|w| w[0] >= w[1])))
-}
-
-fn builtin_dot(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_dot(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() != 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -791,22 +776,22 @@ fn builtin_dot(args: &[Value], _env: &Env) -> EvalResult<Value> {
     }
 }
 
-fn builtin_list(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_list(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     Ok(Value::List(args.to_vec()))
 }
 
-fn builtin_vector(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_vector(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     Ok(Value::Vector(args.to_vec()))
 }
 
-fn builtin_print(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_print(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     for arg in args {
         print!("{}", arg);
     }
     Ok(Value::Nil)
 }
 
-fn builtin_println(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_println(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     for arg in args {
         print!("{}", arg);
     }
@@ -814,7 +799,7 @@ fn builtin_println(args: &[Value], _env: &Env) -> EvalResult<Value> {
     Ok(Value::Nil)
 }
 
-fn builtin_type_of(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_type_of(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -839,7 +824,7 @@ fn builtin_type_of(args: &[Value], _env: &Env) -> EvalResult<Value> {
     }))
 }
 
-fn builtin_cons(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_cons(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() != 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -859,7 +844,7 @@ fn builtin_cons(args: &[Value], _env: &Env) -> EvalResult<Value> {
     }
 }
 
-fn builtin_first(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_first(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -878,7 +863,7 @@ fn builtin_first(args: &[Value], _env: &Env) -> EvalResult<Value> {
     }
 }
 
-fn builtin_rest(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_rest(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -894,7 +879,7 @@ fn builtin_rest(args: &[Value], _env: &Env) -> EvalResult<Value> {
     }
 }
 
-fn builtin_emptyq(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_emptyq(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -912,7 +897,7 @@ fn builtin_emptyq(args: &[Value], _env: &Env) -> EvalResult<Value> {
     }
 }
 
-fn builtin_str(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_str(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
     let mut out = String::new();
     for arg in args {
         out.push_str(&arg.to_string());
@@ -920,7 +905,7 @@ fn builtin_str(args: &[Value], _env: &Env) -> EvalResult<Value> {
     Ok(Value::String(out))
 }
 
-fn builtin_slurp(args: &[Value], _env: &Env) -> EvalResult<Value> {
+fn builtin_slurp(args: &[Value], _env: &Env, opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -936,23 +921,29 @@ fn builtin_slurp(args: &[Value], _env: &Env) -> EvalResult<Value> {
             })
         }
     };
+    if let Some(vfs) = &opts.vfs {
+        match vfs.read_to_string(&path) {
+            Ok(contents) => return Ok(Value::String(contents)),
+            Err(e) => return Err(EvalError::Custom(format!("cannot read '{}': {}", path, e))),
+        }
+    }
     match std::fs::read_to_string(&path) {
         Ok(contents) => Ok(Value::String(contents)),
         Err(e) => Err(EvalError::Custom(format!("cannot read '{}': {}", path, e))),
     }
 }
 
-fn builtin_eval(args: &[Value], env: &Env) -> EvalResult<Value> {
+fn builtin_eval(args: &[Value], env: &Env, opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
             got: args.len(),
         });
     }
-    eval(&args[0], env)
+    eval_with_opts(&args[0], env, opts.clone())
 }
 
-fn builtin_apply(args: &[Value], env: &Env) -> EvalResult<Value> {
+fn builtin_apply(args: &[Value], env: &Env, opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() < 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -970,7 +961,6 @@ fn builtin_apply(args: &[Value], env: &Env) -> EvalResult<Value> {
             })
         }
     }
-    let opts = SandboxOptions::default();
     apply_inner(
         callee,
         &call_args,
@@ -979,7 +969,7 @@ fn builtin_apply(args: &[Value], env: &Env) -> EvalResult<Value> {
     )
 }
 
-fn builtin_map_fn(args: &[Value], env: &Env) -> EvalResult<Value> {
+fn builtin_map_fn(args: &[Value], env: &Env, opts: &SandboxOptions) -> EvalResult<Value> {
     if args.len() != 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -996,13 +986,13 @@ fn builtin_map_fn(args: &[Value], env: &Env) -> EvalResult<Value> {
         }
     };
     let mut result = Vec::with_capacity(list.len());
-    let opts = SandboxOptions::default();
+    let inner_opts = opts.descend().ok_or(EvalError::RecursionLimit)?;
     for item in &list {
         result.push(apply_inner(
             &args[0],
             &[item.clone()],
             env,
-            opts.descend().ok_or(EvalError::RecursionLimit)?,
+            inner_opts.clone(),
         )?);
     }
     Ok(Value::List(result))
@@ -1010,7 +1000,10 @@ fn builtin_map_fn(args: &[Value], env: &Env) -> EvalResult<Value> {
 
 // --- Environment Setup ---
 
-fn builtin_fn(name: &'static str, func: fn(&[Value], &Env) -> EvalResult<Value>) -> Value {
+fn builtin_fn(
+    name: &'static str,
+    func: fn(&[Value], &Env, &SandboxOptions) -> EvalResult<Value>,
+) -> Value {
     Value::Builtin(BuiltinFn { name, func })
 }
 
@@ -1024,7 +1017,7 @@ pub fn default_env() -> Env {
     env.bind("/", builtin_fn("/", builtin_div));
     env.bind(
         "%",
-        builtin_fn("%", |args, _env| {
+        builtin_fn("%", |args, _env, _opts| {
             if args.len() != 2 {
                 return Err(EvalError::WrongArgCount {
                     expected: 2,
@@ -1073,8 +1066,8 @@ pub fn default_env() -> Env {
     env.bind("empty?", builtin_fn("empty?", builtin_emptyq));
     env.bind("map", builtin_fn("map", builtin_map_fn));
 
-    env.bind("print", builtin_fn("print", builtin_print));
-    env.bind("println", builtin_fn("println", builtin_println));
+    env.bind("print!", builtin_fn("print!", builtin_print));
+    env.bind("println!", builtin_fn("println!", builtin_println));
     env.bind("slurp", builtin_fn("slurp", builtin_slurp));
 
     env.bind("type", builtin_fn("type", builtin_type_of));

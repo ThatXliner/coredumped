@@ -425,11 +425,11 @@ fn setup_glyph_env() -> Env {
     env
 }
 
-fn builtin_quit(_args: &[Value], _env: &Env) -> glyph::EvalResult<Value> {
+fn builtin_quit(_args: &[Value], _env: &Env, _opts: &glyph::SandboxOptions) -> glyph::EvalResult<Value> {
     Ok(glyph::kw("quit"))
 }
 
-fn builtin_help(_args: &[Value], _env: &Env) -> glyph::EvalResult<Value> {
+fn builtin_help(_args: &[Value], _env: &Env, _opts: &glyph::SandboxOptions) -> glyph::EvalResult<Value> {
     Ok(Value::String(
         "\
 Available special forms:

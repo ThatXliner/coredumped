@@ -6,12 +6,14 @@
 
 use std::collections::HashSet;
 
-use bracket_lib::prelude::{Algorithm2D, BaseMap, DistanceAlg, Point, SmallVec};
+use bracket_lib::prelude::{
+    Algorithm2D, BaseMap, DistanceAlg, Point, RandomNumberGenerator, SmallVec,
+};
 
 use crate::entity::{Direction, Position};
 
-pub const MAP_WIDTH: i32 = 55;
-pub const MAP_HEIGHT: i32 = 30;
+pub const MAP_WIDTH: i32 = 68;
+pub const MAP_HEIGHT: i32 = 38;
 pub const FLASHLIGHT_RADIUS: i32 = 12;
 const FLASHLIGHT_SPREAD_DOT: f32 = 0.70;
 
@@ -65,6 +67,66 @@ impl Map {
         }
 
         map
+    }
+
+    /// Generate a random room-based dungeon. Returns (map, player_start, enemy_spawns).
+    pub fn generate(width: i32, height: i32) -> (Self, Position, Vec<Position>) {
+        let mut map = Self {
+            width,
+            height,
+            tiles: vec![TileType::Wall; (width * height) as usize],
+        };
+
+        let mut rng = RandomNumberGenerator::new();
+        let mut rooms: Vec<Room> = Vec::new();
+
+        for _ in 0..25 {
+            let w = rng.range(5, 14);
+            let h = rng.range(5, 14);
+            let x = rng.range(1, width - w - 1);
+            let y = rng.range(1, height - h - 1);
+            let room = Room { x, y, w, h };
+
+            if rooms.iter().all(|other| !room.overlaps(other)) {
+                map.carve_room(&room);
+                rooms.push(room);
+            }
+        }
+
+        for i in 1..rooms.len() {
+            let prev = rooms[i - 1].center();
+            let cur = rooms[i].center();
+            map.carve_corridor(prev, cur);
+        }
+
+        let player_start = rooms
+            .first()
+            .map(|r| r.center())
+            .unwrap_or(Position::new(2, 2));
+        let enemy_spawns: Vec<Position> = rooms.iter().skip(1).map(|r| r.center()).collect();
+
+        (map, player_start, enemy_spawns)
+    }
+
+    fn carve_room(&mut self, room: &Room) {
+        for y in room.y..room.y + room.h {
+            for x in room.x..room.x + room.w {
+                self.set_tile(Position::new(x, y), TileType::Floor);
+            }
+        }
+    }
+
+    fn carve_corridor(&mut self, from: Position, to: Position) {
+        let mut x = from.x;
+        let mut y = from.y;
+        while x != to.x {
+            self.set_tile(Position::new(x, y), TileType::Floor);
+            x += if to.x > x { 1 } else { -1 };
+        }
+        while y != to.y {
+            self.set_tile(Position::new(x, y), TileType::Floor);
+            y += if to.y > y { 1 } else { -1 };
+        }
     }
 
     pub fn idx(&self, pos: Position) -> usize {
@@ -221,4 +283,24 @@ fn bresenham_line(start: Position, end: Position) -> Vec<Position> {
     }
 
     points
+}
+
+struct Room {
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+}
+
+impl Room {
+    fn center(&self) -> Position {
+        Position::new(self.x + self.w / 2, self.y + self.h / 2)
+    }
+
+    fn overlaps(&self, other: &Room) -> bool {
+        self.x - 1 < other.x + other.w
+            && self.x + self.w + 1 > other.x
+            && self.y - 1 < other.y + other.h
+            && self.y + self.h + 1 > other.y
+    }
 }

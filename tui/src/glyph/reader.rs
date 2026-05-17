@@ -8,11 +8,21 @@ use super::value::*;
 
 pub struct Reader<'a> {
     pub(crate) input: Peekable<Chars<'a>>,
+    offset: usize,
 }
 
 impl<'a> Reader<'a> {
     pub fn new(source: &'a str) -> Self {
-        Reader { input: source.chars().peekable() }
+        Reader {
+            input: source.chars().peekable(),
+            offset: 0,
+        }
+    }
+
+    fn bump(&mut self) -> Option<char> {
+        let c = self.input.next()?;
+        self.offset += c.len_utf8();
+        Some(c)
     }
 
     pub fn read(&mut self) -> ReadResult<Option<Value>> {
@@ -34,32 +44,51 @@ impl<'a> Reader<'a> {
     pub fn read_form(&mut self) -> ReadResult<Value> {
         self.skip_ws();
         match self.input.peek() {
-            None => Err(ReadError::UnexpectedEof("reading a form".into())),
+            None => Err(ReadError::UnexpectedEof(
+                "reading a form".into(),
+                self.offset,
+            )),
             Some(&c) => match c {
                 '(' => self.read_list(),
-                ')' => Err(ReadError::UnexpectedChar(')', "unmatched paren".into())),
+                ')' => Err(ReadError::UnexpectedChar(
+                    ')',
+                    "unmatched paren".into(),
+                    self.offset,
+                )),
                 '[' => self.read_infix(),
-                ']' => Err(ReadError::UnexpectedChar(']', "unmatched bracket".into())),
+                ']' => Err(ReadError::UnexpectedChar(
+                    ']',
+                    "unmatched bracket".into(),
+                    self.offset,
+                )),
                 '#' => {
-                    self.input.next();
+                    self.bump();
                     match self.input.peek() {
                         Some('[') => self.read_vector(),
                         Some('{') => self.read_set(),
-                        Some(c) => Err(ReadError::UnexpectedChar(*c, "expected [ or { after #".into())),
-                        None => Err(ReadError::UnexpectedEof("after #".into())),
+                        Some(c) => Err(ReadError::UnexpectedChar(
+                            *c,
+                            "expected [ or { after #".into(),
+                            self.offset,
+                        )),
+                        None => Err(ReadError::UnexpectedEof("after #".into(), self.offset)),
                     }
                 }
                 '{' => self.read_map(),
-                '}' => Err(ReadError::UnexpectedChar('}', "unmatched brace".into())),
+                '}' => Err(ReadError::UnexpectedChar(
+                    '}',
+                    "unmatched brace".into(),
+                    self.offset,
+                )),
                 ':' => self.read_keyword(),
                 '"' => self.read_string(),
                 '\'' => {
-                    self.input.next();
+                    self.bump();
                     let form = self.read_form()?;
                     Ok(Value::List(vec![super::sym("quote"), form]))
                 }
                 '.' => {
-                    self.input.next();
+                    self.bump();
                     Ok(Value::Symbol(Symbol::new(".")))
                 }
                 ';' => {
@@ -70,7 +99,11 @@ impl<'a> Reader<'a> {
                     let peek = self.input.peek().copied();
                     let start_is_digit = peek.map_or(false, |c| c.is_ascii_digit());
                     let start_is_neg = peek == Some('-')
-                        && self.input.clone().nth(1).map_or(false, |c| c.is_ascii_digit());
+                        && self
+                            .input
+                            .clone()
+                            .nth(1)
+                            .map_or(false, |c| c.is_ascii_digit());
                     if start_is_digit || start_is_neg {
                         self.read_number()
                     } else {
@@ -84,52 +117,71 @@ impl<'a> Reader<'a> {
     // --- lists, vectors, sets, maps ---
 
     fn read_list(&mut self) -> ReadResult<Value> {
-        self.input.next();
+        self.bump();
         let mut items = Vec::new();
         loop {
             self.skip_ws();
             match self.input.peek() {
-                None => return Err(ReadError::UnexpectedEof("reading list".into())),
-                Some(&')') => { self.input.next(); return Ok(Value::List(items)); }
+                None => return Err(ReadError::UnexpectedEof("reading list".into(), self.offset)),
+                Some(&')') => {
+                    self.bump();
+                    return Ok(Value::List(items));
+                }
                 Some(&_) => items.push(self.read_form()?),
             }
         }
     }
 
     fn read_vector(&mut self) -> ReadResult<Value> {
-        self.input.next();
+        self.bump();
         let mut items = Vec::new();
         loop {
             self.skip_ws();
             match self.input.peek() {
-                None => return Err(ReadError::UnexpectedEof("reading vector".into())),
-                Some(&']') => { self.input.next(); return Ok(Value::Vector(items)); }
+                None => {
+                    return Err(ReadError::UnexpectedEof(
+                        "reading vector".into(),
+                        self.offset,
+                    ))
+                }
+                Some(&']') => {
+                    self.bump();
+                    return Ok(Value::Vector(items));
+                }
                 Some(&_) => items.push(self.read_form()?),
             }
         }
     }
 
     fn read_set(&mut self) -> ReadResult<Value> {
-        self.input.next();
+        self.bump();
         let mut items = BTreeSet::new();
         loop {
             self.skip_ws();
             match self.input.peek() {
-                None => return Err(ReadError::UnexpectedEof("reading set".into())),
-                Some(&'}') => { self.input.next(); return Ok(Value::Set(items)); }
-                Some(&_) => { items.insert(self.read_form()?); }
+                None => return Err(ReadError::UnexpectedEof("reading set".into(), self.offset)),
+                Some(&'}') => {
+                    self.bump();
+                    return Ok(Value::Set(items));
+                }
+                Some(&_) => {
+                    items.insert(self.read_form()?);
+                }
             }
         }
     }
 
     fn read_map(&mut self) -> ReadResult<Value> {
-        self.input.next();
+        self.bump();
         let mut entries = BTreeMap::new();
         loop {
             self.skip_ws();
             match self.input.peek() {
-                None => return Err(ReadError::UnexpectedEof("reading map".into())),
-                Some(&'}') => { self.input.next(); return Ok(Value::Map(entries)); }
+                None => return Err(ReadError::UnexpectedEof("reading map".into(), self.offset)),
+                Some(&'}') => {
+                    self.bump();
+                    return Ok(Value::Map(entries));
+                }
                 Some(&_) => {
                     let key = self.read_form()?;
                     self.skip_ws();
@@ -143,36 +195,50 @@ impl<'a> Reader<'a> {
     // --- keywords, strings, numbers, symbols ---
 
     fn read_keyword(&mut self) -> ReadResult<Value> {
-        self.input.next();
+        self.bump();
         let mut name = String::new();
         loop {
             match self.input.peek() {
-                Some(&c) if is_symbol_char(c) || c == '/' => { name.push(c); self.input.next(); }
+                Some(&c) if is_symbol_char(c) || c == '/' => {
+                    name.push(c);
+                    self.bump();
+                }
                 _ => break,
             }
         }
         if name.is_empty() {
-            return Err(ReadError::UnexpectedChar(':', "expected keyword name".into()));
+            return Err(ReadError::UnexpectedChar(
+                ':',
+                "expected keyword name".into(),
+                self.offset,
+            ));
         }
         Ok(Value::Keyword(Keyword { name }))
     }
 
     fn read_string(&mut self) -> ReadResult<Value> {
-        self.input.next();
+        self.bump();
         let mut s = String::new();
         loop {
-            match self.input.next() {
-                None => return Err(ReadError::UnexpectedEof("reading string".into())),
+            match self.bump() {
+                None => {
+                    return Err(ReadError::UnexpectedEof(
+                        "reading string".into(),
+                        self.offset,
+                    ))
+                }
                 Some('"') => return Ok(Value::String(s)),
                 Some('\\') => {
-                    let c = self.input.next().ok_or(ReadError::UnexpectedEof("after \\".into()))?;
+                    let c = self
+                        .bump()
+                        .ok_or(ReadError::UnexpectedEof("after \\".into(), self.offset))?;
                     match c {
                         'n' => s.push('\n'),
                         't' => s.push('\t'),
                         'r' => s.push('\r'),
                         '"' => s.push('"'),
                         '\\' => s.push('\\'),
-                        c => return Err(ReadError::InvalidEscape(format!("\\{}", c))),
+                        c => return Err(ReadError::InvalidEscape(format!("\\{}", c), self.offset)),
                     }
                 }
                 Some(c) => s.push(c),
@@ -186,18 +252,30 @@ impl<'a> Reader<'a> {
 
         if let Some(&'-') = self.input.peek() {
             raw.push('-');
-            self.input.next();
+            self.bump();
         }
 
         // hex/octal/binary
         if raw == "-" || raw.is_empty() {
             if let Some(&'0') = self.input.peek() {
                 raw.push('0');
-                self.input.next();
+                self.bump();
                 match self.input.peek() {
-                    Some(&'x') | Some(&'X') => { raw.push('x'); self.input.next(); return self.read_radix(raw, 16); }
-                    Some(&'o') | Some(&'O') => { raw.push('o'); self.input.next(); return self.read_radix(raw, 8); }
-                    Some(&'b') | Some(&'B') => { raw.push('b'); self.input.next(); return self.read_radix(raw, 2); }
+                    Some(&'x') | Some(&'X') => {
+                        raw.push('x');
+                        self.bump();
+                        return self.read_radix(raw, 16);
+                    }
+                    Some(&'o') | Some(&'O') => {
+                        raw.push('o');
+                        self.bump();
+                        return self.read_radix(raw, 8);
+                    }
+                    Some(&'b') | Some(&'B') => {
+                        raw.push('b');
+                        self.bump();
+                        return self.read_radix(raw, 2);
+                    }
                     _ => {}
                 }
             }
@@ -206,19 +284,38 @@ impl<'a> Reader<'a> {
         // digits, decimal point, exponent
         loop {
             match self.input.peek() {
-                Some(&c) if c.is_ascii_digit() => { raw.push(c); self.input.next(); }
+                Some(&c) if c.is_ascii_digit() => {
+                    raw.push(c);
+                    self.bump();
+                }
                 Some(&'.') if !is_float => {
-                    raw.push('.'); is_float = true; self.input.next();
+                    raw.push('.');
+                    is_float = true;
+                    self.bump();
                     while let Some(&c) = self.input.peek() {
-                        if c.is_ascii_digit() { raw.push(c); self.input.next(); } else { break; }
+                        if c.is_ascii_digit() {
+                            raw.push(c);
+                            self.bump();
+                        } else {
+                            break;
+                        }
                     }
                 }
                 Some(&'e') | Some(&'E') if !is_float => {
                     if raw.len() > if raw.starts_with('-') { 1 } else { 0 } {
-                        is_float = true; raw.push('e'); self.input.next();
-                        if let Some(&'+') | Some(&'-') = self.input.peek() { raw.push(self.input.next().unwrap()); }
+                        is_float = true;
+                        raw.push('e');
+                        self.bump();
+                        if let Some(&'+') | Some(&'-') = self.input.peek() {
+                            raw.push(self.bump().unwrap());
+                        }
                         while let Some(&c) = self.input.peek() {
-                            if c.is_ascii_digit() { raw.push(c); self.input.next(); } else { break; }
+                            if c.is_ascii_digit() {
+                                raw.push(c);
+                                self.bump();
+                            } else {
+                                break;
+                            }
                         }
                     }
                     break;
@@ -228,40 +325,66 @@ impl<'a> Reader<'a> {
         }
 
         if raw.is_empty() || raw == "-" {
-            return Err(ReadError::InvalidNumber(raw));
+            return Err(ReadError::InvalidNumber(raw, self.offset));
         }
 
         if is_float {
-            raw.parse::<f64>().map(Value::F64).map_err(|_| ReadError::InvalidNumber(raw))
+            raw.parse::<f64>()
+                .map(Value::F64)
+                .map_err(|_| ReadError::InvalidNumber(raw, self.offset))
         } else {
-            raw.parse::<i64>().map(Value::I64).map_err(|_| ReadError::InvalidNumber(raw))
+            raw.parse::<i64>()
+                .map(Value::I64)
+                .map_err(|_| ReadError::InvalidNumber(raw, self.offset))
         }
     }
 
     fn read_radix(&mut self, mut raw: String, radix: u32) -> ReadResult<Value> {
         loop {
             match self.input.peek() {
-                Some(&c) if c.is_ascii_alphanumeric() => { raw.push(c); self.input.next(); }
+                Some(&c) if c.is_ascii_alphanumeric() => {
+                    raw.push(c);
+                    self.bump();
+                }
                 _ => break,
             }
         }
-        let (neg, start) = if raw.starts_with('-') { (true, 3) } else { (false, 2) };
+        let (neg, start) = if raw.starts_with('-') {
+            (true, 3)
+        } else {
+            (false, 2)
+        };
         let num_str = &raw[start..];
-        if num_str.is_empty() { return Err(ReadError::InvalidNumber(raw)); }
-        let actual = if neg { format!("-{}", num_str) } else { num_str.to_string() };
-        i64::from_str_radix(&actual, radix).map(Value::I64).map_err(|_| ReadError::InvalidNumber(raw))
+        if num_str.is_empty() {
+            return Err(ReadError::InvalidNumber(raw, self.offset));
+        }
+        let actual = if neg {
+            format!("-{}", num_str)
+        } else {
+            num_str.to_string()
+        };
+        i64::from_str_radix(&actual, radix)
+            .map(Value::I64)
+            .map_err(|_| ReadError::InvalidNumber(raw, self.offset))
     }
 
     fn read_symbol_or_dot(&mut self) -> ReadResult<Value> {
         let mut raw = String::new();
         loop {
             match self.input.peek() {
-                Some(&c) if is_symbol_char(c) => { raw.push(c); self.input.next(); }
+                Some(&c) if is_symbol_char(c) => {
+                    raw.push(c);
+                    self.bump();
+                }
                 _ => break,
             }
         }
         if raw.is_empty() {
-            return Err(ReadError::UnexpectedChar(self.input.next().unwrap_or('\0'), "reading symbol".into()));
+            return Err(ReadError::UnexpectedChar(
+                self.bump().unwrap_or('\0'),
+                "reading symbol".into(),
+                self.offset,
+            ));
         }
 
         // Dotted access: a.b.c
@@ -270,16 +393,23 @@ impl<'a> Reader<'a> {
             loop {
                 match self.input.peek() {
                     Some(&'.') => {
-                        self.input.next();
+                        self.bump();
                         let mut part = String::new();
                         loop {
                             match self.input.peek() {
-                                Some(&c) if is_symbol_char(c) || c == '-' || c == '>' => { part.push(c); self.input.next(); }
+                                Some(&c) if is_symbol_char(c) || c == '-' || c == '>' => {
+                                    part.push(c);
+                                    self.bump();
+                                }
                                 _ => break,
                             }
                         }
                         if part.is_empty() {
-                            return Err(ReadError::UnexpectedChar('.', "expected name after .".into()));
+                            return Err(ReadError::UnexpectedChar(
+                                '.',
+                                "expected name after .".into(),
+                                self.offset,
+                            ));
                         }
                         chain.push(part);
                     }
@@ -288,7 +418,11 @@ impl<'a> Reader<'a> {
             }
             let mut result = Value::Symbol(Symbol::new(&chain[0]));
             for part in &chain[1..] {
-                result = Value::List(vec![super::sym("."), result, Value::Keyword(Keyword { name: part.clone() })]);
+                result = Value::List(vec![
+                    super::sym("."),
+                    result,
+                    Value::Keyword(Keyword { name: part.clone() }),
+                ]);
             }
             return Ok(result);
         }
@@ -317,7 +451,7 @@ impl<'a> Reader<'a> {
     /// Read a `[...]` block. If forms[1] is a known binary operator, parse infix.
     /// Otherwise produce a Vector (for param lists, let bindings, etc.).
     fn read_infix(&mut self) -> ReadResult<Value> {
-        self.input.next();
+        self.bump();
         let forms = self.read_inner_forms(b']')?;
         if forms.is_empty() {
             return Ok(Value::Vector(vec![]));
@@ -326,7 +460,11 @@ impl<'a> Reader<'a> {
             return Ok(forms.into_iter().next().unwrap());
         }
         let is_infix = forms.get(1).map_or(false, |v| {
-            if let Value::Symbol(s) = v { Self::op_precedence(&s.name) > 0 } else { false }
+            if let Value::Symbol(s) = v {
+                Self::op_precedence(&s.name) > 0
+            } else {
+                false
+            }
         });
         if is_infix {
             let mut tokens = forms.into_iter().peekable();
@@ -347,7 +485,9 @@ impl<'a> Reader<'a> {
             let (op, prec) = match tokens.peek() {
                 Some(Value::Symbol(s)) => {
                     let p = Self::op_precedence(&s.name);
-                    if p == 0 || p < min_prec { break; }
+                    if p == 0 || p < min_prec {
+                        break;
+                    }
                     (s.name.clone(), p)
                 }
                 _ => break,
@@ -364,8 +504,16 @@ impl<'a> Reader<'a> {
         loop {
             self.skip_ws();
             match self.input.peek() {
-                None => return Err(ReadError::UnexpectedEof("reading infix".into())),
-                Some(&c) if c as u8 == delim => { self.input.next(); break; }
+                None => {
+                    return Err(ReadError::UnexpectedEof(
+                        "reading infix".into(),
+                        self.offset,
+                    ))
+                }
+                Some(&c) if c as u8 == delim => {
+                    self.bump();
+                    break;
+                }
                 Some(_) => forms.push(self.read_form()?),
             }
         }
@@ -377,17 +525,21 @@ impl<'a> Reader<'a> {
     fn skip_ws(&mut self) {
         loop {
             match self.input.peek() {
-                Some(&c) if c.is_whitespace() => { self.input.next(); }
-                Some(&';') => { self.skip_line(); }
+                Some(&c) if c.is_whitespace() => {
+                    self.bump();
+                }
+                Some(&';') => {
+                    self.skip_line();
+                }
                 _ => break,
             }
         }
     }
 
     fn skip_line(&mut self) {
-        self.input.next();
+        self.bump();
         loop {
-            match self.input.next() {
+            match self.bump() {
                 Some('\n') | None => return,
                 _ => continue,
             }
@@ -397,10 +549,18 @@ impl<'a> Reader<'a> {
 
 fn is_symbol_char(c: char) -> bool {
     c.is_ascii_alphanumeric()
-        || c == '?' || c == '!'
-        || c == '+' || c == '-' || c == '*' || c == '/'
-        || c == '=' || c == '<' || c == '>'
-        || c == '_' || c == '%' || c == '&'
+        || c == '?'
+        || c == '!'
+        || c == '+'
+        || c == '-'
+        || c == '*'
+        || c == '/'
+        || c == '='
+        || c == '<'
+        || c == '>'
+        || c == '_'
+        || c == '%'
+        || c == '&'
 }
 
 /// Parse a string into a list of canonical forms.

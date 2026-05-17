@@ -11,7 +11,8 @@ use crate::{
     ecs::Ecs,
     entity::{Direction, EntityId, EntityView, Hp, Position},
     event_log::EventLog,
-    map::Map,
+    glyph::{self, Env, Value},
+    map::{Map, MAP_HEIGHT, MAP_WIDTH},
     rules::RuleRegistry,
 };
 
@@ -55,6 +56,8 @@ pub struct World {
     pub mode: Mode,
     pub event_log: EventLog,
     pub console_buffer: String,
+    pub console_output: String,
+    pub glyph_env: Env,
     pub inspector_scroll: usize,
     pub running: bool,
 }
@@ -73,6 +76,8 @@ impl World {
         ecs.spawn_slime(Position::new(19, 5));
         ecs.spawn_slime(Position::new(47, 18));
 
+        let glyph_env = setup_glyph_env();
+
         Self {
             map: Map::new_static(),
             ecs,
@@ -83,6 +88,43 @@ impl World {
             mode: Mode::Normal,
             event_log,
             console_buffer: String::new(),
+            console_output: String::new(),
+            glyph_env,
+            inspector_scroll: 0,
+            running: true,
+        }
+    }
+
+    /// Create a world with a procedurally generated dungeon.
+    pub fn new_game() -> Self {
+        let (map, player_start, enemy_spawns) = Map::generate(MAP_WIDTH, MAP_HEIGHT);
+
+        let mut event_log = EventLog::new();
+        event_log.push("Xlyph runtime booted.");
+        event_log.push("Move with arrows or hjkl. ` opens the console. i inspects code.");
+        event_log.push("Your flashlight ray-casts in the direction you last moved.");
+
+        let registry = RuleRegistry::core();
+        let mut ecs = Ecs::new();
+        let player_id = ecs.spawn_player(player_start);
+        for spawn in enemy_spawns.iter().take(4) {
+            ecs.spawn_slime(*spawn);
+        }
+
+        let glyph_env = setup_glyph_env();
+
+        Self {
+            map,
+            ecs,
+            registry,
+            player_id,
+            player_facing: Direction::East,
+            turn: 0,
+            mode: Mode::Normal,
+            event_log,
+            console_buffer: String::new(),
+            console_output: String::new(),
+            glyph_env,
             inspector_scroll: 0,
             running: true,
         }
@@ -311,13 +353,128 @@ impl World {
         let command = self.console_buffer.trim().to_string();
         if command.is_empty() {
             self.event_log.push("Console waits. No query submitted.");
-        } else {
-            self.event_log.push(format!("> {}", command));
-            self.event_log
-                .push("Glyph runtime not loaded; no simulation tick spent.");
+            self.console_buffer.clear();
+            return;
+        }
+        self.event_log.push(format!("> {}", command));
+        match glyph::read_string(&command) {
+            Ok(forms) => {
+                let mut last = Value::Nil;
+                let mut err = None;
+                for form in &forms {
+                    match glyph::eval_with_opts(
+                        form,
+                        &self.glyph_env,
+                        glyph::SandboxOptions::default(),
+                    ) {
+                        Ok(val) => last = val,
+                        Err(e) => {
+                            err = Some(e);
+                            break;
+                        }
+                    }
+                }
+                match err {
+                    Some(e) => {
+                        let msg = format!("Error: {}", e);
+                        self.event_log.push(&msg);
+                        self.console_output = msg;
+                    }
+                    None => {
+                        if last == glyph::kw("quit") {
+                            self.console_output = "Quitting. Goodbye.".to_string();
+                            self.event_log.push("Quitting. Goodbye.");
+                            self.console_buffer.clear();
+                            self.running = false;
+                            return;
+                        }
+                        let msg = format!("=> {}", last);
+                        self.event_log.push(&msg);
+                        self.console_output = msg;
+                    }
+                }
+            }
+            Err(e) => {
+                let report = e.report(&command);
+                for line in report.lines() {
+                    self.event_log.push(line);
+                }
+                self.console_output = report;
+            }
         }
         self.console_buffer.clear();
     }
+}
+
+fn setup_glyph_env() -> Env {
+    let env = Env::extend(&glyph::default_env());
+    env.bind(
+        "help",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "help",
+            func: builtin_help,
+        }),
+    );
+    env.bind(
+        "quit",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "quit",
+            func: builtin_quit,
+        }),
+    );
+    env
+}
+
+fn builtin_quit(_args: &[Value], _env: &Env) -> glyph::EvalResult<Value> {
+    Ok(glyph::kw("quit"))
+}
+
+fn builtin_help(_args: &[Value], _env: &Env) -> glyph::EvalResult<Value> {
+    Ok(Value::String(
+        "\
+Available special forms:
+  (quote form)       — return form unevaluated
+  (if test then else) — conditional evaluation
+  (do expr ...)      — evaluate sequentially, return last
+  (let name val body) — bind a local variable
+  (fn [params] body)  — create a function
+  (const name val)   — define a global constant
+  (defmacro name [params] body) — define a macro
+  (set! place val)   — mutate a binding or map entry
+  (try body (catch pat body)) — error handling
+  (and expr ...)     — short-circuit logical and
+  (or expr ...)      — short-circuit logical or
+  (match expr [pat body] ...) — pattern matching
+
+Built-in functions:
+  + - * / %    — arithmetic (variadic)
+  = != < > <= >= — comparisons (variadic, mixed int/float)
+  .             — map access: (. map :key)
+  list, vector  — construct collections
+  cons, first, rest — list operations
+  empty?        — check if list/vector/string is empty
+  map           — apply function over a list
+  str           — concatenate string representation of args
+  type          — return type keyword of a value
+  print, println — print to stdout (for debugging)
+  eval          — evaluate a quoted form
+  apply         — call a function with a list of args
+  slurp         — read a file from disk
+
+Syntax:
+  'form         — reader macro for (quote form)
+  [a + b]       — infix notation with precedence
+  a.b.c         — dotted access sugar
+  {a b :c :d}   — map literals
+  #[x y z]      — vector literals
+  #{:a :b}      — set literals
+  ;             — line comment
+
+Console commands (game-specific):
+  (help)        — show this help text
+  (quit)        — exit the game"
+            .into(),
+    ))
 }
 
 impl Default for World {

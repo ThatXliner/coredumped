@@ -15,7 +15,7 @@ pub struct State {
 impl State {
     pub fn new() -> Self {
         Self {
-            world: World::new(),
+            world: World::new_game(),
         }
     }
 }
@@ -31,7 +31,7 @@ impl GameState for State {
         ctx.cls();
 
         if let Some(key) = ctx.key {
-            let intent = key_to_intent(key, &self.world);
+            let intent = key_to_intent(key, ctx.shift, &self.world);
             self.world.apply_intent(intent);
         }
 
@@ -45,7 +45,7 @@ impl GameState for State {
 }
 
 pub fn run() -> BError {
-    let context = BTermBuilder::simple80x50()
+    let context = BTermBuilder::simple(120, 75)?
         .with_title("Xlyph - bracket-lib prototype")
         .with_fitscreen(true)
         .with_automatic_console_resize(true)

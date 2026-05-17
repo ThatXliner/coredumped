@@ -9,21 +9,54 @@ use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum ReadError {
-    UnexpectedEof(String),
-    UnexpectedChar(char, String),
-    InvalidNumber(String),
-    InvalidEscape(String),
+    UnexpectedEof(String, usize),
+    UnexpectedChar(char, String, usize),
+    InvalidNumber(String, usize),
+    InvalidEscape(String, usize),
+}
+
+impl ReadError {
+    pub fn offset(&self) -> usize {
+        match self {
+            ReadError::UnexpectedEof(_, o)
+            | ReadError::UnexpectedChar(_, _, o)
+            | ReadError::InvalidNumber(_, o)
+            | ReadError::InvalidEscape(_, o) => *o,
+        }
+    }
+
+    pub fn report(&self, source: &str) -> String {
+        use ariadne::{Color, Label, Report, ReportKind, Source};
+        let offset = self.offset();
+        let msg = self.to_string();
+        let span = offset..offset + 1;
+        let report = Report::build(ReportKind::Error, "glyph", offset)
+            .with_message("syntax error")
+            .with_label(
+                Label::new(("glyph", span))
+                    .with_message(&msg)
+                    .with_color(Color::Red),
+            )
+            .finish();
+        let mut out = Vec::<u8>::new();
+        report
+            .write(("glyph", Source::from(source)), &mut out)
+            .unwrap();
+        String::from_utf8_lossy(&out).to_string()
+    }
 }
 
 impl fmt::Display for ReadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ReadError::UnexpectedEof(ctx) => write!(f, "unexpected end of input while {}", ctx),
-            ReadError::UnexpectedChar(c, ctx) => {
+            ReadError::UnexpectedEof(ctx, _) => {
+                write!(f, "unexpected end of input while {}", ctx)
+            }
+            ReadError::UnexpectedChar(c, ctx, _) => {
                 write!(f, "unexpected character '{}' while {}", c, ctx)
             }
-            ReadError::InvalidNumber(s) => write!(f, "invalid number: {}", s),
-            ReadError::InvalidEscape(s) => write!(f, "invalid escape sequence: {}", s),
+            ReadError::InvalidNumber(s, _) => write!(f, "invalid number: {}", s),
+            ReadError::InvalidEscape(s, _) => write!(f, "invalid escape sequence: {}", s),
         }
     }
 }
@@ -49,7 +82,11 @@ impl fmt::Display for EvalError {
             EvalError::UnboundSymbol(s) => write!(f, "unbound symbol: {}", s),
             EvalError::NotCallable(v) => write!(f, "not callable: {}", v),
             EvalError::WrongArgCount { expected, got } => {
-                write!(f, "wrong argument count: expected {}, got {}", expected, got)
+                write!(
+                    f,
+                    "wrong argument count: expected {}, got {}",
+                    expected, got
+                )
             }
             EvalError::NotInList(v, ctx) => write!(f, "{} is not in list: {}", v, ctx),
             EvalError::DivisionByZero => write!(f, "division by zero"),
@@ -77,13 +114,22 @@ pub struct SandboxOptions {
 
 impl SandboxOptions {
     pub fn new(max_depth: usize) -> Self {
-        SandboxOptions { max_depth, depth: max_depth }
+        SandboxOptions {
+            max_depth,
+            depth: max_depth,
+        }
     }
 
     /// Descend one level. Returns None if budget exhausted.
     pub(crate) fn descend(&self) -> Option<SandboxOptions> {
-        if self.depth == 0 { None }
-        else { Some(SandboxOptions { depth: self.depth - 1, ..*self }) }
+        if self.depth == 0 {
+            None
+        } else {
+            Some(SandboxOptions {
+                depth: self.depth - 1,
+                ..*self
+            })
+        }
     }
 }
 
@@ -105,7 +151,9 @@ pub struct Symbol {
 
 impl Symbol {
     pub fn new(name: &str) -> Self {
-        Symbol { name: name.to_lowercase() }
+        Symbol {
+            name: name.to_lowercase(),
+        }
     }
 }
 
@@ -123,7 +171,9 @@ pub struct BuiltinFn {
 
 impl fmt::Debug for BuiltinFn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BuiltinFn").field("name", &self.name).finish()
+        f.debug_struct("BuiltinFn")
+            .field("name", &self.name)
+            .finish()
     }
 }
 
@@ -271,7 +321,9 @@ impl fmt::Display for Value {
             Value::List(items) => {
                 write!(f, "(")?;
                 for (i, item) in items.iter().enumerate() {
-                    if i > 0 { write!(f, " ")?; }
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
                     write!(f, "{}", item)?;
                 }
                 write!(f, ")")
@@ -279,7 +331,9 @@ impl fmt::Display for Value {
             Value::Vector(items) => {
                 write!(f, "#[")?;
                 for (i, item) in items.iter().enumerate() {
-                    if i > 0 { write!(f, " ")?; }
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
                     write!(f, "{}", item)?;
                 }
                 write!(f, "]")
@@ -287,7 +341,9 @@ impl fmt::Display for Value {
             Value::Map(entries) => {
                 write!(f, "{{")?;
                 for (i, (k, v)) in entries.iter().enumerate() {
-                    if i > 0 { write!(f, " ")?; }
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
                     write!(f, "{} {}", k, v)?;
                 }
                 write!(f, "}}")
@@ -295,7 +351,9 @@ impl fmt::Display for Value {
             Value::Set(items) => {
                 write!(f, "#{{")?;
                 for (i, item) in items.iter().enumerate() {
-                    if i > 0 { write!(f, " ")?; }
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
                     write!(f, "{}", item)?;
                 }
                 write!(f, "}}")

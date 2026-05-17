@@ -15,17 +15,17 @@ use crate::{
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
 };
 
-const SCREEN_HEIGHT: i32 = 50;
+const SCREEN_HEIGHT: i32 = 75;
 const MAP_X: i32 = 1;
 const MAP_Y: i32 = 1;
-const PANEL_X: i32 = 57;
+const PANEL_X: i32 = 71;
 const PANEL_Y: i32 = 1;
-const PANEL_WIDTH: i32 = 22;
-const PANEL_HEIGHT: i32 = 31;
+const PANEL_WIDTH: i32 = 48;
+const PANEL_HEIGHT: i32 = 40;
 const LOG_X: i32 = 1;
-const LOG_Y: i32 = 33;
-const LOG_WIDTH: i32 = 78;
-const LOG_HEIGHT: i32 = 16;
+const LOG_Y: i32 = 41;
+const LOG_WIDTH: i32 = 118;
+const LOG_HEIGHT: i32 = 33;
 
 pub fn render(ctx: &mut BTerm, world: &World) {
     let lit_tiles = world
@@ -154,7 +154,11 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
     let visible_lines = (PANEL_Y + PANEL_HEIGHT - 2 - y).max(0) as usize;
     let lines = inspector_lines(&world.registry);
 
-    for line in lines.iter().skip(world.inspector_scroll).take(visible_lines) {
+    for line in lines
+        .iter()
+        .skip(world.inspector_scroll)
+        .take(visible_lines)
+    {
         print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, line);
         y += 1;
     }
@@ -230,20 +234,8 @@ fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
     }
 
     ctx.set(tooltip_x, tooltip_y, fg, bg, to_cp437('+'));
-    ctx.set(
-        tooltip_x + tooltip_w - 1,
-        tooltip_y,
-        fg,
-        bg,
-        to_cp437('+'),
-    );
-    ctx.set(
-        tooltip_x,
-        tooltip_y + tooltip_h - 1,
-        fg,
-        bg,
-        to_cp437('+'),
-    );
+    ctx.set(tooltip_x + tooltip_w - 1, tooltip_y, fg, bg, to_cp437('+'));
+    ctx.set(tooltip_x, tooltip_y + tooltip_h - 1, fg, bg, to_cp437('+'));
     ctx.set(
         tooltip_x + tooltip_w - 1,
         tooltip_y + tooltip_h - 1,
@@ -285,23 +277,33 @@ fn render_event_log(ctx: &mut BTerm, world: &World) {
 
 fn render_console(ctx: &mut BTerm, world: &World) {
     let x = 8;
-    let y = 20;
+    let y = 16;
     let width = 64;
-    let height = 7;
+    let height = 13;
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
-    draw_box(ctx, x, y, width, height, " forbidden console ");
+    draw_box(ctx, x, y, width, height, " glyph console ");
 
     print_clipped(
         ctx,
         x + 2,
         y + 2,
         width - 4,
-        "Read-only query shell. Type help for commands.",
+        "Glyph REPL. Try (help). Enter (quit) to exit.",
     );
+
+    if !world.console_output.is_empty() {
+        let output: String = world
+            .console_output
+            .chars()
+            .take((width - 4) as usize)
+            .collect();
+        print_clipped(ctx, x + 2, y + 4, width - 4, &output);
+    }
+
     print_clipped(
         ctx,
         x + 2,
-        y + 4,
+        y + 6,
         width - 4,
         &format!("> {}", world.console_buffer),
     );

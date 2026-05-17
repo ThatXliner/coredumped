@@ -5,6 +5,7 @@
 //! `map` owns terrain/pathing, `input` translates keys into intents, and
 //! `render` draws the current state.
 
+pub(crate) mod ai_builtins;
 pub mod app;
 pub mod ecs;
 pub mod entity;

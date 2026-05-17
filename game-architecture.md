@@ -23,10 +23,13 @@ The central promise is simple: the code the player reads is the code the dungeon
                    |
                    v
         +----------------------+
-        | Command / REPL Layer |
+        | TUI / Play Surface   |
         +----------------------+
-                   |
-                   v
+          |       |        |
+          v       v        v
+       Map     Inspect   Console
+          |       |        |
+          v       v        v
         +----------------------+
         | Glyph Lisp Runtime   |
         +----------------------+
@@ -47,6 +50,33 @@ The central promise is simple: the code the player reads is the code the dungeon
 ```
 
 ## Core Subsystems
+
+### TUI And Play Surface
+
+The primary interface should be a terminal UI, not a naked REPL. The player should inhabit a graphical roguelike map with spatial movement, encounters, menus, and diegetic tools, while the Lisp console appears as one powerful surface among several.
+
+Think closer to Undertale's readable, expressive 2D staging than to a shell prompt: a compact map, character sprites or glyphs, room framing, dialog boxes, status panels, and reactive inspection panes. The codebase fantasy still matters, but the moment-to-moment game should feel embodied.
+
+Core TUI regions:
+
+- map viewport with tile glyphs, entities, effects, targeting cursors, and room transitions
+- player status, inventory, capabilities, instability, and active overlays
+- event log for combat, faults, traces, and authored messages
+- inspection pane for source, entity metadata, rule metadata, and disassembly
+- contextual action menu for spells, artifacts, tools, and exploits
+- optional console pane for queries, macros, and rare write contexts
+
+Input should route through the TUI first. Movement, interaction, targeting, inventory, and inspection are normal controls. The console is opened by tools such as debug shrines, forbidden terminals, signed archives, or late-game root shells.
+
+Actions should declare whether they spend a roguelike tick. Movement, attacks, item use, spell execution, exploit triggering, waiting, and other world-affecting intents advance the simulation: enemies get their AI step, environmental rules tick, scheduled effects age, and the event log records the turn. Pure interface actions such as opening the console, browsing source, moving an inspection cursor, viewing metadata, or drafting code do not spend time.
+
+Code execution is split by effect:
+
+- read-only queries, source inspection, macro expansion previews, diffs, and dry-run analysis are free UI/debug actions
+- accepted spells, rituals, exploit payloads, patch activations, and any code that writes world state spend a tick or run inside a special authored transaction
+- long-running or expensive analysis may consume an explicit in-game resource, but should not secretly advance enemy turns unless the action says it does
+
+The rendering layer is allowed to be expressive, but it must remain a view over canonical simulation state. It can animate, frame, highlight, and summarize; it cannot create hidden game truth outside the event log and world state.
 
 ### Language Host Layer
 
@@ -419,10 +449,39 @@ Do not hide this from the player. Experienced programmers will enjoy seeing why 
 
 ## Game Loop
 
+### Action Time Cost
+
+Every accepted player intent resolves to a time cost before the kernel advances.
+
+```lisp
+{:intent :move
+ :dir :east
+ :cost :tick}
+
+{:intent :inspect-rule
+ :rule :rules/fire/spread
+ :cost :free}
+
+{:intent :activate-patch
+ :patch :patches/player/no-self-fire
+ :cost :special-transaction}
+```
+
+Time-cost classes:
+
+- `:free` updates UI state only and does not run enemy AI or environmental ticks
+- `:tick` advances one roguelike turn after the player action resolves
+- `:multi-tick` advances a declared number of ticks for waits, channeling, or slow tools
+- `:special-transaction` runs an authored sequence with explicit rules for whether enemies, hazards, or timers advance
+
+The important invariant is that time only passes from accepted simulation intents. Opening the REPL, reading code, moving through menus, previewing a macro expansion, or looking at a diff should not by itself advance the dungeon.
+
 ### Normal Turn
 
 ```text
-read player command
+read player intent from TUI
+classify time cost
+if free: update UI state and render
 begin turn transaction
 run :before-player rules
 apply player action
@@ -460,7 +519,7 @@ This is a special authored sequence for levels that want it, not the expected sh
 
 A future level could include a late-game magic rock with a discoverable buffer overflow. After unlocking a code-reading tool, finding the rock, disassembling it, discovering the overflow, and triggering the exploit, the player could install a room-scoped patch, see the actual diff, activate it, and watch the real simulation obey the modified rule.
 
-This is a small design note for one possible level, not the spine of the architecture.
+This is just a small design note for one possible level though.
 
 ## Invariants
 
@@ -636,6 +695,7 @@ The player fantasy is root access to the dungeon, not to the user's computer.
 
 - Build ECS/world state.
 - Build turn kernel.
+- Build a basic TUI with map viewport, status panel, event log, and inspect pane.
 - Build canonical Lisp reader and evaluator.
 - Implement phase rules as Lisp data.
 - Add seeded RNG.
@@ -687,9 +747,11 @@ The player fantasy is root access to the dungeon, not to the user's computer.
 The smallest prototype that proves the concept:
 
 - Grid roguelike world.
+- TUI map with movement, entities, status, event log, and inspection pane.
+- Tick scheduler where movement advances enemies one step, while inspection and console opening are free actions.
 - Entities with hp, position, tags, and status.
 - Three real rule modules: fire, death, enemy AI.
-- Lisp REPL.
+- Contextual Lisp console for queries and debug-shrine interactions.
 - Source viewer for active rules.
 - One locked inspection or disassembly tool.
 - Event log with rollback.

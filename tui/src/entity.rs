@@ -1,10 +1,23 @@
-//! Entity primitives for the prototype.
+//! ECS component primitives for the prototype.
 //!
-//! This file deliberately stays plain: positions, directions, HP, entity kinds,
-//! and constructors. Game rules live in `game.rs`; rendering decisions live in
-//! `render.rs`.
+//! This file defines the small data pieces that can be attached to an entity:
+//! ids, positions, directions, HP, kinds, and render glyphs. Storage and query
+//! behavior live in `ecs.rs`; gameplay systems live in `game.rs`.
 
 use bracket_lib::prelude::Point;
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EntityId(usize);
+
+impl EntityId {
+    pub(crate) fn new(raw: usize) -> Self {
+        Self(raw)
+    }
+
+    pub fn raw(self) -> usize {
+        self.0
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
@@ -77,47 +90,51 @@ pub enum EntityKind {
     Slime,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Entity {
-    pub id: usize,
-    pub kind: EntityKind,
-    pub pos: Position,
-    pub hp: Hp,
-    pub alive: bool,
-}
-
-impl Entity {
-    pub fn player(pos: Position) -> Self {
-        Self {
-            id: 0,
-            kind: EntityKind::Player,
-            pos,
-            hp: Hp::new(12),
-            alive: true,
-        }
-    }
-
-    pub fn slime(id: usize, pos: Position) -> Self {
-        Self {
-            id,
-            kind: EntityKind::Slime,
-            pos,
-            hp: Hp::new(3),
-            alive: true,
-        }
-    }
-
+impl EntityKind {
     pub fn glyph(&self) -> char {
-        match self.kind {
+        match self {
             EntityKind::Player => '@',
             EntityKind::Slime => 's',
         }
     }
 
     pub fn name(&self) -> &'static str {
-        match self.kind {
+        match self {
             EntityKind::Player => "player",
             EntityKind::Slime => "slime",
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RenderGlyph {
+    pub glyph: char,
+}
+
+impl RenderGlyph {
+    pub fn for_kind(kind: EntityKind) -> Self {
+        Self {
+            glyph: kind.glyph(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EntityView {
+    pub id: EntityId,
+    pub kind: EntityKind,
+    pub pos: Position,
+    pub hp: Hp,
+    pub alive: bool,
+    pub render_glyph: RenderGlyph,
+}
+
+impl EntityView {
+    pub fn glyph(self) -> char {
+        self.render_glyph.glyph
+    }
+
+    pub fn name(self) -> &'static str {
+        self.kind.name()
     }
 }

@@ -119,17 +119,21 @@ parked for now because of redraw glitches.
 The game state is intentionally plain Rust:
 
 - `World`
+- `Ecs`
+- `EntityId`
 - `Map`
-- `Entity`
 - `Position`
 - `Hp`
+- `RenderGlyph`
+- `EntityKind`
 - `Mode`
 - `EventLog`
 - `Turn`
 
-There is no ECS dependency yet. The current structure is ECS-like where that
-helps, but boring data and explicit turn handling are easier to debug while the
-core loop is still settling.
+There is no external ECS dependency yet. The current prototype uses a small
+in-house ECS: stable entity ids, component stores for position/HP/kind/rendering
+and marker sets for things like enemy AI. Gameplay still lives in explicit
+systems so the turn order remains easy to read.
 
 The turn model is explicit:
 

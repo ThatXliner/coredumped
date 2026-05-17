@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use bracket_lib::prelude::*;
 
 use crate::{
-    entity::{Entity, EntityKind, Position},
+    entity::{EntityKind, EntityView, Position},
     game::{Mode, World},
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
     rules::{ENEMY_AI_SOURCE, FLASHLIGHT_SOURCE},
@@ -30,7 +30,7 @@ const LOG_HEIGHT: i32 = 16;
 pub fn render(ctx: &mut BTerm, world: &World) {
     let lit_tiles = world
         .map
-        .flashlight_tiles(world.player.pos, world.player_facing);
+        .flashlight_tiles(world.player_pos(), world.player_facing);
 
     render_map(ctx, world, &lit_tiles);
     render_side_panel(ctx, world);
@@ -58,13 +58,12 @@ fn render_map(ctx: &mut BTerm, world: &World, lit_tiles: &HashSet<Position>) {
         }
     }
 
-    for enemy in world.living_enemies() {
-        draw_entity(ctx, enemy, lit_tiles);
+    for entity in world.renderable_entities() {
+        draw_entity(ctx, entity, lit_tiles);
     }
-    draw_entity(ctx, &world.player, lit_tiles);
 }
 
-fn draw_entity(ctx: &mut BTerm, entity: &Entity, lit_tiles: &HashSet<Position>) {
+fn draw_entity(ctx: &mut BTerm, entity: EntityView, lit_tiles: &HashSet<Position>) {
     let lit = lit_tiles.contains(&entity.pos) || entity.kind == EntityKind::Player;
     let color = match (entity.kind, lit) {
         (EntityKind::Player, _) => RGB::named(YELLOW),
@@ -115,7 +114,11 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
         PANEL_X + 2,
         y,
         PANEL_WIDTH - 4,
-        &format!("hp: {}/{}", world.player.hp.current, world.player.hp.max),
+        &format!(
+            "hp: {}/{}",
+            world.player_hp().current,
+            world.player_hp().max
+        ),
     );
     y += 1;
     print_clipped(

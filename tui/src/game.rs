@@ -1,13 +1,15 @@
-//! Deterministic game state and rules for the prototype.
+//! Deterministic gameplay systems for the prototype.
 //!
-//! This module owns the simulation: player intents, time costs, turn ticks,
-//! enemy AI, console state, and inspector state. It deliberately avoids any
-//! rendering code so the rules can be unit tested directly.
+//! `World` owns resources such as the map, turn counter, UI mode, and event
+//! log. Dynamic actors live in the ECS store, and this module provides the
+//! systems that read or mutate those components: player intent handling,
+//! enemy AI, ticking, console state, and inspector state.
 
 use bracket_lib::prelude::{a_star_search, NavigationPath};
 
 use crate::{
-    entity::{Direction, Entity, Position},
+    ecs::Ecs,
+    entity::{Direction, EntityId, EntityView, Hp, Position},
     event_log::EventLog,
     map::Map,
 };
@@ -44,9 +46,9 @@ pub enum Mode {
 #[derive(Clone, Debug)]
 pub struct World {
     pub map: Map,
-    pub player: Entity,
+    pub ecs: Ecs,
+    pub player_id: EntityId,
     pub player_facing: Direction,
-    pub enemies: Vec<Entity>,
     pub turn: u64,
     pub mode: Mode,
     pub event_log: EventLog,
@@ -62,14 +64,16 @@ impl World {
         event_log.push("Move with arrows or hjkl. ` opens the console. i inspects code.");
         event_log.push("Your flashlight ray-casts in the direction you last moved.");
 
+        let mut ecs = Ecs::new();
+        let player_id = ecs.spawn_player(Position::new(5, 5));
+        ecs.spawn_slime(Position::new(19, 5));
+        ecs.spawn_slime(Position::new(47, 18));
+
         Self {
             map: Map::new_static(),
-            player: Entity::player(Position::new(5, 5)),
+            ecs,
+            player_id,
             player_facing: Direction::East,
-            enemies: vec![
-                Entity::slime(1, Position::new(19, 5)),
-                Entity::slime(2, Position::new(47, 18)),
-            ],
             turn: 0,
             mode: Mode::Normal,
             event_log,
@@ -145,31 +149,49 @@ impl World {
         }
     }
 
-    pub fn entity_at(&self, pos: Position) -> Option<&Entity> {
-        if self.player.alive && self.player.pos == pos {
-            return Some(&self.player);
-        }
-
-        self.enemies
-            .iter()
-            .find(|entity| entity.alive && entity.pos == pos)
+    pub fn player_pos(&self) -> Position {
+        self.ecs
+            .position(self.player_id)
+            .expect("player should always have a Position component")
     }
 
-    pub fn living_enemies(&self) -> impl Iterator<Item = &Entity> {
-        self.enemies.iter().filter(|enemy| enemy.alive)
+    pub fn player_hp(&self) -> Hp {
+        self.ecs
+            .hp(self.player_id)
+            .expect("player should always have an Hp component")
     }
 
-    pub fn enemy_ai_path(&self, enemy: &Entity) -> NavigationPath {
+    pub fn entity_at(&self, pos: Position) -> Option<EntityView> {
+        self.ecs.entity_at(pos).and_then(|id| self.ecs.view(id))
+    }
+
+    pub fn living_enemies(&self) -> impl Iterator<Item = EntityView> + '_ {
+        self.ecs
+            .enemy_ids()
+            .filter_map(|id| self.ecs.view(id))
+            .filter(|enemy| enemy.alive)
+    }
+
+    pub fn renderable_entities(&self) -> impl Iterator<Item = EntityView> + '_ {
+        self.ecs.renderable_entities()
+    }
+
+    pub fn enemy_ai_path(&self, enemy_id: EntityId) -> NavigationPath {
+        let enemy_pos = self
+            .ecs
+            .position(enemy_id)
+            .expect("enemy should always have a Position component");
+
         a_star_search(
-            self.map.idx(enemy.pos),
-            self.map.idx(self.player.pos),
+            self.map.idx(enemy_pos),
+            self.map.idx(self.player_pos()),
             &self.map,
         )
     }
 
     fn apply_player_move(&mut self, direction: Direction) {
         let (dx, dy) = direction.delta();
-        let target = self.player.pos.offset(dx, dy);
+        let target = self.player_pos().offset(dx, dy);
 
         if !self.map.is_walkable(target) {
             self.event_log
@@ -177,24 +199,24 @@ impl World {
             return;
         }
 
-        if let Some(enemy_index) = self.enemy_index_at(target) {
-            self.enemies[enemy_index].hp.current -= 1;
-            self.event_log.push(format!(
-                "You strike the {} for 1 damage.",
-                self.enemies[enemy_index].name()
-            ));
+        if let Some(target_id) = self.ecs.entity_at(target) {
+            let target_name = self.ecs.name(target_id);
+            let hp = self
+                .ecs
+                .damage(target_id, 1)
+                .expect("combat targets should have an Hp component");
 
-            if self.enemies[enemy_index].hp.current <= 0 {
-                self.enemies[enemy_index].alive = false;
-                self.event_log.push(format!(
-                    "The {} collapses into inert code.",
-                    self.enemies[enemy_index].name()
-                ));
+            self.event_log
+                .push(format!("You strike the {target_name} for 1 damage."));
+
+            if hp.current <= 0 {
+                self.event_log
+                    .push(format!("The {target_name} collapses into inert code."));
             }
             return;
         }
 
-        self.player.pos = target;
+        self.ecs.set_position(self.player_id, target);
         self.event_log
             .push(format!("You move to {},{}.", target.x, target.y));
     }
@@ -205,45 +227,46 @@ impl World {
     }
 
     fn advance_enemies(&mut self) {
-        for enemy_index in 0..self.enemies.len() {
-            if !self.enemies[enemy_index].alive {
+        let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
+
+        for enemy_id in enemy_ids {
+            if !self.ecs.is_alive(enemy_id) {
                 continue;
             }
 
-            if self.enemies[enemy_index]
-                .pos
-                .manhattan_distance(self.player.pos)
-                == 1
-            {
-                self.player.hp.current -= 1;
+            let enemy_pos = self
+                .ecs
+                .position(enemy_id)
+                .expect("enemy should always have a Position component");
+
+            if enemy_pos.manhattan_distance(self.player_pos()) == 1 {
+                self.ecs.damage(self.player_id, 1);
                 self.event_log.push(format!(
                     "The {} attacks exactly as slime-hunt says.",
-                    self.enemies[enemy_index].name()
+                    self.ecs.name(enemy_id)
                 ));
                 continue;
             }
 
-            if let Some(next_pos) = self.next_step_toward_player(enemy_index) {
-                self.enemies[enemy_index].pos = next_pos;
+            if let Some(next_pos) = self.next_step_toward_player(enemy_id) {
+                self.ecs.set_position(enemy_id, next_pos);
                 self.event_log.push(format!(
                     "The {} steps toward the player.",
-                    self.enemies[enemy_index].name()
+                    self.ecs.name(enemy_id)
                 ));
             }
         }
     }
 
-    fn next_step_toward_player(&self, enemy_index: usize) -> Option<Position> {
-        let enemy = &self.enemies[enemy_index];
-        let path = self.enemy_ai_path(enemy);
+    fn next_step_toward_player(&self, enemy_id: EntityId) -> Option<Position> {
+        let path = self.enemy_ai_path(enemy_id);
 
         if !path.success || path.steps.len() < 2 {
             return None;
         }
 
         let next_pos = self.map.position_for_idx(path.steps[1]);
-        if next_pos == self.player.pos
-            || self.enemy_index_at_except(next_pos, enemy_index).is_some()
+        if next_pos == self.player_pos() || self.ecs.entity_at_except(next_pos, enemy_id).is_some()
         {
             return None;
         }
@@ -251,18 +274,22 @@ impl World {
         Some(next_pos)
     }
 
-    fn enemy_index_at(&self, pos: Position) -> Option<usize> {
-        self.enemies
-            .iter()
-            .position(|enemy| enemy.alive && enemy.pos == pos)
+    #[cfg(test)]
+    fn clear_enemies(&mut self) {
+        let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
+        for enemy_id in enemy_ids {
+            self.ecs.remove(enemy_id);
+        }
     }
 
-    fn enemy_index_at_except(&self, pos: Position, except_index: usize) -> Option<usize> {
-        self.enemies
-            .iter()
-            .enumerate()
-            .find(|(index, enemy)| *index != except_index && enemy.alive && enemy.pos == pos)
-            .map(|(index, _)| index)
+    #[cfg(test)]
+    fn spawn_slime(&mut self, pos: Position) -> EntityId {
+        self.ecs.spawn_slime(pos)
+    }
+
+    #[cfg(test)]
+    fn set_player_pos(&mut self, pos: Position) {
+        self.ecs.set_position(self.player_id, pos);
     }
 
     fn scroll_inspector(&mut self, delta: i32) {
@@ -297,19 +324,26 @@ impl Default for World {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entity::Hp;
     use crate::map::TileType;
 
     fn world_with_single_enemy(enemy_pos: Position) -> World {
         let mut world = World::new();
-        world.player.pos = Position::new(5, 5);
-        world.player.hp = Hp::new(12);
-        world.enemies = vec![Entity::slime(1, enemy_pos)];
+        world.set_player_pos(Position::new(5, 5));
+        world.ecs.set_hp(world.player_id, Hp::new(12));
+        world.clear_enemies();
+        world.spawn_slime(enemy_pos);
         world.turn = 0;
         world.event_log = EventLog::new();
         world.mode = Mode::Normal;
         world.console_buffer.clear();
         world
+    }
+
+    fn single_enemy(world: &World) -> EntityView {
+        world
+            .living_enemies()
+            .next()
+            .expect("test world should have exactly one enemy")
     }
 
     #[test]
@@ -320,20 +354,20 @@ mod tests {
 
         assert_eq!(cost, ActionCost::Tick);
         assert_eq!(world.turn, 1);
-        assert_eq!(world.player.pos, Position::new(6, 5));
+        assert_eq!(world.player_pos(), Position::new(6, 5));
         assert_eq!(world.player_facing, Direction::East);
     }
 
     #[test]
     fn bumping_wall_increments_turn_and_logs_it() {
         let mut world = world_with_single_enemy(Position::new(20, 5));
-        world.player.pos = Position::new(1, 1);
+        world.set_player_pos(Position::new(1, 1));
 
         let cost = world.apply_intent(Intent::Move(Direction::West));
 
         assert_eq!(cost, ActionCost::Tick);
         assert_eq!(world.turn, 1);
-        assert_eq!(world.player.pos, Position::new(1, 1));
+        assert_eq!(world.player_pos(), Position::new(1, 1));
         assert_eq!(world.player_facing, Direction::West);
         assert!(world.event_log.contains("bump into a wall"));
     }
@@ -384,7 +418,7 @@ mod tests {
         world.apply_intent(Intent::Wait);
 
         assert_eq!(world.turn, 1);
-        assert_eq!(world.enemies[0].pos, Position::new(9, 5));
+        assert_eq!(single_enemy(&world).pos, Position::new(9, 5));
     }
 
     #[test]
@@ -394,8 +428,8 @@ mod tests {
         world.apply_intent(Intent::Wait);
 
         assert_eq!(world.turn, 1);
-        assert_eq!(world.enemies[0].pos, Position::new(6, 5));
-        assert_eq!(world.player.hp.current, 11);
+        assert_eq!(single_enemy(&world).pos, Position::new(6, 5));
+        assert_eq!(world.player_hp().current, 11);
         assert!(world
             .event_log
             .contains("attacks exactly as slime-hunt says"));
@@ -404,12 +438,12 @@ mod tests {
     #[test]
     fn enemy_pathing_respects_walls() {
         let mut world = world_with_single_enemy(Position::new(10, 9));
-        world.player.pos = Position::new(10, 7);
+        world.set_player_pos(Position::new(10, 7));
 
         world.apply_intent(Intent::Wait);
 
         assert_eq!(world.turn, 1);
-        assert_ne!(world.enemies[0].pos, Position::new(10, 8));
+        assert_ne!(single_enemy(&world).pos, Position::new(10, 8));
         assert_eq!(world.map.tile(Position::new(10, 8)), TileType::Wall);
     }
 
@@ -418,7 +452,7 @@ mod tests {
         let world = world_with_single_enemy(Position::new(20, 5));
         let lit = world
             .map
-            .flashlight_tiles(world.player.pos, Direction::East);
+            .flashlight_tiles(world.player_pos(), Direction::East);
 
         assert!(lit.contains(&Position::new(8, 5)));
         assert!(!lit.contains(&Position::new(2, 5)));

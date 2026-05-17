@@ -1,4 +1,4 @@
-//! Library boundary for the Xlyph TUI prototype.
+//! Library boundary for the Xlyph bracket-lib prototype.
 //!
 //! This crate keeps the readable game model separate from the bracket-lib
 //! executable. The modules are intentionally small: `game` owns simulation,

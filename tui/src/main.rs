@@ -1,4 +1,4 @@
-//! Executable entrypoint for the Xlyph TUI prototype.
+//! Executable entrypoint for the Xlyph bracket-lib prototype.
 //!
 //! The binary only starts the bracket-lib shell. All interesting code lives in
 //! the library modules so the prototype stays easy to inspect and test.

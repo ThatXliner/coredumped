@@ -5,7 +5,6 @@
 //! all drawing to `render`.
 
 use bracket_lib::prelude::*;
-use crossterm::terminal::size;
 
 use crate::{game::World, input::key_to_intent, render::render};
 
@@ -46,9 +45,8 @@ impl GameState for State {
 }
 
 pub fn run() -> BError {
-    let (width, height) = size().unwrap_or((80, 25));
-    let context = BTermBuilder::simple(width, height)?
-        .with_title("Xlyph - bracket-lib TUI slice")
+    let context = BTermBuilder::simple80x50()
+        .with_title("Xlyph - bracket-lib prototype")
         .build()?;
     main_loop(context, State::new())
 }

@@ -1,8 +1,8 @@
-//! Deterministic game state and rules for the TUI slice.
+//! Deterministic game state and rules for the prototype.
 //!
 //! This module owns the simulation: player intents, time costs, turn ticks,
 //! enemy AI, console state, and inspector state. It deliberately avoids any
-//! terminal drawing code so the rules can be unit tested directly.
+//! rendering code so the rules can be unit tested directly.
 
 use bracket_lib::prelude::{a_star_search, NavigationPath};
 
@@ -68,7 +68,7 @@ impl World {
             player_facing: Direction::East,
             enemies: vec![
                 Entity::slime(1, Position::new(19, 5)),
-                Entity::slime(2, Position::new(45, 12)),
+                Entity::slime(2, Position::new(47, 18)),
             ],
             turn: 0,
             mode: Mode::Normal,

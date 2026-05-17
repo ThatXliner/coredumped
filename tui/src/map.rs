@@ -10,9 +10,9 @@ use bracket_lib::prelude::{Algorithm2D, BaseMap, DistanceAlg, Point, SmallVec};
 
 use crate::entity::{Direction, Position};
 
-pub const MAP_WIDTH: i32 = 50;
-pub const MAP_HEIGHT: i32 = 18;
-pub const FLASHLIGHT_RADIUS: i32 = 10;
+pub const MAP_WIDTH: i32 = 55;
+pub const MAP_HEIGHT: i32 = 30;
+pub const FLASHLIGHT_RADIUS: i32 = 12;
 const FLASHLIGHT_SPREAD_DOT: f32 = 0.70;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,15 +52,15 @@ impl Map {
             }
         }
 
-        for y in 10..17 {
-            if y != 13 {
+        for y in 13..25 {
+            if y != 18 {
                 map.set_tile(Position::new(31, y), TileType::Wall);
             }
         }
 
-        for x in 34..48 {
+        for x in 34..50 {
             if x != 42 {
-                map.set_tile(Position::new(x, 14), TileType::Wall);
+                map.set_tile(Position::new(x, 21), TileType::Wall);
             }
         }
 

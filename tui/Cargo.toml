@@ -4,5 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bracket-lib = { version = "~0.8", default-features = false, features = ["crossterm"] }
-crossterm = "0.25"
+bracket-lib = "~0.8"

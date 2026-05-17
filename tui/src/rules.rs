@@ -17,5 +17,5 @@ pub const FLASHLIGHT_SOURCE: &[&str] = &[
     "  {:phase :render :cost :free}",
     "  (raycast-cone player.pos",
     "                player.facing",
-    "                {:radius 12 :spread 0.78}))",
+    "                {:radius 12 :spread-dot 0.70}))",
 ];

@@ -15,113 +15,37 @@ use crate::{
     rules::{ENEMY_AI_SOURCE, FLASHLIGHT_SOURCE},
 };
 
-const MIN_SCREEN_WIDTH: i32 = 60;
-const MIN_SCREEN_HEIGHT: i32 = 18;
-const MAX_PANEL_WIDTH: i32 = 42;
-const MIN_PANEL_WIDTH: i32 = 24;
-const SECTION_GAP: i32 = 1;
-
-#[derive(Clone, Copy, Debug)]
-struct Layout {
-    screen_width: i32,
-    screen_height: i32,
-    map_x: i32,
-    map_y: i32,
-    map_view_width: i32,
-    map_view_height: i32,
-    panel_x: i32,
-    panel_y: i32,
-    panel_width: i32,
-    panel_height: i32,
-    log_x: i32,
-    log_y: i32,
-    log_width: i32,
-    log_height: i32,
-}
-
-impl Layout {
-    fn from_context(ctx: &BTerm) -> Option<Self> {
-        let (width, height) = ctx.get_char_size();
-        Self::from_size(width as i32, height as i32)
-    }
-
-    fn from_size(screen_width: i32, screen_height: i32) -> Option<Self> {
-        if screen_width < MIN_SCREEN_WIDTH || screen_height < MIN_SCREEN_HEIGHT {
-            return None;
-        }
-
-        let log_height = (screen_height / 5).clamp(4, 8);
-        let top_height = screen_height - log_height;
-        let preferred_panel_width = (screen_width / 3).clamp(MIN_PANEL_WIDTH, MAX_PANEL_WIDTH);
-        let map_view_width = (screen_width - preferred_panel_width - 4).clamp(1, MAP_WIDTH);
-        let panel_width = (screen_width - map_view_width - 4)
-            .clamp(MIN_PANEL_WIDTH, MAX_PANEL_WIDTH)
-            .min(screen_width - map_view_width - 4);
-        let map_view_height = (top_height - 2).clamp(1, MAP_HEIGHT);
-        let content_width = map_view_width + 2 + SECTION_GAP + panel_width;
-        let content_x = ((screen_width - content_width) / 2).max(0);
-        let panel_x = content_x + map_view_width + 2 + SECTION_GAP;
-
-        Some(Self {
-            screen_width,
-            screen_height,
-            map_x: content_x + 1,
-            map_y: 1,
-            map_view_width,
-            map_view_height,
-            panel_x,
-            panel_y: 1,
-            panel_width,
-            panel_height: top_height - 1,
-            log_x: content_x + 1,
-            log_y: top_height,
-            log_width: content_width,
-            log_height,
-        })
-    }
-}
+const SCREEN_HEIGHT: i32 = 50;
+const MAP_X: i32 = 1;
+const MAP_Y: i32 = 1;
+const PANEL_X: i32 = 57;
+const PANEL_Y: i32 = 1;
+const PANEL_WIDTH: i32 = 22;
+const PANEL_HEIGHT: i32 = 31;
+const LOG_X: i32 = 1;
+const LOG_Y: i32 = 33;
+const LOG_WIDTH: i32 = 78;
+const LOG_HEIGHT: i32 = 16;
 
 pub fn render(ctx: &mut BTerm, world: &World) {
-    let Some(layout) = Layout::from_context(ctx) else {
-        render_too_small(ctx);
-        return;
-    };
-
     let lit_tiles = world
         .map
         .flashlight_tiles(world.player.pos, world.player_facing);
 
-    render_map(ctx, world, &lit_tiles, &layout);
-    render_side_panel(ctx, world, &layout);
-    render_event_log(ctx, world, &layout);
+    render_map(ctx, world, &lit_tiles);
+    render_side_panel(ctx, world);
+    render_event_log(ctx, world);
 
     if world.mode == Mode::Console {
-        render_console(ctx, world, &layout);
+        render_console(ctx, world);
     }
 }
 
-fn render_too_small(ctx: &mut BTerm) {
-    ctx.print(1, 1, "Terminal too small for Xlyph.");
-    ctx.print(
-        1,
-        2,
-        format!("Need at least {MIN_SCREEN_WIDTH}x{MIN_SCREEN_HEIGHT}."),
-    );
-}
+fn render_map(ctx: &mut BTerm, world: &World, lit_tiles: &HashSet<Position>) {
+    draw_box(ctx, 0, 0, MAP_WIDTH + 2, MAP_HEIGHT + 2, " dungeon ");
 
-fn render_map(ctx: &mut BTerm, world: &World, lit_tiles: &HashSet<Position>, layout: &Layout) {
-    draw_box(
-        ctx,
-        layout.map_x - 1,
-        0,
-        layout.map_view_width + 2,
-        layout.map_view_height + 2,
-        " dungeon ",
-        layout,
-    );
-
-    for y in 0..layout.map_view_height.min(world.map.height) {
-        for x in 0..layout.map_view_width.min(world.map.width) {
+    for y in 0..world.map.height {
+        for x in 0..world.map.width {
             let pos = Position::new(x, y);
             let lit = lit_tiles.contains(&pos);
             let (glyph, fg) = match (world.map.tile(pos), lit) {
@@ -130,27 +54,17 @@ fn render_map(ctx: &mut BTerm, world: &World, lit_tiles: &HashSet<Position>, lay
                 (TileType::Floor, false) => ('.', RGB::named(DARK_GRAY)),
                 (TileType::Wall, false) => ('#', RGB::named(GRAY)),
             };
-            ctx.set(
-                layout.map_x + x,
-                layout.map_y + y,
-                fg,
-                RGB::named(BLACK),
-                to_cp437(glyph),
-            );
+            ctx.set(MAP_X + x, MAP_Y + y, fg, RGB::named(BLACK), to_cp437(glyph));
         }
     }
 
     for enemy in world.living_enemies() {
-        draw_entity(ctx, enemy, lit_tiles, layout);
+        draw_entity(ctx, enemy, lit_tiles);
     }
-    draw_entity(ctx, &world.player, lit_tiles, layout);
+    draw_entity(ctx, &world.player, lit_tiles);
 }
 
-fn draw_entity(ctx: &mut BTerm, entity: &Entity, lit_tiles: &HashSet<Position>, layout: &Layout) {
-    if entity.pos.x >= layout.map_view_width || entity.pos.y >= layout.map_view_height {
-        return;
-    }
-
+fn draw_entity(ctx: &mut BTerm, entity: &Entity, lit_tiles: &HashSet<Position>) {
     let lit = lit_tiles.contains(&entity.pos) || entity.kind == EntityKind::Player;
     let color = match (entity.kind, lit) {
         (EntityKind::Player, _) => RGB::named(YELLOW),
@@ -159,163 +73,121 @@ fn draw_entity(ctx: &mut BTerm, entity: &Entity, lit_tiles: &HashSet<Position>, 
     };
 
     ctx.set(
-        layout.map_x + entity.pos.x,
-        layout.map_y + entity.pos.y,
+        MAP_X + entity.pos.x,
+        MAP_Y + entity.pos.y,
         color,
         RGB::named(BLACK),
         to_cp437(entity.glyph()),
     );
 }
 
-fn render_side_panel(ctx: &mut BTerm, world: &World, layout: &Layout) {
+fn render_side_panel(ctx: &mut BTerm, world: &World) {
     draw_box(
         ctx,
-        layout.panel_x,
-        layout.panel_y,
-        layout.panel_width,
-        layout.panel_height,
+        PANEL_X,
+        PANEL_Y,
+        PANEL_WIDTH,
+        PANEL_HEIGHT,
         " runtime ",
-        layout,
     );
 
-    let mut y = layout.panel_y + 2;
-    print_clipped(
-        ctx,
-        layout.panel_x + 2,
-        y,
-        layout.panel_width - 4,
-        "Xlyph prototype",
-        layout,
-    );
+    let mut y = PANEL_Y + 2;
+    print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, "Xlyph prototype");
     y += 2;
     print_clipped(
         ctx,
-        layout.panel_x + 2,
+        PANEL_X + 2,
         y,
-        layout.panel_width - 4,
+        PANEL_WIDTH - 4,
         &format!("turn: {}", world.turn),
-        layout,
     );
     y += 1;
     print_clipped(
         ctx,
-        layout.panel_x + 2,
+        PANEL_X + 2,
         y,
-        layout.panel_width - 4,
+        PANEL_WIDTH - 4,
         &format!("mode: {:?}", world.mode),
-        layout,
     );
     y += 1;
     print_clipped(
         ctx,
-        layout.panel_x + 2,
+        PANEL_X + 2,
         y,
-        layout.panel_width - 4,
+        PANEL_WIDTH - 4,
         &format!("hp: {}/{}", world.player.hp.current, world.player.hp.max),
-        layout,
     );
     y += 1;
     print_clipped(
         ctx,
-        layout.panel_x + 2,
+        PANEL_X + 2,
         y,
-        layout.panel_width - 4,
+        PANEL_WIDTH - 4,
         &format!("lamp: {:?} r{}", world.player_facing, FLASHLIGHT_RADIUS),
-        layout,
     );
     y += 2;
 
-    print_clipped(
-        ctx,
-        layout.panel_x + 2,
-        y,
-        layout.panel_width - 4,
-        "controls",
-        layout,
-    );
+    print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, "controls");
     y += 1;
     for line in [
-        "arrows or hjkl move",
+        "hjkl/arrows move",
         ". waits",
         "i inspector",
         "` console",
         "esc/q quit",
     ] {
-        print_clipped(
-            ctx,
-            layout.panel_x + 2,
-            y,
-            layout.panel_width - 4,
-            line,
-            layout,
-        );
+        print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, line);
         y += 1;
     }
 
     y += 1;
-    print_clipped(
-        ctx,
-        layout.panel_x + 2,
-        y,
-        layout.panel_width - 4,
-        "inspect: rules",
-        layout,
-    );
+    print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, "inspect: rules");
     y += 1;
 
-    let visible_lines = (layout.panel_y + layout.panel_height - 2 - y).max(0) as usize;
+    let visible_lines = (PANEL_Y + PANEL_HEIGHT - 2 - y).max(0) as usize;
     let rule_lines = ENEMY_AI_SOURCE
         .iter()
         .chain([""].iter())
         .chain(FLASHLIGHT_SOURCE.iter());
 
     for line in rule_lines.skip(world.inspector_scroll).take(visible_lines) {
-        print_clipped(
-            ctx,
-            layout.panel_x + 2,
-            y,
-            layout.panel_width - 4,
-            line,
-            layout,
-        );
+        print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, line);
         y += 1;
     }
 }
 
-fn render_event_log(ctx: &mut BTerm, world: &World, layout: &Layout) {
+fn render_event_log(ctx: &mut BTerm, world: &World) {
     draw_box(
         ctx,
-        layout.log_x - 1,
-        layout.log_y,
-        layout.log_width,
-        layout.log_height,
+        LOG_X - 1,
+        LOG_Y - 1,
+        LOG_WIDTH,
+        LOG_HEIGHT,
         " event log ",
-        layout,
     );
 
-    let visible_lines = (layout.log_height - 2).max(0) as usize;
+    let visible_lines = (LOG_HEIGHT - 2) as usize;
     let entries = world.event_log.entries();
     let start = entries.len().saturating_sub(visible_lines);
 
     for (line_index, entry) in entries[start..].iter().enumerate() {
         print_clipped(
             ctx,
-            layout.log_x + 1,
-            layout.log_y + 1 + line_index as i32,
-            layout.log_width - 4,
+            LOG_X + 1,
+            LOG_Y + line_index as i32,
+            LOG_WIDTH - 4,
             entry,
-            layout,
         );
     }
 }
 
-fn render_console(ctx: &mut BTerm, world: &World, layout: &Layout) {
-    let width = (layout.screen_width - 4).min(64);
+fn render_console(ctx: &mut BTerm, world: &World) {
+    let x = 8;
+    let y = 20;
+    let width = 64;
     let height = 7;
-    let x = (layout.screen_width - width) / 2;
-    let y = (layout.screen_height - height) / 2;
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
-    draw_box(ctx, x, y, width, height, " forbidden console ", layout);
+    draw_box(ctx, x, y, width, height, " forbidden console ");
 
     print_clipped(
         ctx,
@@ -323,7 +195,6 @@ fn render_console(ctx: &mut BTerm, world: &World, layout: &Layout) {
         y + 2,
         width - 4,
         "Read-only query shell. Enter logs a placeholder result.",
-        layout,
     );
     print_clipped(
         ctx,
@@ -331,23 +202,10 @@ fn render_console(ctx: &mut BTerm, world: &World, layout: &Layout) {
         y + 4,
         width - 4,
         &format!("> {}", world.console_buffer),
-        layout,
     );
 }
 
-fn draw_box(
-    ctx: &mut BTerm,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    title: &str,
-    layout: &Layout,
-) {
-    if width < 2 || height < 2 {
-        return;
-    }
-
+fn draw_box(ctx: &mut BTerm, x: i32, y: i32, width: i32, height: i32, title: &str) {
     let fg = RGB::named(WHITE);
     let bg = RGB::named(BLACK);
 
@@ -365,7 +223,7 @@ fn draw_box(
     ctx.set(x + width - 1, y, fg, bg, to_cp437('+'));
     ctx.set(x, y + height - 1, fg, bg, to_cp437('+'));
     ctx.set(x + width - 1, y + height - 1, fg, bg, to_cp437('+'));
-    print_clipped(ctx, x + 2, y, width - 4, title, layout);
+    print_clipped(ctx, x + 2, y, width - 4, title);
 }
 
 fn fill_rect(ctx: &mut BTerm, x: i32, y: i32, width: i32, height: i32, color: RGB) {
@@ -376,48 +234,11 @@ fn fill_rect(ctx: &mut BTerm, x: i32, y: i32, width: i32, height: i32, color: RG
     }
 }
 
-fn print_clipped(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str, layout: &Layout) {
-    if max_width <= 0 || y < 0 || y >= layout.screen_height || x >= layout.screen_width {
+fn print_clipped(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str) {
+    if max_width <= 0 || y < 0 || y >= SCREEN_HEIGHT {
         return;
     }
 
-    let available = max_width.min(layout.screen_width - x).max(0) as usize;
-    let clipped: String = text.chars().take(available).collect();
+    let clipped: String = text.chars().take(max_width as usize).collect();
     ctx.print(x, y, clipped);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn wide_terminals_keep_the_play_surface_bounded() {
-        let layout = Layout::from_size(200, 50).expect("wide terminal should fit");
-
-        assert_eq!(layout.map_view_width, MAP_WIDTH);
-        assert_eq!(layout.panel_width, MAX_PANEL_WIDTH);
-        assert_eq!(
-            layout.log_width,
-            MAP_WIDTH + 2 + SECTION_GAP + MAX_PANEL_WIDTH
-        );
-        assert!(layout.map_x > 1);
-        assert!(layout.panel_x + layout.panel_width < layout.screen_width);
-    }
-
-    #[test]
-    fn minimum_supported_terminal_still_fits_all_boxes() {
-        let layout = Layout::from_size(MIN_SCREEN_WIDTH, MIN_SCREEN_HEIGHT)
-            .expect("minimum terminal should fit");
-
-        assert!(layout.map_view_width > 0);
-        assert!(layout.map_view_height > 0);
-        assert!(layout.panel_x + layout.panel_width <= layout.screen_width);
-        assert!(layout.log_y + layout.log_height <= layout.screen_height);
-    }
-
-    #[test]
-    fn too_small_terminals_are_rejected() {
-        assert!(Layout::from_size(MIN_SCREEN_WIDTH - 1, MIN_SCREEN_HEIGHT).is_none());
-        assert!(Layout::from_size(MIN_SCREEN_WIDTH, MIN_SCREEN_HEIGHT - 1).is_none());
-    }
 }

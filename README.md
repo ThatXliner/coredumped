@@ -3,7 +3,7 @@
 Welcome, traveler.
 
 Before thee lies a dungeon of rules, lamps, slimes, and suspiciously readable
-machinery. Xlyph is a terminal roguelike about understanding, editing, and
+machinery. Xlyph is a text-graphical roguelike about understanding, editing, and
 eventually rewriting the rules of the thing trying to kill you.
 
 Past this point, the scroll becomes plain.
@@ -36,7 +36,7 @@ Beta vertical slice. Playable, small, and not balanced.
 What works now:
 
 - A fixed dungeon map rendered with `bracket-lib`
-- A real terminal backend through `bracket-lib`'s Crossterm support
+- A windowed `bracket-lib` prototype renderer
 - Keyboard movement with arrow keys or Vim keys
 - Deterministic turn ticks
 - Wall bumps, waits, enemy bumps, and movement all consume a tick
@@ -112,9 +112,9 @@ asks you to manipulate it.
 ## Architecture
 
 The beta uses [`bracket-lib`](https://docs.rs/bracket-lib) for rendering, input,
-geometry, colors, pathfinding, and the game loop. Default OpenGL features are
-disabled; the prototype runs in the actual terminal through bracket-lib's
-Crossterm backend.
+geometry, colors, pathfinding, and the game loop. The current prototype uses
+bracket-lib's default windowed renderer; the terminal backend was tried and is
+parked for now because of redraw glitches.
 
 The game state is intentionally plain Rust:
 
@@ -137,7 +137,7 @@ The turn model is explicit:
 - `ActionCost::Tick` for accepted gameplay actions
 - Enemy turns run exactly once after each tick action
 
-That makes it possible to test the game rules without the terminal renderer.
+That makes it possible to test the game rules without the renderer.
 
 ## Development
 
@@ -175,7 +175,7 @@ Near term:
 - Replace the console placeholder with a real query path
 - Add a tiny Glyph syntax for inspecting entities and map cells
 - Add a few enemy types with visibly different rules
-- Add screenshots and recorded terminal demos
+- Add screenshots and recorded gameplay demos
 
 Later:
 
@@ -187,4 +187,4 @@ Later:
 
 ## Name
 
-`Xlyph` is a working title. It is short, odd, and looks good in a terminal.
+`Xlyph` is a working title. It is short, odd, and looks good in blocky glyphs.

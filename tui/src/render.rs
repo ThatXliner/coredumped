@@ -2,7 +2,8 @@
 //!
 //! Rendering is deliberately a read-only projection of `World`: it paints the
 //! map, warm flashlight cone, entities, event log, inspector text, and console
-//! overlay without changing simulation state.
+//! overlay without changing simulation state. Mouse hover over the map shows a
+//! quick entity info tooltip.
 
 use std::collections::HashSet;
 
@@ -12,7 +13,6 @@ use crate::{
     entity::{EntityKind, EntityView, Position},
     game::{Mode, World},
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
-    rules::{ENEMY_AI_SOURCE, FLASHLIGHT_SOURCE},
 };
 
 const SCREEN_HEIGHT: i32 = 50;
@@ -35,6 +35,10 @@ pub fn render(ctx: &mut BTerm, world: &World) {
     render_map(ctx, world, &lit_tiles);
     render_side_panel(ctx, world);
     render_event_log(ctx, world);
+
+    if world.mode == Mode::Inspector || world.mode == Mode::Normal {
+        render_entity_tooltip(ctx, world);
+    }
 
     if world.mode == Mode::Console {
         render_console(ctx, world);
@@ -148,14 +152,109 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
     y += 1;
 
     let visible_lines = (PANEL_Y + PANEL_HEIGHT - 2 - y).max(0) as usize;
-    let rule_lines = ENEMY_AI_SOURCE
-        .iter()
-        .chain([""].iter())
-        .chain(FLASHLIGHT_SOURCE.iter());
+    let lines = inspector_lines(&world.registry);
 
-    for line in rule_lines.skip(world.inspector_scroll).take(visible_lines) {
+    for line in lines.iter().skip(world.inspector_scroll).take(visible_lines) {
         print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, line);
         y += 1;
+    }
+}
+
+/// Build a flat list of display lines for the inspector panel from the rule
+/// registry. Each rule gets a metadata header then its source lines.
+fn inspector_lines(registry: &crate::rules::RuleRegistry) -> Vec<String> {
+    let mut lines = Vec::new();
+    for rule in registry.iter() {
+        lines.push(format!(
+            "[{}] {} ({:?}/{:?})",
+            rule.id, rule.name, rule.phase, rule.cost
+        ));
+        for line in rule.source_lines {
+            lines.push(line.to_string());
+        }
+        lines.push(String::new());
+    }
+    lines
+}
+
+/// Show a tooltip with entity info when the mouse hovers over a map position
+/// that contains a living entity.
+fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
+    let (mx, my) = ctx.mouse_pos();
+    let map_x = mx - MAP_X;
+    let map_y = my - MAP_Y;
+
+    if map_x < 0 || map_x >= world.map.width || map_y < 0 || map_y >= world.map.height {
+        return;
+    }
+
+    let pos = Position::new(map_x, map_y);
+    let Some(entity) = world.entity_at(pos) else {
+        return;
+    };
+
+    let tip_lines = [
+        format!("#{} {}", entity.id.raw(), entity.name()),
+        format!("hp: {}/{}", entity.hp.current, entity.hp.max),
+        format!("pos: ({}, {})", entity.pos.x, entity.pos.y),
+    ];
+
+    let tooltip_x = (mx + 2).min(78 - 24);
+    let tooltip_y = my.min(LOG_Y - 4 - tip_lines.len() as i32);
+    let tooltip_w = 24;
+    let tooltip_h = tip_lines.len() as i32 + 2;
+
+    let fg = RGB::named(WHITE);
+    let bg = RGB::named(BLACK);
+
+    for dx in 0..tooltip_w {
+        ctx.set(tooltip_x + dx, tooltip_y, fg, bg, to_cp437('-'));
+        ctx.set(
+            tooltip_x + dx,
+            tooltip_y + tooltip_h - 1,
+            fg,
+            bg,
+            to_cp437('-'),
+        );
+    }
+
+    for dy in 0..tooltip_h {
+        ctx.set(tooltip_x, tooltip_y + dy, fg, bg, to_cp437('|'));
+        ctx.set(
+            tooltip_x + tooltip_w - 1,
+            tooltip_y + dy,
+            fg,
+            bg,
+            to_cp437('|'),
+        );
+    }
+
+    ctx.set(tooltip_x, tooltip_y, fg, bg, to_cp437('+'));
+    ctx.set(
+        tooltip_x + tooltip_w - 1,
+        tooltip_y,
+        fg,
+        bg,
+        to_cp437('+'),
+    );
+    ctx.set(
+        tooltip_x,
+        tooltip_y + tooltip_h - 1,
+        fg,
+        bg,
+        to_cp437('+'),
+    );
+    ctx.set(
+        tooltip_x + tooltip_w - 1,
+        tooltip_y + tooltip_h - 1,
+        fg,
+        bg,
+        to_cp437('+'),
+    );
+
+    for (i, line) in tip_lines.iter().enumerate() {
+        let clipped: String = line.chars().take(tooltip_w as usize - 2).collect();
+        ctx.print(tooltip_x + 1, tooltip_y + 1 + i as i32, clipped);
     }
 }
 
@@ -197,7 +296,7 @@ fn render_console(ctx: &mut BTerm, world: &World) {
         x + 2,
         y + 2,
         width - 4,
-        "Read-only query shell. Enter logs a placeholder result.",
+        "Read-only query shell. Type help for commands.",
     );
     print_clipped(
         ctx,
@@ -238,7 +337,7 @@ fn fill_rect(ctx: &mut BTerm, x: i32, y: i32, width: i32, height: i32, color: RG
 }
 
 fn print_clipped(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str) {
-    if max_width <= 0 || y < 0 || y >= SCREEN_HEIGHT {
+    if max_width <= 0 || !(0..SCREEN_HEIGHT).contains(&y) {
         return;
     }
 

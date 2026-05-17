@@ -20,4 +20,4 @@ pub use entity::{Direction, EntityId, EntityKind, EntityView, Hp, Position, Rend
 pub use event_log::EventLog;
 pub use game::{ActionCost, Intent, Mode, World};
 pub use map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH};
-pub use rules::ENEMY_AI_SOURCE;
+pub use rules::{Rule, RuleCost, RulePhase, RuleRegistry};

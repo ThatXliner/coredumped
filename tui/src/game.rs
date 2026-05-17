@@ -12,6 +12,7 @@ use crate::{
     entity::{Direction, EntityId, EntityView, Hp, Position},
     event_log::EventLog,
     map::Map,
+    rules::RuleRegistry,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,6 +48,7 @@ pub enum Mode {
 pub struct World {
     pub map: Map,
     pub ecs: Ecs,
+    pub registry: RuleRegistry,
     pub player_id: EntityId,
     pub player_facing: Direction,
     pub turn: u64,
@@ -64,6 +66,8 @@ impl World {
         event_log.push("Move with arrows or hjkl. ` opens the console. i inspects code.");
         event_log.push("Your flashlight ray-casts in the direction you last moved.");
 
+        let registry = RuleRegistry::core();
+
         let mut ecs = Ecs::new();
         let player_id = ecs.spawn_player(Position::new(5, 5));
         ecs.spawn_slime(Position::new(19, 5));
@@ -72,6 +76,7 @@ impl World {
         Self {
             map: Map::new_static(),
             ecs,
+            registry,
             player_id,
             player_facing: Direction::East,
             turn: 0,
@@ -309,7 +314,7 @@ impl World {
         } else {
             self.event_log.push(format!("> {}", command));
             self.event_log
-                .push("Query VM is not wired yet; no simulation tick spent.");
+                .push("Glyph runtime not loaded; no simulation tick spent.");
         }
         self.console_buffer.clear();
     }

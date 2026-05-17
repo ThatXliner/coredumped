@@ -62,7 +62,7 @@ pub struct World {
     pub console_buffer: String,
     pub console_output: String,
     pub glyph_env: Env,
-    pub inspector_scroll: usize,
+    pub inspector_selection: usize,
     pub blocking: bool,
     pub running: bool,
 }
@@ -96,7 +96,7 @@ impl World {
             console_buffer: String::new(),
             console_output: String::new(),
             glyph_env,
-            inspector_scroll: 0,
+            inspector_selection: 0,
             blocking: false,
             running: true,
         }
@@ -136,7 +136,7 @@ impl World {
             console_buffer: String::new(),
             console_output: String::new(),
             glyph_env,
-            inspector_scroll: 0,
+            inspector_selection: 0,
             blocking: false,
             running: true,
         };
@@ -562,11 +562,12 @@ impl World {
 
     fn scroll_inspector(&mut self, delta: i32) {
         if delta < 0 {
-            self.inspector_scroll = self
-                .inspector_scroll
-                .saturating_sub(delta.unsigned_abs() as usize);
+            self.inspector_selection = self.inspector_selection.saturating_sub(1);
         } else {
-            self.inspector_scroll = self.inspector_scroll.saturating_add(delta as usize);
+            self.inspector_selection = self
+                .inspector_selection
+                .saturating_add(1)
+                .min(self.registry.len().saturating_sub(1));
         }
     }
 

@@ -5,6 +5,7 @@
 
 pub mod env;
 pub mod eval;
+pub mod highlight;
 pub mod reader;
 pub mod value;
 

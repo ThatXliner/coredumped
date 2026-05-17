@@ -12,6 +12,7 @@ use bracket_lib::prelude::*;
 use crate::{
     entity::{EntityKind, EntityView, Position},
     game::{Mode, World},
+    glyph::highlight::{self, Span},
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
 };
 
@@ -36,8 +37,16 @@ pub fn render(ctx: &mut BTerm, world: &World) {
     render_side_panel(ctx, world);
     render_event_log(ctx, world);
 
-    if world.mode == Mode::Inspector || world.mode == Mode::Normal {
+    if world.mode == Mode::Normal {
         render_entity_tooltip(ctx, world);
+    }
+
+    if world.mode == Mode::Inspector || world.mode == Mode::Console {
+        render_overlay_backdrop(ctx);
+    }
+
+    if world.mode == Mode::Inspector {
+        render_inspector(ctx, world);
     }
 
     if world.mode == Mode::Console {
@@ -144,71 +153,94 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
         ("move/atk", "hjkl/arrows"),
         ("wait", "."),
         ("block", "b"),
-        ("descend", "> (shift+.)"),
-        ("ascend", "< (shift+,)"),
+        ("descend", "shift+."),
+        ("ascend", "shift+,"),
         ("inspect", "i"),
         ("console", "`"),
         ("quit", "esc/q"),
     ];
     for (label, key) in controls {
-        print_clipped(ctx, c1, y, 9, label);
-        print_clipped(ctx, c1 + 10, y, w - 10, key);
-        y += 1;
-    }
-
-    y += 1;
-
-    // --- Rules section ---
-    print_section_header(ctx, c1, y, w, "rules");
-    y += 1;
-
-    let visible_lines = (PANEL_Y + PANEL_HEIGHT - 2 - y).max(0) as usize;
-    let lines = inspector_lines(&world.registry);
-
-    for line in lines
-        .iter()
-        .skip(world.inspector_scroll)
-        .take(visible_lines)
-    {
-        match line {
-            InspectorLine::Heading(text) => {
-                ctx.print_color(c1, y, RGB::named(YELLOW), RGB::named(BLACK), text);
-            }
-            InspectorLine::Meta(text) => {
-                ctx.print_color(c1, y, RGB::named(GRAY), RGB::named(BLACK), text);
-            }
-            InspectorLine::Source(text) => {
-                print_clipped(ctx, c1, y, w, text);
-            }
-            InspectorLine::Blank => {}
-        }
+        print_clipped(ctx, c1, y, 8, label);
+        print_clipped(ctx, c1 + 9, y, w - 9, key);
         y += 1;
     }
 }
 
-/// A line in the inspector rules display with an associated style.
-enum InspectorLine {
-    Heading(String),
-    Meta(String),
-    Source(String),
-    Blank,
+fn render_overlay_backdrop(ctx: &mut BTerm) {
+    let bg = RGB::named(BLACK);
+    for y in 0..SCREEN_HEIGHT {
+        for x in 0..78i32.min(SCREEN_HEIGHT + 37) {
+            ctx.set(x, y, RGB::named(BLACK), bg, to_cp437(' '));
+        }
+    }
+    // Re-render is handled by the overlay draw that follows
 }
 
-/// Build a formatted list of display lines for the inspector panel.
-fn inspector_lines(registry: &crate::rules::RuleRegistry) -> Vec<InspectorLine> {
-    let mut lines = Vec::new();
-    for rule in registry.iter() {
-        lines.push(InspectorLine::Heading(format!("> {}", rule.name)));
-        lines.push(InspectorLine::Meta(format!(
-            "  {:?} - {:?}",
-            rule.phase, rule.cost
-        )));
-        for src in rule.source_lines {
-            lines.push(InspectorLine::Source(format!("  {src}")));
-        }
-        lines.push(InspectorLine::Blank);
+fn render_inspector(ctx: &mut BTerm, world: &World) {
+    let x = 2;
+    let y = 1;
+    let width = 62;
+    let height = 38;
+
+    fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
+    draw_box(ctx, x, y, width, height, " rules ");
+
+    let mut line_y = y + 2;
+    let inner_w = width - 4;
+    let rules = world.registry.iter().collect::<Vec<_>>();
+    let selected = world.inspector_selection.min(rules.len().saturating_sub(1));
+
+    if rules.is_empty() {
+        ctx.print_color(
+            x + 2,
+            line_y,
+            RGB::named(GRAY),
+            RGB::named(BLACK),
+            "(no rules loaded)",
+        );
     }
-    lines
+
+    for (i, rule) in rules.iter().enumerate() {
+        let expanded = i == selected;
+        let prefix = if expanded { "v" } else { ">" };
+        let hl = if expanded {
+            RGB::named(YELLOW)
+        } else {
+            RGB::named(GRAY)
+        };
+
+        let header = format!("{prefix} {}", rule.name);
+        ctx.print_color(x + 2, line_y, hl, RGB::named(BLACK), &header);
+        line_y += 1;
+
+        let meta = format!("   {:?} - {:?}", rule.phase, rule.cost);
+        ctx.print_color(
+            x + 2,
+            line_y,
+            RGB::named(DARK_GRAY),
+            RGB::named(BLACK),
+            &meta,
+        );
+        line_y += 1;
+
+        if expanded {
+            for src in rule.source_lines {
+                let src_line = format!("   {src}");
+                let spans = highlight::highlight(&src_line);
+                print_highlighted(ctx, x + 2, line_y, inner_w, &spans);
+                line_y += 1;
+            }
+        }
+
+        line_y += 1;
+    }
+
+    let nav = format!(
+        "j/k select  i/esc close  {}/{} rules",
+        selected.saturating_add(1),
+        rules.len()
+    );
+    print_clipped(ctx, x + 2, y + height - 2, inner_w, &nav);
 }
 
 fn print_section_header(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, title: &str) {
@@ -371,6 +403,19 @@ fn fill_rect(ctx: &mut BTerm, x: i32, y: i32, width: i32, height: i32, color: RG
     for dy in 0..height {
         for dx in 0..width {
             ctx.set(x + dx, y + dy, RGB::named(WHITE), color, to_cp437(' '));
+        }
+    }
+}
+
+fn print_highlighted(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, spans: &[Span]) {
+    let mut cx = x;
+    for span in spans {
+        let fg = span.color();
+        for ch in span.text.chars() {
+            if cx < x + max_width {
+                ctx.set(cx, y, fg, RGB::named(BLACK), to_cp437(ch));
+                cx += 1;
+            }
         }
     }
 }

@@ -45,10 +45,9 @@ impl GameState for State {
 }
 
 pub fn run() -> BError {
-    let context = BTermBuilder::simple(120, 75)?
+    let context = BTermBuilder::simple(66, 41)?
         .with_title("Xlyph - bracket-lib prototype")
         .with_fitscreen(true)
-        .with_automatic_console_resize(true)
         .build()?;
     main_loop(context, State::new())
 }

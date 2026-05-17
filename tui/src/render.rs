@@ -15,17 +15,17 @@ use crate::{
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
 };
 
-const SCREEN_HEIGHT: i32 = 75;
+const SCREEN_HEIGHT: i32 = 41;
 const MAP_X: i32 = 1;
 const MAP_Y: i32 = 1;
-const PANEL_X: i32 = 71;
+const PANEL_X: i32 = 42;
 const PANEL_Y: i32 = 1;
-const PANEL_WIDTH: i32 = 48;
-const PANEL_HEIGHT: i32 = 40;
+const PANEL_WIDTH: i32 = 24;
+const PANEL_HEIGHT: i32 = 27;
 const LOG_X: i32 = 1;
-const LOG_Y: i32 = 41;
-const LOG_WIDTH: i32 = 118;
-const LOG_HEIGHT: i32 = 33;
+const LOG_Y: i32 = 27;
+const LOG_WIDTH: i32 = 66;
+const LOG_HEIGHT: i32 = 14;
 
 pub fn render(ctx: &mut BTerm, world: &World) {
     let lit_tiles = world
@@ -276,9 +276,9 @@ fn render_event_log(ctx: &mut BTerm, world: &World) {
 }
 
 fn render_console(ctx: &mut BTerm, world: &World) {
-    let x = 8;
-    let y = 16;
-    let width = 64;
+    let x = 3;
+    let y = 12;
+    let width = 60;
     let height = 13;
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " glyph console ");

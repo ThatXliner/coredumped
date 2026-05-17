@@ -12,8 +12,8 @@ use bracket_lib::prelude::{
 
 use crate::entity::{Direction, Position};
 
-pub const MAP_WIDTH: i32 = 68;
-pub const MAP_HEIGHT: i32 = 38;
+pub const MAP_WIDTH: i32 = 40;
+pub const MAP_HEIGHT: i32 = 25;
 pub const FLASHLIGHT_RADIUS: i32 = 12;
 const FLASHLIGHT_SPREAD_DOT: f32 = 0.70;
 

@@ -204,35 +204,34 @@ Overlay scopes:
 
 Most player modifications, if a level offers them, should begin scoped and tied to a concrete level-authored access route. Global mutation is rare late-game power.
 
-### Level-Gated Exploits
+### Level-Gated Vulnerable Surfaces
 
 Write access is primarily level design, not the main loop.
 
-A level, artifact, enemy, vault, or shrine can contain an exploitable surface. The player may not even know it exists until they have found the relevant code-reading or disassembly tool.
+A level, artifact, enemy, vault, or shrine can contain vulnerable code. The exploit is not a named object in the world; it is a real affordance of that object's rules, parser, serializer, scheduler, or capability boundary. The player may not even know it exists until they have found the relevant code-reading or disassembly tool.
 
-Example:
+Example vulnerable artifact code:
 
 ```lisp
-{:id :magic-rock/overflow-17
- :kind :buffer-overflow
- :target :artifacts/late-game-magic-rock
- :revealed-by :tools/disassembler-v2
- :trigger :on-impact
- :write-scope :room
- :grants #{:rules/patch-local}
- :constraints {:max-bytes 96
-               :phase :on-impact
-               :alignment :word}
- :consumes [:item/charged-quartz]}
+(defartifact late-game-magic-rock
+  {:caps #{:entity/read :physics/impulse}
+   :storage {:impact-buffer (bytes 96)}}
+
+  (on :impact [self force payload]
+    (copy-bytes! self.storage.impact-buffer payload)
+    (when (> force 12)
+      (emit :shockwave {:center self.pos :radius 2}))))
 ```
 
-An exploit should require several things:
+A better disassembler might reveal that `copy-bytes!` is using the incoming payload length instead of the buffer length. The exploit emerges from that bug. If the player can supply impact bytes through a charged quartz strike, they may be able to redirect execution into a room-scoped patch context. The engine can still attach internal metadata for validation and replay, but the player's mental model should be "I found a bug in this thing's code," not "I found an exploit item named overflow-17."
+
+Exploiting a vulnerable surface should require several things:
 
 - the player has a tool capable of seeing it
 - the target is present in the level
 - the player understands or experiments with the trigger
-- the exploit grants only narrow capabilities
-- the payload fits the exploit constraints
+- the resulting write context grants only narrow capabilities
+- the payload fits the vulnerable code path's real constraints
 - the resulting patch survives validation
 
 Exploit classes:
@@ -709,11 +708,11 @@ The player fantasy is root access to the dungeon, not to the user's computer.
 - Add tracing and macroexpand.
 - Move several real mechanics into rules.
 
-### Phase 3: Disassembly And Authored Exploits
+### Phase 3: Disassembly And Vulnerable Surfaces
 
 - Add opaque compiled artifacts.
 - Add disassembler tools.
-- Optionally add exploit objects placed by level design.
+- Optionally add authored vulnerable code paths to artifacts, enemies, rooms, or shrines.
 - Add vulnerability detection.
 - Add read-gated hidden rule surfaces.
 

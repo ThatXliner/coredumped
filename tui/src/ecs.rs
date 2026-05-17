@@ -115,6 +115,10 @@ impl Ecs {
             .unwrap_or("entity")
     }
 
+    pub fn kind(&self, id: EntityId) -> Option<EntityKind> {
+        self.kinds.get(&id).copied()
+    }
+
     pub fn entity_at(&self, pos: Position) -> Option<EntityId> {
         self.entities
             .iter()

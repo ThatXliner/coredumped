@@ -103,69 +103,63 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
     );
 
     let mut y = PANEL_Y + 2;
-    print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, "Xlyph prototype");
-    y += 2;
-    print_clipped(
-        ctx,
-        PANEL_X + 2,
-        y,
-        PANEL_WIDTH - 4,
-        &format!("turn: {}", world.turn),
-    );
+
+    // --- Stats (two-column) ---
+    let c1 = PANEL_X + 2;
+    let c2 = PANEL_X + 13;
+    let w = PANEL_WIDTH - 4;
+
+    print_clipped(ctx, c1, y, w, &format!("turn  {}", world.turn));
+    print_clipped(ctx, c2, y, 10, &format!("depth {}", world.depth));
     y += 1;
     print_clipped(
         ctx,
-        PANEL_X + 2,
+        c1,
         y,
-        PANEL_WIDTH - 4,
-        &format!("mode: {:?}", world.mode),
-    );
-    y += 1;
-    print_clipped(
-        ctx,
-        PANEL_X + 2,
-        y,
-        PANEL_WIDTH - 4,
-        &format!("depth: {}", world.depth),
-    );
-    y += 1;
-    print_clipped(
-        ctx,
-        PANEL_X + 2,
-        y,
-        PANEL_WIDTH - 4,
+        10,
         &format!(
-            "hp: {}/{}",
+            "hp    {}/{}",
             world.player_hp().current,
             world.player_hp().max
         ),
     );
+    print_clipped(ctx, c2, y, 10, &format!("mode  {:?}", world.mode));
     y += 1;
     print_clipped(
         ctx,
-        PANEL_X + 2,
+        c1,
         y,
-        PANEL_WIDTH - 4,
-        &format!("lamp: {:?} r{}", world.player_facing, FLASHLIGHT_RADIUS),
+        w,
+        &format!("lamp  {:?} r{}", world.player_facing, FLASHLIGHT_RADIUS),
     );
+    if world.blocking {
+        ctx.print_color(c2, y, RGB::named(CYAN), RGB::named(BLACK), "guarding");
+    }
     y += 2;
 
-    print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, "controls");
+    // --- Keys section ---
+    print_section_header(ctx, c1, y, w, "keys");
     y += 1;
-    for line in [
-        "hjkl/arrows move",
-        ". waits  > descend",
-        "< ascend",
-        "i inspector",
-        "` console",
-        "esc/q quit",
-    ] {
-        print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, line);
+    let controls: &[(&str, &str)] = &[
+        ("move/atk", "hjkl/arrows"),
+        ("wait", "."),
+        ("block", "b"),
+        ("descend", "> (shift+.)"),
+        ("ascend", "< (shift+,)"),
+        ("inspect", "i"),
+        ("console", "`"),
+        ("quit", "esc/q"),
+    ];
+    for (label, key) in controls {
+        print_clipped(ctx, c1, y, 9, label);
+        print_clipped(ctx, c1 + 10, y, w - 10, key);
         y += 1;
     }
 
     y += 1;
-    print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, "inspect: rules");
+
+    // --- Rules section ---
+    print_section_header(ctx, c1, y, w, "rules");
     y += 1;
 
     let visible_lines = (PANEL_Y + PANEL_HEIGHT - 2 - y).max(0) as usize;
@@ -176,26 +170,52 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
         .skip(world.inspector_scroll)
         .take(visible_lines)
     {
-        print_clipped(ctx, PANEL_X + 2, y, PANEL_WIDTH - 4, line);
+        match line {
+            InspectorLine::Heading(text) => {
+                ctx.print_color(c1, y, RGB::named(YELLOW), RGB::named(BLACK), text);
+            }
+            InspectorLine::Meta(text) => {
+                ctx.print_color(c1, y, RGB::named(GRAY), RGB::named(BLACK), text);
+            }
+            InspectorLine::Source(text) => {
+                print_clipped(ctx, c1, y, w, text);
+            }
+            InspectorLine::Blank => {}
+        }
         y += 1;
     }
 }
 
-/// Build a flat list of display lines for the inspector panel from the rule
-/// registry. Each rule gets a metadata header then its source lines.
-fn inspector_lines(registry: &crate::rules::RuleRegistry) -> Vec<String> {
+/// A line in the inspector rules display with an associated style.
+enum InspectorLine {
+    Heading(String),
+    Meta(String),
+    Source(String),
+    Blank,
+}
+
+/// Build a formatted list of display lines for the inspector panel.
+fn inspector_lines(registry: &crate::rules::RuleRegistry) -> Vec<InspectorLine> {
     let mut lines = Vec::new();
     for rule in registry.iter() {
-        lines.push(format!(
-            "[{}] {} ({:?}/{:?})",
-            rule.id, rule.name, rule.phase, rule.cost
-        ));
-        for line in rule.source_lines {
-            lines.push(line.to_string());
+        lines.push(InspectorLine::Heading(format!("> {}", rule.name)));
+        lines.push(InspectorLine::Meta(format!(
+            "  {:?} - {:?}",
+            rule.phase, rule.cost
+        )));
+        for src in rule.source_lines {
+            lines.push(InspectorLine::Source(format!("  {src}")));
         }
-        lines.push(String::new());
+        lines.push(InspectorLine::Blank);
     }
     lines
+}
+
+fn print_section_header(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, title: &str) {
+    let header = format!("-- {title} ");
+    let fill = "-".repeat((max_width as usize).saturating_sub(header.len()));
+    let line = format!("{header}{fill}");
+    ctx.print_color(x, y, RGB::named(CYAN), RGB::named(BLACK), &line);
 }
 
 /// Show a tooltip with entity info when the mouse hovers over a map position

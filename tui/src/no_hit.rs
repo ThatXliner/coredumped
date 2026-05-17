@@ -218,6 +218,7 @@ mod tests {
             console_output: String::new(),
             glyph_env: crate::glyph::Env::extend(&crate::glyph::default_env()),
             inspector_scroll: 0,
+            blocking: false,
             running: true,
         }
     }

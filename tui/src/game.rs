@@ -9,7 +9,7 @@ use bracket_lib::prelude::{a_star_search, NavigationPath};
 
 use crate::{
     ecs::Ecs,
-    entity::{Direction, EntityId, EntityView, Hp, Position},
+    entity::{Direction, EntityId, EntityKind, EntityView, Hp, Position},
     event_log::EventLog,
     glyph::{self, Env, Value},
     map::{Map, MapGenOutput, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -36,6 +36,7 @@ pub enum Intent {
     CloseOverlay,
     Descend,
     Ascend,
+    Block,
     Quit,
     Noop,
 }
@@ -62,6 +63,7 @@ pub struct World {
     pub console_output: String,
     pub glyph_env: Env,
     pub inspector_scroll: usize,
+    pub blocking: bool,
     pub running: bool,
 }
 
@@ -95,6 +97,7 @@ impl World {
             console_output: String::new(),
             glyph_env,
             inspector_scroll: 0,
+            blocking: false,
             running: true,
         }
     }
@@ -134,6 +137,7 @@ impl World {
             console_output: String::new(),
             glyph_env,
             inspector_scroll: 0,
+            blocking: false,
             running: true,
         };
 
@@ -216,6 +220,12 @@ impl World {
                     self.event_log.push("There are no stairs going up here.");
                     ActionCost::Free
                 }
+            }
+            Intent::Block => {
+                self.blocking = true;
+                self.event_log.push("You raise your guard.");
+                self.finish_tick();
+                ActionCost::Tick
             }
             Intent::Quit => {
                 self.running = false;
@@ -396,10 +406,12 @@ impl World {
     fn finish_tick(&mut self) {
         self.turn += 1;
         self.advance_enemies();
+        self.blocking = false;
     }
 
     fn advance_enemies(&mut self) {
         let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
+        let player_pos = self.player_pos();
 
         for enemy_id in enemy_ids {
             if !self.ecs.is_alive(enemy_id) {
@@ -411,26 +423,77 @@ impl World {
                 .position(enemy_id)
                 .expect("enemy should always have a Position component");
 
-            if enemy_pos.manhattan_distance(self.player_pos()) == 1 {
-                self.ecs.damage(self.player_id, 1);
-                self.event_log.push(format!(
-                    "The {} attacks exactly as slime-hunt says.",
-                    self.ecs.name(enemy_id)
-                ));
+            // Attack if adjacent
+            if enemy_pos.manhattan_distance(player_pos) == 1 {
+                if self.blocking {
+                    self.event_log.push(format!(
+                        "You block the {}'s attack.",
+                        self.ecs.name(enemy_id)
+                    ));
+                } else {
+                    self.ecs.damage(self.player_id, 1);
+                    self.event_log.push(format!(
+                        "The {} attacks you for 1 damage.",
+                        self.ecs.name(enemy_id)
+                    ));
+                }
                 continue;
             }
 
-            if let Some(next_pos) = self.next_step_toward_player(enemy_id) {
-                self.ecs.set_position(enemy_id, next_pos);
-                self.event_log.push(format!(
-                    "The {} steps toward the player.",
-                    self.ecs.name(enemy_id)
-                ));
+            // Per-kind movement behavior
+            let kind = self.ecs.kind(enemy_id);
+            let next_pos = match kind {
+                Some(EntityKind::Slime) => self.slime_behavior(enemy_id, enemy_pos, player_pos),
+                Some(EntityKind::Goblin) => self.goblin_behavior(enemy_id, enemy_pos, player_pos),
+                Some(EntityKind::Bat) => self.bat_behavior(enemy_pos),
+                Some(EntityKind::Ogre) | None => self.next_step_toward_player(enemy_id, player_pos),
+                _ => self.next_step_toward_player(enemy_id, player_pos),
+            };
+
+            if let Some(next) = next_pos {
+                self.ecs.set_position(enemy_id, next);
             }
         }
     }
 
-    fn next_step_toward_player(&self, enemy_id: EntityId) -> Option<Position> {
+    /// Slime: 50% wander, 50% path toward player.
+    fn slime_behavior(
+        &self,
+        enemy_id: EntityId,
+        enemy_pos: Position,
+        player_pos: Position,
+    ) -> Option<Position> {
+        if enemy_pos.x.wrapping_mul(13).wrapping_add(self.turn as i32) % 2 == 0 {
+            self.random_step(enemy_pos)
+        } else {
+            self.next_step_toward_player(enemy_id, player_pos)
+        }
+    }
+
+    /// Goblin: path toward player; flee if HP ≤ 1.
+    fn goblin_behavior(
+        &self,
+        enemy_id: EntityId,
+        enemy_pos: Position,
+        player_pos: Position,
+    ) -> Option<Position> {
+        if self.ecs.hp(enemy_id).map(|h| h.current).unwrap_or(0) <= 1 {
+            self.flee_step(enemy_pos, player_pos)
+        } else {
+            self.next_step_toward_player(enemy_id, player_pos)
+        }
+    }
+
+    /// Bat: always random movement, erratic.
+    fn bat_behavior(&self, enemy_pos: Position) -> Option<Position> {
+        self.random_step(enemy_pos)
+    }
+
+    fn next_step_toward_player(
+        &self,
+        enemy_id: EntityId,
+        player_pos: Position,
+    ) -> Option<Position> {
         let path = self.enemy_ai_path(enemy_id);
 
         if !path.success || path.steps.len() < 2 {
@@ -438,12 +501,53 @@ impl World {
         }
 
         let next_pos = self.map.position_for_idx(path.steps[1]);
-        if next_pos == self.player_pos() || self.ecs.entity_at_except(next_pos, enemy_id).is_some()
-        {
+        if next_pos == player_pos || self.ecs.entity_at_except(next_pos, enemy_id).is_some() {
             return None;
         }
 
         Some(next_pos)
+    }
+
+    /// Pick a random adjacent walkable tile.
+    fn random_step(&self, pos: Position) -> Option<Position> {
+        let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
+        let idx = (pos
+            .x
+            .wrapping_mul(7)
+            .wrapping_add(pos.y.wrapping_mul(3))
+            .wrapping_add(self.turn as i32)) as usize;
+        for i in 0..4 {
+            let (dx, dy) = dirs[(idx + i) % 4];
+            let candidate = Position::new(pos.x + dx, pos.y + dy);
+            if self.map.is_walkable(candidate)
+                && candidate != self.player_pos()
+                && self.ecs.entity_at(candidate).is_none()
+            {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+
+    /// Move to an adjacent tile that increases distance from the threat.
+    fn flee_step(&self, pos: Position, threat: Position) -> Option<Position> {
+        let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
+        let mut best: Option<Position> = None;
+        let mut best_dist = pos.manhattan_distance(threat);
+        for (dx, dy) in &dirs {
+            let candidate = Position::new(pos.x + dx, pos.y + dy);
+            if self.map.is_walkable(candidate)
+                && candidate != self.player_pos()
+                && self.ecs.entity_at(candidate).is_none()
+            {
+                let dist = candidate.manhattan_distance(threat);
+                if dist > best_dist {
+                    best_dist = dist;
+                    best = Some(candidate);
+                }
+            }
+        }
+        best
     }
 
     #[cfg(test)]
@@ -705,7 +809,8 @@ mod tests {
         world.apply_intent(Intent::Wait);
 
         assert_eq!(world.turn, 1);
-        assert_eq!(single_enemy(&world).pos, Position::new(9, 5));
+        // Slimes may wander or path — either way they move from start
+        assert_ne!(single_enemy(&world).pos, Position::new(10, 5));
     }
 
     #[test]
@@ -717,9 +822,7 @@ mod tests {
         assert_eq!(world.turn, 1);
         assert_eq!(single_enemy(&world).pos, Position::new(6, 5));
         assert_eq!(world.player_hp().current, 11);
-        assert!(world
-            .event_log
-            .contains("attacks exactly as slime-hunt says"));
+        assert!(world.event_log.contains("attacks you for 1 damage"));
     }
 
     #[test]

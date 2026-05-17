@@ -29,6 +29,7 @@ fn normal_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
         (VirtualKeyCode::Period, false) => Intent::Wait,
         (VirtualKeyCode::Comma, true) => Intent::Ascend,
         (VirtualKeyCode::I, _) => Intent::ToggleInspector,
+        (VirtualKeyCode::B, _) => Intent::Block,
         (VirtualKeyCode::Grave, _) => Intent::ToggleConsole,
         (VirtualKeyCode::Escape, _) | (VirtualKeyCode::Q, _) => Intent::Quit,
         _ => Intent::Noop,

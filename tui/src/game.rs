@@ -5,6 +5,8 @@
 //! systems that read or mutate those components: player intent handling,
 //! enemy AI, ticking, console state, and inspector state.
 
+use std::cell::RefCell;
+
 use bracket_lib::prelude::{a_star_search, NavigationPath};
 
 use crate::{
@@ -15,6 +17,28 @@ use crate::{
     map::{Map, MapGenOutput, TileType, MAP_HEIGHT, MAP_WIDTH},
     rules::RuleRegistry,
 };
+
+thread_local! {
+    static ACTIVE_WORLD: RefCell<*mut World> = const { RefCell::new(std::ptr::null_mut()) };
+}
+
+/// Access the active World from within an AI builtin.
+/// Returns `None` if ACTIVE_WORLD hasn't been set (should only happen if a
+/// builtin is called outside of `advance_enemies`).
+///
+/// # Safety
+/// The caller must ensure the World pointer is valid and no other mutable
+/// borrow exists for the duration of `f`.
+unsafe fn with_active_world<R>(f: impl FnOnce(&mut World) -> R) -> Option<R> {
+    ACTIVE_WORLD.with(|cell| {
+        let ptr = *cell.borrow();
+        if ptr.is_null() {
+            None
+        } else {
+            Some(f(&mut *ptr))
+        }
+    })
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ActionCost {
@@ -166,8 +190,7 @@ impl World {
                 ActionCost::Tick
             }
             Intent::Wait => {
-                self.event_log
-                    .push("You wait and listen to the engine tick.");
+                self.event_log.push("You wait (one tick advanced).");
                 self.finish_tick();
                 ActionCost::Tick
             }
@@ -526,6 +549,12 @@ impl World {
     fn advance_enemies(&mut self) {
         let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
 
+        ACTIVE_WORLD.with(|cell| {
+            *cell.borrow_mut() = self as *mut World;
+        });
+
+        let sandbox = glyph::SandboxOptions::default();
+
         for enemy_id in enemy_ids {
             if !self.ecs.is_alive(enemy_id) {
                 continue;
@@ -545,7 +574,11 @@ impl World {
                 None => continue,
             };
 
-            match self.eval_ai_body(&body_form, enemy_id) {
+            let enemy_env = Env::extend(&self.glyph_env);
+            enemy_env.bind("*self*", Value::I64(enemy_id.raw() as i64));
+            enemy_env.bind("*player*", Value::I64(self.player_id.raw() as i64));
+
+            match glyph::eval_with_opts(&body_form, &enemy_env, sandbox.clone()) {
                 Ok(_) => {}
                 Err(err) => {
                     self.event_log.push(format!(
@@ -557,203 +590,10 @@ impl World {
                 }
             }
         }
-    }
 
-    /// Mini-interpreter for AI rule bodies. Evaluates a Glyph AST with `&mut self`
-    /// to drive enemy actions. Supports `if`, function calls, symbol resolution
-    /// (`*self*`, `*player*`), and the AI builtins.
-    fn eval_ai_body(&mut self, form: &Value, self_id: EntityId) -> Result<Value, String> {
-        match form {
-            Value::List(items) => {
-                if items.is_empty() {
-                    return Ok(Value::Nil);
-                }
-                // Special form: (if test then else?)
-                if let Value::Symbol(sym) = &items[0] {
-                    if sym.name == "if" {
-                        let test = self.eval_ai_body(&items[1], self_id)?;
-                        return if is_truthy(&test) {
-                            self.eval_ai_body(&items[2], self_id)
-                        } else if items.len() > 3 {
-                            self.eval_ai_body(&items[3], self_id)
-                        } else {
-                            Ok(Value::Nil)
-                        };
-                    }
-                }
-                // Function call: (fn-name arg...)
-                let fn_name = match &items[0] {
-                    Value::Symbol(sym) => sym.name.clone(),
-                    other => return Err(format!("cannot call {:?} as a function", other)),
-                };
-                let args: Result<Vec<Value>, String> = items[1..]
-                    .iter()
-                    .map(|arg| self.eval_ai_body(arg, self_id))
-                    .collect();
-                self.call_ai_builtin(&fn_name, &args?)
-            }
-            Value::Symbol(sym) => match sym.name.as_str() {
-                "*self*" => Ok(Value::I64(self_id.raw() as i64)),
-                "*player*" => Ok(Value::I64(self.player_id.raw() as i64)),
-                name => Err(format!("unbound symbol: {}", name)),
-            },
-            Value::I64(_) | Value::F64(_) | Value::Bool(_) | Value::Nil => Ok(form.clone()),
-            other => Err(format!("unexpected form in AI rule: {:?}", other)),
-        }
-    }
-
-    fn call_ai_builtin(&mut self, name: &str, args: &[Value]) -> Result<Value, String> {
-        match name {
-            "adjacent?" => {
-                let a = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
-                let b = entity_id_from_value(args.get(1).ok_or("missing arg")?)?;
-                let pa = self.ecs.position(a);
-                let pb = self.ecs.position(b);
-                Ok(Value::Bool(match (pa, pb) {
-                    (Some(pa), Some(pb)) => pa.manhattan_distance(pb) == 1,
-                    _ => false,
-                }))
-            }
-            "attack!" => {
-                let attacker = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
-                let target = entity_id_from_value(args.get(1).ok_or("missing arg")?)?;
-                let dmg = i64_from_value(args.get(2).ok_or("missing arg")?)? as i32;
-                if !self.ecs.is_alive(target) || !self.ecs.is_alive(attacker) {
-                    return Ok(Value::Nil);
-                }
-                if target == self.player_id && self.blocking {
-                    self.event_log.push(format!(
-                        "You block the {}'s attack.",
-                        self.ecs.name(attacker)
-                    ));
-                } else {
-                    self.ecs.damage(target, dmg);
-                    let attacker_name = self.ecs.name(attacker);
-                    if target == self.player_id {
-                        self.event_log.push(format!(
-                            "The {} attacks you for {} damage.",
-                            attacker_name, dmg
-                        ));
-                    } else {
-                        self.event_log.push(format!(
-                            "The {} attacks the {} for {} damage.",
-                            attacker_name,
-                            self.ecs.name(target),
-                            dmg
-                        ));
-                    }
-                }
-                Ok(Value::Nil)
-            }
-            "step-toward!" => {
-                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
-                let target = entity_id_from_value(args.get(1).ok_or("missing arg")?)?;
-                let _enemy_pos = self.ecs.position(entity);
-                let target_pos = match self.ecs.position(target) {
-                    Some(p) => p,
-                    None => return Ok(Value::Bool(false)),
-                };
-                let path = self.enemy_ai_path(entity);
-                if !path.success || path.steps.len() < 2 {
-                    return Ok(Value::Bool(false));
-                }
-                let next_pos = self.map.position_for_idx(path.steps[1]);
-                if next_pos == target_pos
-                    || !self.map.is_walkable(next_pos)
-                    || self.ecs.entity_at_except(next_pos, entity).is_some()
-                {
-                    return Ok(Value::Bool(false));
-                }
-                self.ecs.set_position(entity, next_pos);
-                Ok(Value::Bool(true))
-            }
-            "random-step!" => {
-                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
-                let pos = match self.ecs.position(entity) {
-                    Some(p) => p,
-                    None => return Ok(Value::Bool(false)),
-                };
-                let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
-                let idx = (pos
-                    .x
-                    .wrapping_mul(7)
-                    .wrapping_add(pos.y.wrapping_mul(3))
-                    .wrapping_add(self.turn as i32)) as usize;
-                let player_pos = self.player_pos();
-                for i in 0..4 {
-                    let (dx, dy) = dirs[(idx + i) % 4];
-                    let candidate = Position::new(pos.x + dx, pos.y + dy);
-                    if self.map.is_walkable(candidate)
-                        && candidate != player_pos
-                        && self.ecs.entity_at(candidate).is_none()
-                    {
-                        self.ecs.set_position(entity, candidate);
-                        return Ok(Value::Bool(true));
-                    }
-                }
-                Ok(Value::Bool(false))
-            }
-            "flee-step!" => {
-                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
-                let threat = entity_id_from_value(args.get(1).ok_or("missing arg")?)?;
-                let pos = match self.ecs.position(entity) {
-                    Some(p) => p,
-                    None => return Ok(Value::Bool(false)),
-                };
-                let threat_pos = match self.ecs.position(threat) {
-                    Some(p) => p,
-                    None => return Ok(Value::Bool(false)),
-                };
-                let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
-                let mut best: Option<Position> = None;
-                let mut best_dist = pos.manhattan_distance(threat_pos);
-                let player_pos = self.player_pos();
-                for (dx, dy) in &dirs {
-                    let candidate = Position::new(pos.x + dx, pos.y + dy);
-                    if self.map.is_walkable(candidate)
-                        && candidate != player_pos
-                        && self.ecs.entity_at(candidate).is_none()
-                    {
-                        let dist = candidate.manhattan_distance(threat_pos);
-                        if dist > best_dist {
-                            best_dist = dist;
-                            best = Some(candidate);
-                        }
-                    }
-                }
-                if let Some(next) = best {
-                    self.ecs.set_position(entity, next);
-                    Ok(Value::Bool(true))
-                } else {
-                    Ok(Value::Bool(false))
-                }
-            }
-            "roll-odds?" => {
-                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
-                let prob = f64_from_value(args.get(1).ok_or("missing arg")?)?;
-                let pos = match self.ecs.position(entity) {
-                    Some(p) => p,
-                    None => return Ok(Value::Bool(false)),
-                };
-                let hash = (pos.x as u64)
-                    .wrapping_mul(13)
-                    .wrapping_add((pos.y as u64).wrapping_mul(7))
-                    .wrapping_add(self.turn);
-                let threshold = (prob * 100.0) as u64;
-                Ok(Value::Bool(hash % 100 < threshold))
-            }
-            "hp" => {
-                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
-                let hp = self.ecs.hp(entity).map(|h| h.current).unwrap_or(0);
-                Ok(Value::I64(hp as i64))
-            }
-            "<=" => {
-                let a = i64_from_value(args.get(0).ok_or("missing arg")?)?;
-                let b = i64_from_value(args.get(1).ok_or("missing arg")?)?;
-                Ok(Value::Bool(a <= b))
-            }
-            _ => Err(format!("unknown AI builtin: {}", name)),
-        }
+        ACTIVE_WORLD.with(|cell| {
+            *cell.borrow_mut() = std::ptr::null_mut();
+        });
     }
 
     #[cfg(test)]
@@ -861,30 +701,299 @@ impl World {
     }
 }
 
-fn entity_id_from_value(v: &Value) -> Result<EntityId, String> {
+fn entity_id_from_value(v: &Value) -> glyph::EvalResult<EntityId> {
     match v {
         Value::I64(n) => Ok(EntityId::new(*n as usize)),
-        other => Err(format!("expected entity id (int), got {:?}", other)),
+        other => Err(glyph::EvalError::TypeError {
+            expected: "entity id (int)",
+            got: other.to_string(),
+        }),
     }
 }
 
-fn i64_from_value(v: &Value) -> Result<i64, String> {
+fn i64_from_value(v: &Value) -> glyph::EvalResult<i64> {
     match v {
         Value::I64(n) => Ok(*n),
-        other => Err(format!("expected int, got {:?}", other)),
+        other => Err(glyph::EvalError::TypeError {
+            expected: "int",
+            got: other.to_string(),
+        }),
     }
 }
 
-fn f64_from_value(v: &Value) -> Result<f64, String> {
+fn f64_from_value(v: &Value) -> glyph::EvalResult<f64> {
     match v {
         Value::F64(n) => Ok(*n),
         Value::I64(n) => Ok(*n as f64),
-        other => Err(format!("expected number, got {:?}", other)),
+        other => Err(glyph::EvalError::TypeError {
+            expected: "number",
+            got: other.to_string(),
+        }),
     }
 }
 
-fn is_truthy(v: &Value) -> bool {
-    !matches!(v, Value::Bool(false) | Value::Nil)
+// ---------------------------------------------------------------------------
+// AI builtins — called from Glyph rule bodies during advance_enemies.
+// They access &mut World via the ACTIVE_WORLD thread-local, which is set
+// just before the rule-evaluation loop and cleared just after.
+// ---------------------------------------------------------------------------
+
+fn builtin_adjacentq(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 2 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    let a = entity_id_from_value(&args[0])?;
+    let b = entity_id_from_value(&args[1])?;
+    unsafe {
+        with_active_world(|w| {
+            let pa = w.ecs.position(a);
+            let pb = w.ecs.position(b);
+            Value::Bool(match (pa, pb) {
+                (Some(pa), Some(pb)) => pa.manhattan_distance(pb) == 1,
+                _ => false,
+            })
+        })
+        .ok_or_else(|| glyph::EvalError::Custom("AI builtin called without active world".into()))
+    }
+}
+
+fn builtin_ai_attack(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 3 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 3,
+            got: args.len(),
+        });
+    }
+    let attacker = entity_id_from_value(&args[0])?;
+    let target = entity_id_from_value(&args[1])?;
+    let dmg = i64_from_value(&args[2])? as i32;
+
+    unsafe {
+        with_active_world(|w| {
+            if !w.ecs.is_alive(target) || !w.ecs.is_alive(attacker) {
+                return Value::Nil;
+            }
+            if target == w.player_id && w.blocking {
+                w.event_log
+                    .push(format!("You block the {}'s attack.", w.ecs.name(attacker)));
+            } else {
+                w.ecs.damage(target, dmg);
+                let attacker_name = w.ecs.name(attacker);
+                if target == w.player_id {
+                    w.event_log.push(format!(
+                        "The {} attacks you for {} damage.",
+                        attacker_name, dmg
+                    ));
+                } else {
+                    w.event_log.push(format!(
+                        "The {} attacks the {} for {} damage.",
+                        attacker_name,
+                        w.ecs.name(target),
+                        dmg
+                    ));
+                }
+            }
+            Value::Nil
+        })
+        .ok_or_else(|| glyph::EvalError::Custom("AI builtin called without active world".into()))
+    }
+}
+
+fn builtin_step_toward(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 2 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    let entity = entity_id_from_value(&args[0])?;
+    let target = entity_id_from_value(&args[1])?;
+
+    unsafe {
+        with_active_world(|w| {
+            let target_pos = match w.ecs.position(target) {
+                Some(p) => p,
+                None => return Value::Bool(false),
+            };
+            let path = w.enemy_ai_path(entity);
+            if !path.success || path.steps.len() < 2 {
+                return Value::Bool(false);
+            }
+            let next_pos = w.map.position_for_idx(path.steps[1]);
+            if next_pos == target_pos
+                || !w.map.is_walkable(next_pos)
+                || w.ecs.entity_at_except(next_pos, entity).is_some()
+            {
+                return Value::Bool(false);
+            }
+            w.ecs.set_position(entity, next_pos);
+            Value::Bool(true)
+        })
+        .ok_or_else(|| glyph::EvalError::Custom("AI builtin called without active world".into()))
+    }
+}
+
+fn builtin_random_step(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 1 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    let entity = entity_id_from_value(&args[0])?;
+
+    unsafe {
+        with_active_world(|w| {
+            let pos = match w.ecs.position(entity) {
+                Some(p) => p,
+                None => return Value::Bool(false),
+            };
+            let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
+            let idx = (pos
+                .x
+                .wrapping_mul(7)
+                .wrapping_add(pos.y.wrapping_mul(3))
+                .wrapping_add(w.turn as i32)) as usize;
+            let player_pos = w.player_pos();
+            for i in 0..4 {
+                let (dx, dy) = dirs[(idx + i) % 4];
+                let candidate = Position::new(pos.x + dx, pos.y + dy);
+                if w.map.is_walkable(candidate)
+                    && candidate != player_pos
+                    && w.ecs.entity_at(candidate).is_none()
+                {
+                    w.ecs.set_position(entity, candidate);
+                    return Value::Bool(true);
+                }
+            }
+            Value::Bool(false)
+        })
+        .ok_or_else(|| glyph::EvalError::Custom("AI builtin called without active world".into()))
+    }
+}
+
+fn builtin_flee_step(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 2 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    let entity = entity_id_from_value(&args[0])?;
+    let threat = entity_id_from_value(&args[1])?;
+
+    unsafe {
+        with_active_world(|w| {
+            let pos = match w.ecs.position(entity) {
+                Some(p) => p,
+                None => return Value::Bool(false),
+            };
+            let threat_pos = match w.ecs.position(threat) {
+                Some(p) => p,
+                None => return Value::Bool(false),
+            };
+            let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
+            let mut best: Option<Position> = None;
+            let mut best_dist = pos.manhattan_distance(threat_pos);
+            let player_pos = w.player_pos();
+            for (dx, dy) in &dirs {
+                let candidate = Position::new(pos.x + dx, pos.y + dy);
+                if w.map.is_walkable(candidate)
+                    && candidate != player_pos
+                    && w.ecs.entity_at(candidate).is_none()
+                {
+                    let dist = candidate.manhattan_distance(threat_pos);
+                    if dist > best_dist {
+                        best_dist = dist;
+                        best = Some(candidate);
+                    }
+                }
+            }
+            if let Some(next) = best {
+                w.ecs.set_position(entity, next);
+                Value::Bool(true)
+            } else {
+                Value::Bool(false)
+            }
+        })
+        .ok_or_else(|| glyph::EvalError::Custom("AI builtin called without active world".into()))
+    }
+}
+
+fn builtin_roll_oddsq(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 2 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    let entity = entity_id_from_value(&args[0])?;
+    let prob = f64_from_value(&args[1])?;
+
+    unsafe {
+        with_active_world(|w| {
+            let pos = match w.ecs.position(entity) {
+                Some(p) => p,
+                None => return Value::Bool(false),
+            };
+            let hash = (pos.x as u64)
+                .wrapping_mul(13)
+                .wrapping_add((pos.y as u64).wrapping_mul(7))
+                .wrapping_add(w.turn);
+            let threshold = (prob * 100.0) as u64;
+            Value::Bool(hash % 100 < threshold)
+        })
+        .ok_or_else(|| glyph::EvalError::Custom("AI builtin called without active world".into()))
+    }
+}
+
+fn builtin_ai_hp(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 1 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    let entity = entity_id_from_value(&args[0])?;
+
+    unsafe {
+        with_active_world(|w| {
+            let hp = w.ecs.hp(entity).map(|h| h.current).unwrap_or(0);
+            Value::I64(hp as i64)
+        })
+        .ok_or_else(|| glyph::EvalError::Custom("AI builtin called without active world".into()))
+    }
 }
 
 fn setup_glyph_env() -> Env {
@@ -908,6 +1017,56 @@ fn setup_glyph_env() -> Env {
         Value::Builtin(glyph::BuiltinFn {
             name: "do-attack",
             func: builtin_do_attack,
+        }),
+    );
+    // AI builtins
+    env.bind(
+        "adjacent?",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "adjacent?",
+            func: builtin_adjacentq,
+        }),
+    );
+    env.bind(
+        "attack!",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "attack!",
+            func: builtin_ai_attack,
+        }),
+    );
+    env.bind(
+        "step-toward!",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "step-toward!",
+            func: builtin_step_toward,
+        }),
+    );
+    env.bind(
+        "random-step!",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "random-step!",
+            func: builtin_random_step,
+        }),
+    );
+    env.bind(
+        "flee-step!",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "flee-step!",
+            func: builtin_flee_step,
+        }),
+    );
+    env.bind(
+        "roll-odds?",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "roll-odds?",
+            func: builtin_roll_oddsq,
+        }),
+    );
+    env.bind(
+        "hp",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "hp",
+            func: builtin_ai_hp,
         }),
     );
     env

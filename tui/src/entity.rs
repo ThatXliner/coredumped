@@ -91,6 +91,7 @@ pub enum EntityKind {
     Goblin,
     Bat,
     Ogre,
+    Wizard,
 }
 
 impl EntityKind {
@@ -101,6 +102,7 @@ impl EntityKind {
             EntityKind::Goblin => 'g',
             EntityKind::Bat => 'b',
             EntityKind::Ogre => 'O',
+            EntityKind::Wizard => 'W',
         }
     }
 
@@ -111,6 +113,17 @@ impl EntityKind {
             EntityKind::Goblin => "goblin",
             EntityKind::Bat => "bat",
             EntityKind::Ogre => "ogre",
+            EntityKind::Wizard => "wizard",
+        }
+    }
+
+    pub fn rule_name(&self) -> &'static str {
+        match self {
+            EntityKind::Slime => "slime-hunt",
+            EntityKind::Goblin => "goblin-patrol",
+            EntityKind::Bat => "bat-flutter",
+            EntityKind::Ogre => "ogre-charge",
+            EntityKind::Player | EntityKind::Wizard => "",
         }
     }
 }

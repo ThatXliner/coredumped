@@ -90,6 +90,8 @@ fn draw_entity(ctx: &mut BTerm, entity: EntityView, lit_tiles: &HashSet<Position
         (EntityKind::Bat, false) => RGB::named(GRAY),
         (EntityKind::Ogre, true) => RGB::named(MAGENTA),
         (EntityKind::Ogre, false) => RGB::named(PURPLE),
+        (EntityKind::Wizard, true) => RGB::named(BLUE),
+        (EntityKind::Wizard, false) => RGB::named(DARK_BLUE),
     };
 
     ctx.set(
@@ -125,14 +127,10 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
         ctx,
         c1,
         y,
-        10,
-        &format!(
-            "hp    {}/{}",
-            world.player_hp().current,
-            world.player_hp().max
-        ),
+        13,
+        &format!("hp {}/{}", world.player_hp().current, world.player_hp().max),
     );
-    print_clipped(ctx, c2, y, 10, &format!("mode  {:?}", world.mode));
+    print_clipped(ctx, c2, y, 14, &format!("mode {:?}", world.mode));
     y += 1;
     print_clipped(
         ctx,
@@ -149,8 +147,8 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
     // --- Keys section ---
     print_section_header(ctx, c1, y, w, "keys");
     y += 1;
-    let controls: &[(&str, &str)] = &[
-        ("move/atk", "hjkl/arrows"),
+    let mut controls: Vec<(&str, &str)> = vec![
+        ("move", "arrows/hjkl"),
         ("wait", "."),
         ("block", "b"),
         ("descend", "shift+."),
@@ -159,7 +157,14 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
         ("console", "`"),
         ("quit", "esc/q"),
     ];
-    for (label, key) in controls {
+
+    if world.player_can_attack {
+        controls.insert(1, ("attack", "bump/a"));
+    } else {
+        controls.insert(1, ("status", "HELPLESS - find wizard!"));
+    }
+
+    for (label, key) in &controls {
         print_clipped(ctx, c1, y, 8, label);
         print_clipped(ctx, c1 + 9, y, w - 9, key);
         y += 1;

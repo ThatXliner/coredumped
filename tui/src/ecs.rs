@@ -55,6 +55,10 @@ impl Ecs {
         self.spawn_actor(EntityKind::Ogre, pos, Hp::new(10), true)
     }
 
+    pub fn spawn_wizard(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::Wizard, pos, Hp::new(20), false)
+    }
+
     pub fn remove(&mut self, id: EntityId) {
         self.entities.remove(&id);
         self.kinds.remove(&id);

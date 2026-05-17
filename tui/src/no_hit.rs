@@ -220,6 +220,9 @@ mod tests {
             inspector_selection: 0,
             blocking: false,
             running: true,
+            player_can_attack: false,
+            wizard_taught: false,
+            wizard_id: None,
         }
     }
 

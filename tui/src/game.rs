@@ -37,6 +37,7 @@ pub enum Intent {
     Descend,
     Ascend,
     Block,
+    Attack,
     Quit,
     Noop,
 }
@@ -65,6 +66,9 @@ pub struct World {
     pub inspector_selection: usize,
     pub blocking: bool,
     pub running: bool,
+    pub player_can_attack: bool,
+    pub wizard_taught: bool,
+    pub wizard_id: Option<EntityId>,
 }
 
 impl World {
@@ -73,6 +77,7 @@ impl World {
         event_log.push("Xlyph runtime booted.");
         event_log.push("Move with arrows or hjkl. ` opens the console. i inspects code.");
         event_log.push("Your flashlight ray-casts in the direction you last moved.");
+        event_log.push("You are helpless. Find the wizard to learn the art of striking.");
 
         let registry = RuleRegistry::core();
 
@@ -99,6 +104,9 @@ impl World {
             inspector_selection: 0,
             blocking: false,
             running: true,
+            player_can_attack: false,
+            wizard_taught: false,
+            wizard_id: None,
         }
     }
 
@@ -115,6 +123,7 @@ impl World {
         event_log.push("Xlyph runtime booted.");
         event_log.push("Move with arrows or hjkl. ` opens the console. i inspects code.");
         event_log.push("Your flashlight ray-casts in the direction you last moved.");
+        event_log.push("You are helpless. Find the wizard to learn the art of striking.");
         event_log.push(format!("Depth {depth}. Find the stairs down."));
 
         let registry = RuleRegistry::core();
@@ -139,6 +148,9 @@ impl World {
             inspector_selection: 0,
             blocking: false,
             running: true,
+            player_can_attack: false,
+            wizard_taught: false,
+            wizard_id: None,
         };
 
         world.spawn_level_enemies_from(&combat_spawns, &boss_spawns);
@@ -221,6 +233,16 @@ impl World {
                     ActionCost::Free
                 }
             }
+            Intent::Attack => {
+                if !self.player_can_attack {
+                    self.event_log
+                        .push("You flail uselessly. Find the wizard to learn how to fight!");
+                } else {
+                    self.attack_in_direction(self.player_facing);
+                }
+                self.finish_tick();
+                ActionCost::Tick
+            }
             Intent::Block => {
                 self.blocking = true;
                 self.event_log.push("You raise your guard.");
@@ -293,6 +315,27 @@ impl World {
         for pos in boss_spawns {
             self.spawn_boss_at(*pos);
         }
+
+        // Spawn wizard on depth 4+
+        if self.depth >= 4 {
+            let player_pos = self.player_pos();
+            let candidates = [
+                player_pos.offset(2, 0),
+                player_pos.offset(-2, 0),
+                player_pos.offset(0, 2),
+                player_pos.offset(0, -2),
+                player_pos.offset(3, 0),
+                player_pos.offset(-3, 0),
+                player_pos.offset(0, 3),
+                player_pos.offset(0, -3),
+            ];
+            let wizard_pos = candidates
+                .iter()
+                .copied()
+                .find(|&p| self.map.is_walkable(p) && self.ecs.entity_at(p).is_none())
+                .unwrap_or(player_pos.offset(2, 0));
+            self.wizard_id = Some(self.ecs.spawn_wizard(wizard_pos));
+        }
     }
 
     /// Spawn a depth-appropriate enemy at the given position.
@@ -300,17 +343,9 @@ impl World {
         let hash = (pos.x.wrapping_mul(31).wrapping_add(pos.y.wrapping_mul(17))) as u32;
         let roll = (hash % 100) as i32;
         match depth {
-            1 => {
+            1..=3 => {
+                // Before checkpoint: only slimes — simple enemies for the helpless phase
                 self.ecs.spawn_slime(pos);
-            }
-            2..=3 => {
-                if roll < 60 {
-                    self.ecs.spawn_slime(pos);
-                } else if roll < 90 {
-                    self.ecs.spawn_goblin(pos);
-                } else {
-                    self.ecs.spawn_bat(pos);
-                }
             }
             _ => {
                 if roll < 30 {
@@ -369,6 +404,9 @@ impl World {
         for id in ids {
             self.ecs.remove(id);
         }
+        if let Some(wizard_id) = self.wizard_id.take() {
+            self.ecs.remove(wizard_id);
+        }
     }
 
     fn apply_player_move(&mut self, direction: Direction) {
@@ -382,6 +420,20 @@ impl World {
         }
 
         if let Some(target_id) = self.ecs.entity_at(target) {
+            // Wizard interaction is always non-hostile
+            if self.ecs.kind(target_id) == Some(EntityKind::Wizard) {
+                self.interact_with_wizard(target_id);
+                return;
+            }
+
+            if !self.player_can_attack {
+                self.event_log.push(format!(
+                    "You helplessly shove the {}. Find the wizard to learn how to fight!",
+                    self.ecs.name(target_id)
+                ));
+                return;
+            }
+
             let target_name = self.ecs.name(target_id);
             let hp = self
                 .ecs
@@ -403,6 +455,68 @@ impl World {
             .push(format!("You move to {},{}.", target.x, target.y));
     }
 
+    /// Deal 1 damage to the first entity in the given direction. Does not move the player.
+    fn attack_in_direction(&mut self, direction: Direction) {
+        let (dx, dy) = direction.delta();
+        let target = self.player_pos().offset(dx, dy);
+
+        if !self.map.is_walkable(target) {
+            self.event_log.push("You strike the wall. Nothing happens.");
+            return;
+        }
+
+        if let Some(target_id) = self.ecs.entity_at(target) {
+            let target_name = self.ecs.name(target_id);
+            let hp = self
+                .ecs
+                .damage(target_id, 1)
+                .expect("combat targets should have an Hp component");
+
+            self.event_log
+                .push(format!("You strike the {target_name} for 1 damage."));
+
+            if hp.current <= 0 {
+                self.event_log
+                    .push(format!("The {target_name} collapses into inert code."));
+            }
+        } else {
+            self.event_log.push("You swing at empty air.");
+        }
+    }
+
+    fn interact_with_wizard(&mut self, _wizard_id: EntityId) {
+        if self.wizard_taught {
+            self.event_log
+                .push("The wizard smiles. \"You already know the art of striking.\"");
+            let max_hp = self.player_hp().max;
+            self.ecs.set_hp(self.player_id, Hp::new(max_hp));
+            self.event_log
+                .push("The wizard taps your shoulder. You feel refreshed.");
+            return;
+        }
+
+        let max_hp = self.player_hp().max;
+        self.ecs.set_hp(self.player_id, Hp::new(max_hp));
+        self.player_can_attack = true;
+        self.wizard_taught = true;
+
+        self.event_log.push("The wizard raises a glowing hand...");
+        self.event_log
+            .push("\"Ah, a lost soul! Let me mend your wounds.\"");
+        self.event_log
+            .push("Warmth spreads through your body. HP fully restored.");
+        self.event_log
+            .push("\"Now — you are not helpless. I teach you the art of striking.\"");
+        self.event_log.push(
+            "Press `a` to attack in the direction you face, or open the console (`) and try:",
+        );
+        self.event_log
+            .push("  (do-attack :east)   (do-attack :west)");
+        self.event_log
+            .push("  (do-attack :north)  (do-attack :south)");
+        self.event_log.push("\"Strike with purpose, traveler.\"");
+    }
+
     fn finish_tick(&mut self) {
         self.turn += 1;
         self.advance_enemies();
@@ -411,143 +525,235 @@ impl World {
 
     fn advance_enemies(&mut self) {
         let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
-        let player_pos = self.player_pos();
 
         for enemy_id in enemy_ids {
             if !self.ecs.is_alive(enemy_id) {
                 continue;
             }
 
-            let enemy_pos = self
-                .ecs
-                .position(enemy_id)
-                .expect("enemy should always have a Position component");
+            let rule_name = match self.ecs.kind(enemy_id) {
+                Some(kind) => kind.rule_name(),
+                None => continue,
+            };
 
-            // Attack if adjacent
-            if enemy_pos.manhattan_distance(player_pos) == 1 {
-                if self.blocking {
-                    self.event_log.push(format!(
-                        "You block the {}'s attack.",
-                        self.ecs.name(enemy_id)
-                    ));
-                } else {
-                    self.ecs.damage(self.player_id, 1);
-                    self.event_log.push(format!(
-                        "The {} attacks you for 1 damage.",
-                        self.ecs.name(enemy_id)
-                    ));
-                }
+            if rule_name.is_empty() {
                 continue;
             }
 
-            // Per-kind movement behavior
-            let kind = self.ecs.kind(enemy_id);
-            let next_pos = match kind {
-                Some(EntityKind::Slime) => self.slime_behavior(enemy_id, enemy_pos, player_pos),
-                Some(EntityKind::Goblin) => self.goblin_behavior(enemy_id, enemy_pos, player_pos),
-                Some(EntityKind::Bat) => self.bat_behavior(enemy_pos),
-                Some(EntityKind::Ogre) | None => self.next_step_toward_player(enemy_id, player_pos),
-                _ => self.next_step_toward_player(enemy_id, player_pos),
+            let body_form = match self.registry.get(rule_name) {
+                Some(rule) => rule.body_form.clone(),
+                None => continue,
             };
 
-            if let Some(next) = next_pos {
-                self.ecs.set_position(enemy_id, next);
-            }
-        }
-    }
-
-    /// Slime: 50% wander, 50% path toward player.
-    fn slime_behavior(
-        &self,
-        enemy_id: EntityId,
-        enemy_pos: Position,
-        player_pos: Position,
-    ) -> Option<Position> {
-        if enemy_pos.x.wrapping_mul(13).wrapping_add(self.turn as i32) % 2 == 0 {
-            self.random_step(enemy_pos)
-        } else {
-            self.next_step_toward_player(enemy_id, player_pos)
-        }
-    }
-
-    /// Goblin: path toward player; flee if HP ≤ 1.
-    fn goblin_behavior(
-        &self,
-        enemy_id: EntityId,
-        enemy_pos: Position,
-        player_pos: Position,
-    ) -> Option<Position> {
-        if self.ecs.hp(enemy_id).map(|h| h.current).unwrap_or(0) <= 1 {
-            self.flee_step(enemy_pos, player_pos)
-        } else {
-            self.next_step_toward_player(enemy_id, player_pos)
-        }
-    }
-
-    /// Bat: always random movement, erratic.
-    fn bat_behavior(&self, enemy_pos: Position) -> Option<Position> {
-        self.random_step(enemy_pos)
-    }
-
-    fn next_step_toward_player(
-        &self,
-        enemy_id: EntityId,
-        player_pos: Position,
-    ) -> Option<Position> {
-        let path = self.enemy_ai_path(enemy_id);
-
-        if !path.success || path.steps.len() < 2 {
-            return None;
-        }
-
-        let next_pos = self.map.position_for_idx(path.steps[1]);
-        if next_pos == player_pos || self.ecs.entity_at_except(next_pos, enemy_id).is_some() {
-            return None;
-        }
-
-        Some(next_pos)
-    }
-
-    /// Pick a random adjacent walkable tile.
-    fn random_step(&self, pos: Position) -> Option<Position> {
-        let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
-        let idx = (pos
-            .x
-            .wrapping_mul(7)
-            .wrapping_add(pos.y.wrapping_mul(3))
-            .wrapping_add(self.turn as i32)) as usize;
-        for i in 0..4 {
-            let (dx, dy) = dirs[(idx + i) % 4];
-            let candidate = Position::new(pos.x + dx, pos.y + dy);
-            if self.map.is_walkable(candidate)
-                && candidate != self.player_pos()
-                && self.ecs.entity_at(candidate).is_none()
-            {
-                return Some(candidate);
-            }
-        }
-        None
-    }
-
-    /// Move to an adjacent tile that increases distance from the threat.
-    fn flee_step(&self, pos: Position, threat: Position) -> Option<Position> {
-        let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
-        let mut best: Option<Position> = None;
-        let mut best_dist = pos.manhattan_distance(threat);
-        for (dx, dy) in &dirs {
-            let candidate = Position::new(pos.x + dx, pos.y + dy);
-            if self.map.is_walkable(candidate)
-                && candidate != self.player_pos()
-                && self.ecs.entity_at(candidate).is_none()
-            {
-                let dist = candidate.manhattan_distance(threat);
-                if dist > best_dist {
-                    best_dist = dist;
-                    best = Some(candidate);
+            match self.eval_ai_body(&body_form, enemy_id) {
+                Ok(_) => {}
+                Err(err) => {
+                    self.event_log.push(format!(
+                        "AI error in '{}' for {}: {}",
+                        rule_name,
+                        self.ecs.name(enemy_id),
+                        err
+                    ));
                 }
             }
         }
-        best
+    }
+
+    /// Mini-interpreter for AI rule bodies. Evaluates a Glyph AST with `&mut self`
+    /// to drive enemy actions. Supports `if`, function calls, symbol resolution
+    /// (`*self*`, `*player*`), and the AI builtins.
+    fn eval_ai_body(&mut self, form: &Value, self_id: EntityId) -> Result<Value, String> {
+        match form {
+            Value::List(items) => {
+                if items.is_empty() {
+                    return Ok(Value::Nil);
+                }
+                // Special form: (if test then else?)
+                if let Value::Symbol(sym) = &items[0] {
+                    if sym.name == "if" {
+                        let test = self.eval_ai_body(&items[1], self_id)?;
+                        return if is_truthy(&test) {
+                            self.eval_ai_body(&items[2], self_id)
+                        } else if items.len() > 3 {
+                            self.eval_ai_body(&items[3], self_id)
+                        } else {
+                            Ok(Value::Nil)
+                        };
+                    }
+                }
+                // Function call: (fn-name arg...)
+                let fn_name = match &items[0] {
+                    Value::Symbol(sym) => sym.name.clone(),
+                    other => return Err(format!("cannot call {:?} as a function", other)),
+                };
+                let args: Result<Vec<Value>, String> = items[1..]
+                    .iter()
+                    .map(|arg| self.eval_ai_body(arg, self_id))
+                    .collect();
+                self.call_ai_builtin(&fn_name, &args?)
+            }
+            Value::Symbol(sym) => match sym.name.as_str() {
+                "*self*" => Ok(Value::I64(self_id.raw() as i64)),
+                "*player*" => Ok(Value::I64(self.player_id.raw() as i64)),
+                name => Err(format!("unbound symbol: {}", name)),
+            },
+            Value::I64(_) | Value::F64(_) | Value::Bool(_) | Value::Nil => Ok(form.clone()),
+            other => Err(format!("unexpected form in AI rule: {:?}", other)),
+        }
+    }
+
+    fn call_ai_builtin(&mut self, name: &str, args: &[Value]) -> Result<Value, String> {
+        match name {
+            "adjacent?" => {
+                let a = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
+                let b = entity_id_from_value(args.get(1).ok_or("missing arg")?)?;
+                let pa = self.ecs.position(a);
+                let pb = self.ecs.position(b);
+                Ok(Value::Bool(match (pa, pb) {
+                    (Some(pa), Some(pb)) => pa.manhattan_distance(pb) == 1,
+                    _ => false,
+                }))
+            }
+            "attack!" => {
+                let attacker = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
+                let target = entity_id_from_value(args.get(1).ok_or("missing arg")?)?;
+                let dmg = i64_from_value(args.get(2).ok_or("missing arg")?)? as i32;
+                if !self.ecs.is_alive(target) || !self.ecs.is_alive(attacker) {
+                    return Ok(Value::Nil);
+                }
+                if target == self.player_id && self.blocking {
+                    self.event_log.push(format!(
+                        "You block the {}'s attack.",
+                        self.ecs.name(attacker)
+                    ));
+                } else {
+                    self.ecs.damage(target, dmg);
+                    let attacker_name = self.ecs.name(attacker);
+                    if target == self.player_id {
+                        self.event_log.push(format!(
+                            "The {} attacks you for {} damage.",
+                            attacker_name, dmg
+                        ));
+                    } else {
+                        self.event_log.push(format!(
+                            "The {} attacks the {} for {} damage.",
+                            attacker_name,
+                            self.ecs.name(target),
+                            dmg
+                        ));
+                    }
+                }
+                Ok(Value::Nil)
+            }
+            "step-toward!" => {
+                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
+                let target = entity_id_from_value(args.get(1).ok_or("missing arg")?)?;
+                let _enemy_pos = self.ecs.position(entity);
+                let target_pos = match self.ecs.position(target) {
+                    Some(p) => p,
+                    None => return Ok(Value::Bool(false)),
+                };
+                let path = self.enemy_ai_path(entity);
+                if !path.success || path.steps.len() < 2 {
+                    return Ok(Value::Bool(false));
+                }
+                let next_pos = self.map.position_for_idx(path.steps[1]);
+                if next_pos == target_pos
+                    || !self.map.is_walkable(next_pos)
+                    || self.ecs.entity_at_except(next_pos, entity).is_some()
+                {
+                    return Ok(Value::Bool(false));
+                }
+                self.ecs.set_position(entity, next_pos);
+                Ok(Value::Bool(true))
+            }
+            "random-step!" => {
+                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
+                let pos = match self.ecs.position(entity) {
+                    Some(p) => p,
+                    None => return Ok(Value::Bool(false)),
+                };
+                let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
+                let idx = (pos
+                    .x
+                    .wrapping_mul(7)
+                    .wrapping_add(pos.y.wrapping_mul(3))
+                    .wrapping_add(self.turn as i32)) as usize;
+                let player_pos = self.player_pos();
+                for i in 0..4 {
+                    let (dx, dy) = dirs[(idx + i) % 4];
+                    let candidate = Position::new(pos.x + dx, pos.y + dy);
+                    if self.map.is_walkable(candidate)
+                        && candidate != player_pos
+                        && self.ecs.entity_at(candidate).is_none()
+                    {
+                        self.ecs.set_position(entity, candidate);
+                        return Ok(Value::Bool(true));
+                    }
+                }
+                Ok(Value::Bool(false))
+            }
+            "flee-step!" => {
+                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
+                let threat = entity_id_from_value(args.get(1).ok_or("missing arg")?)?;
+                let pos = match self.ecs.position(entity) {
+                    Some(p) => p,
+                    None => return Ok(Value::Bool(false)),
+                };
+                let threat_pos = match self.ecs.position(threat) {
+                    Some(p) => p,
+                    None => return Ok(Value::Bool(false)),
+                };
+                let dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
+                let mut best: Option<Position> = None;
+                let mut best_dist = pos.manhattan_distance(threat_pos);
+                let player_pos = self.player_pos();
+                for (dx, dy) in &dirs {
+                    let candidate = Position::new(pos.x + dx, pos.y + dy);
+                    if self.map.is_walkable(candidate)
+                        && candidate != player_pos
+                        && self.ecs.entity_at(candidate).is_none()
+                    {
+                        let dist = candidate.manhattan_distance(threat_pos);
+                        if dist > best_dist {
+                            best_dist = dist;
+                            best = Some(candidate);
+                        }
+                    }
+                }
+                if let Some(next) = best {
+                    self.ecs.set_position(entity, next);
+                    Ok(Value::Bool(true))
+                } else {
+                    Ok(Value::Bool(false))
+                }
+            }
+            "roll-odds?" => {
+                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
+                let prob = f64_from_value(args.get(1).ok_or("missing arg")?)?;
+                let pos = match self.ecs.position(entity) {
+                    Some(p) => p,
+                    None => return Ok(Value::Bool(false)),
+                };
+                let hash = (pos.x as u64)
+                    .wrapping_mul(13)
+                    .wrapping_add((pos.y as u64).wrapping_mul(7))
+                    .wrapping_add(self.turn);
+                let threshold = (prob * 100.0) as u64;
+                Ok(Value::Bool(hash % 100 < threshold))
+            }
+            "hp" => {
+                let entity = entity_id_from_value(args.get(0).ok_or("missing arg")?)?;
+                let hp = self.ecs.hp(entity).map(|h| h.current).unwrap_or(0);
+                Ok(Value::I64(hp as i64))
+            }
+            "<=" => {
+                let a = i64_from_value(args.get(0).ok_or("missing arg")?)?;
+                let b = i64_from_value(args.get(1).ok_or("missing arg")?)?;
+                Ok(Value::Bool(a <= b))
+            }
+            _ => Err(format!("unknown AI builtin: {}", name)),
+        }
     }
 
     #[cfg(test)]
@@ -603,6 +809,33 @@ impl World {
                         self.console_output = msg;
                     }
                     None => {
+                        // Check for do-attack sentinel
+                        if let Value::Keyword(ref kw) = last {
+                            let dir = match kw.name.as_str() {
+                                "player-attack-north" => Some(Direction::North),
+                                "player-attack-south" => Some(Direction::South),
+                                "player-attack-east" => Some(Direction::East),
+                                "player-attack-west" => Some(Direction::West),
+                                "player-attack-facing" => Some(self.player_facing),
+                                _ => None,
+                            };
+                            if let Some(direction) = dir {
+                                if !self.player_can_attack {
+                                    self.console_output =
+                                        "You don't know how to attack yet. Find the wizard.".into();
+                                    self.event_log.push("You flail uselessly.");
+                                } else {
+                                    self.player_facing = direction;
+                                    self.attack_in_direction(direction);
+                                    self.finish_tick();
+                                    self.console_output =
+                                        format!("You attack {:?}. Turn {}.", direction, self.turn);
+                                }
+                                self.console_buffer.clear();
+                                return;
+                            }
+                        }
+
                         if last == glyph::kw("quit") {
                             self.console_output = "Quitting. Goodbye.".to_string();
                             self.event_log.push("Quitting. Goodbye.");
@@ -628,6 +861,32 @@ impl World {
     }
 }
 
+fn entity_id_from_value(v: &Value) -> Result<EntityId, String> {
+    match v {
+        Value::I64(n) => Ok(EntityId::new(*n as usize)),
+        other => Err(format!("expected entity id (int), got {:?}", other)),
+    }
+}
+
+fn i64_from_value(v: &Value) -> Result<i64, String> {
+    match v {
+        Value::I64(n) => Ok(*n),
+        other => Err(format!("expected int, got {:?}", other)),
+    }
+}
+
+fn f64_from_value(v: &Value) -> Result<f64, String> {
+    match v {
+        Value::F64(n) => Ok(*n),
+        Value::I64(n) => Ok(*n as f64),
+        other => Err(format!("expected number, got {:?}", other)),
+    }
+}
+
+fn is_truthy(v: &Value) -> bool {
+    !matches!(v, Value::Bool(false) | Value::Nil)
+}
+
 fn setup_glyph_env() -> Env {
     let env = Env::extend(&glyph::default_env());
     env.bind(
@@ -644,6 +903,13 @@ fn setup_glyph_env() -> Env {
             func: builtin_quit,
         }),
     );
+    env.bind(
+        "do-attack",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "do-attack",
+            func: builtin_do_attack,
+        }),
+    );
     env
 }
 
@@ -653,6 +919,50 @@ fn builtin_quit(
     _opts: &glyph::SandboxOptions,
 ) -> glyph::EvalResult<Value> {
     Ok(glyph::kw("quit"))
+}
+
+fn parse_attack_direction(value: &Value) -> Option<Direction> {
+    match value {
+        Value::Keyword(kw) => match kw.name.as_str() {
+            "north" => Some(Direction::North),
+            "south" => Some(Direction::South),
+            "east" => Some(Direction::East),
+            "west" => Some(Direction::West),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn builtin_do_attack(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
+    if args.is_empty() {
+        return Ok(glyph::kw("player-attack-facing"));
+    }
+    if args.len() != 1 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 1,
+            got: args.len(),
+        });
+    }
+    match parse_attack_direction(&args[0]) {
+        Some(dir) => {
+            let sentinel = match dir {
+                Direction::North => "player-attack-north",
+                Direction::South => "player-attack-south",
+                Direction::East => "player-attack-east",
+                Direction::West => "player-attack-west",
+            };
+            Ok(glyph::kw(sentinel))
+        }
+        None => Err(glyph::EvalError::TypeError {
+            expected: "direction keyword (:north, :south, :east, :west)",
+            got: format!("{}", args[0]),
+        }),
+    }
 }
 
 fn builtin_help(
@@ -702,7 +1012,9 @@ Syntax:
 
 Console commands (game-specific):
   (help)        — show this help text
-  (quit)        — exit the game"
+  (quit)        — exit the game
+  (do-attack :dir) — attack adjacent enemy in direction (:north/:south/:east/:west)
+  (do-attack)   — attack in current facing direction"
             .into(),
     ))
 }
@@ -849,5 +1161,161 @@ mod tests {
         assert!(!lit.contains(&Position::new(2, 5)));
         assert!(lit.contains(&Position::new(8, 8)));
         assert!(!lit.contains(&Position::new(8, 9)));
+    }
+
+    // --- Helpless phase tests ---
+
+    #[test]
+    fn helpless_player_bump_deals_no_damage() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = false;
+        let enemy = single_enemy(&world);
+        let initial_hp = enemy.hp.current;
+
+        world.apply_intent(Intent::Move(Direction::East));
+
+        let enemy_after = single_enemy(&world);
+        assert_eq!(enemy_after.hp.current, initial_hp);
+        assert!(world.event_log.contains("helplessly shove"));
+    }
+
+    #[test]
+    fn armed_player_bump_deals_damage() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = true;
+
+        world.apply_intent(Intent::Move(Direction::East));
+
+        let enemy_after = single_enemy(&world);
+        assert_eq!(enemy_after.hp.current, 2); // Slime starts at 3
+        assert!(world.event_log.contains("strike"));
+    }
+
+    #[test]
+    fn helpless_attack_key_flails() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.player_can_attack = false;
+
+        world.apply_intent(Intent::Attack);
+
+        assert_eq!(world.turn, 1);
+        assert!(world.event_log.contains("flail"));
+    }
+
+    #[test]
+    fn attack_key_hits_enemy_in_facing_direction() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = true;
+        world.player_facing = Direction::East;
+
+        world.apply_intent(Intent::Attack);
+
+        assert_eq!(world.turn, 1);
+        assert_eq!(world.player_pos(), Position::new(5, 5)); // didn't move
+        assert_eq!(single_enemy(&world).hp.current, 2); // took 1 damage
+        assert!(world.event_log.contains("strike"));
+    }
+
+    #[test]
+    fn attack_key_swings_at_empty_air() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.player_can_attack = true;
+        world.player_facing = Direction::North;
+
+        world.apply_intent(Intent::Attack);
+
+        assert_eq!(world.turn, 1);
+        assert!(world.event_log.contains("empty air"));
+    }
+
+    // --- Wizard tests ---
+
+    #[test]
+    fn wizard_teaches_and_heals() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        let wizard_id = world.ecs.spawn_wizard(Position::new(6, 5));
+        world.wizard_id = Some(wizard_id);
+        world.ecs.set_hp(
+            world.player_id,
+            Hp {
+                current: 3,
+                max: 12,
+            },
+        );
+        world.player_can_attack = false;
+        world.wizard_taught = false;
+
+        world.apply_intent(Intent::Move(Direction::East));
+
+        assert!(world.player_can_attack);
+        assert!(world.wizard_taught);
+        assert_eq!(world.player_hp().current, 12);
+        assert!(world.event_log.contains("art of striking"));
+    }
+
+    #[test]
+    fn wizard_revisit_heals_but_does_not_reteach() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        let wizard_id = world.ecs.spawn_wizard(Position::new(6, 5));
+        world.wizard_id = Some(wizard_id);
+        world.player_can_attack = true;
+        world.wizard_taught = true;
+        world.ecs.set_hp(
+            world.player_id,
+            Hp {
+                current: 5,
+                max: 12,
+            },
+        );
+
+        world.apply_intent(Intent::Move(Direction::East));
+
+        assert!(world.ecs.is_alive(wizard_id));
+        assert_eq!(world.player_hp().current, 12);
+        assert!(world.event_log.contains("already know"));
+    }
+
+    #[test]
+    fn bumping_wizard_does_not_damage_it() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        let wizard_id = world.ecs.spawn_wizard(Position::new(6, 5));
+        world.wizard_id = Some(wizard_id);
+        world.player_can_attack = true;
+
+        world.apply_intent(Intent::Move(Direction::East));
+
+        assert!(world.ecs.is_alive(wizard_id));
+        assert_eq!(world.ecs.hp(wizard_id).unwrap().current, 20);
+    }
+
+    // --- do-attack builtin tests ---
+
+    #[test]
+    fn do_attack_builtin_returns_direction_sentinel() {
+        let env = setup_glyph_env();
+        let forms = crate::glyph::read_string("(do-attack :east)").unwrap();
+        let result =
+            crate::glyph::eval_with_opts(&forms[0], &env, crate::glyph::SandboxOptions::default())
+                .unwrap();
+        assert_eq!(result, crate::glyph::kw("player-attack-east"));
+    }
+
+    #[test]
+    fn do_attack_builtin_no_args_returns_facing_sentinel() {
+        let env = setup_glyph_env();
+        let forms = crate::glyph::read_string("(do-attack)").unwrap();
+        let result =
+            crate::glyph::eval_with_opts(&forms[0], &env, crate::glyph::SandboxOptions::default())
+                .unwrap();
+        assert_eq!(result, crate::glyph::kw("player-attack-facing"));
+    }
+
+    #[test]
+    fn do_attack_rejects_non_direction() {
+        let env = setup_glyph_env();
+        let forms = crate::glyph::read_string("(do-attack :up)").unwrap();
+        let result =
+            crate::glyph::eval_with_opts(&forms[0], &env, crate::glyph::SandboxOptions::default());
+        assert!(result.is_err());
     }
 }

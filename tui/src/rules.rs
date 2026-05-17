@@ -1,8 +1,11 @@
 //! Structured rule registry for the Xlyph prototype.
 //!
-//! Each rule has an ID, name, phase, cost, and source lines. The `RuleRegistry`
-//! is populated at init and read by the inspector, console queries, and renderer.
+//! Each rule has an ID, name, phase, cost, source lines, and a pre-parsed body
+//! form. The `RuleRegistry` is populated at init and read by the inspector,
+//! console queries, renderer, and the AI mini-interpreter.
 //! In this phase rules are static; overlays and patching come later.
+
+use crate::glyph::{self, Value};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RulePhase {
@@ -23,11 +26,23 @@ pub struct Rule {
     pub phase: RulePhase,
     pub cost: RuleCost,
     pub source_lines: &'static [&'static str],
+    pub body_form: Value,
 }
 
 #[derive(Clone, Debug)]
 pub struct RuleRegistry {
     rules: Vec<Rule>,
+}
+
+fn parse_rule_body(source_lines: &[&str]) -> Value {
+    let source = source_lines.join("\n");
+    let forms = glyph::read_string(&source).expect("rule source must parse as valid Glyph");
+    if let Value::List(items) = &forms[0] {
+        if items.len() >= 4 {
+            return items[3].clone();
+        }
+    }
+    panic!("rule source must be a (defrule name meta body) form");
 }
 
 impl RuleRegistry {
@@ -42,10 +57,21 @@ impl RuleRegistry {
                     source_lines: &[
                         "(defrule slime-hunt",
                         "  {:phase :enemy-ai :cost :tick}",
-                        "  (if (adjacent? slime player)",
-                        "    (attack! slime player 1)",
-                        "    (step-toward! slime player)))",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    (if (roll-odds? *self* 0.5)",
+                        "      (random-step! *self*)",
+                        "      (step-toward! *self* *player*))))",
                     ],
+                    body_form: parse_rule_body(&[
+                        "(defrule slime-hunt",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    (if (roll-odds? *self* 0.5)",
+                        "      (random-step! *self*)",
+                        "      (step-toward! *self* *player*))))",
+                    ]),
                 },
                 Rule {
                     id: "flashlight",
@@ -59,6 +85,77 @@ impl RuleRegistry {
                         "                player.facing",
                         "                {:radius 12 :spread-dot 0.70}))",
                     ],
+                    body_form: parse_rule_body(&[
+                        "(defrule flashlight",
+                        "  {:phase :render :cost :free}",
+                        "  (raycast-cone player.pos",
+                        "                player.facing",
+                        "                {:radius 12 :spread-dot 0.70}))",
+                    ]),
+                },
+                Rule {
+                    id: "goblin-patrol",
+                    name: "goblin-patrol",
+                    phase: RulePhase::EnemyAi,
+                    cost: RuleCost::Tick,
+                    source_lines: &[
+                        "(defrule goblin-patrol",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    (if (<= (hp *self*) 1)",
+                        "      (flee-step! *self* *player*)",
+                        "      (step-toward! *self* *player*))))",
+                    ],
+                    body_form: parse_rule_body(&[
+                        "(defrule goblin-patrol",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    (if (<= (hp *self*) 1)",
+                        "      (flee-step! *self* *player*)",
+                        "      (step-toward! *self* *player*))))",
+                    ]),
+                },
+                Rule {
+                    id: "bat-flutter",
+                    name: "bat-flutter",
+                    phase: RulePhase::EnemyAi,
+                    cost: RuleCost::Tick,
+                    source_lines: &[
+                        "(defrule bat-flutter",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    (random-step! *self*)))",
+                    ],
+                    body_form: parse_rule_body(&[
+                        "(defrule bat-flutter",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    (random-step! *self*)))",
+                    ]),
+                },
+                Rule {
+                    id: "ogre-charge",
+                    name: "ogre-charge",
+                    phase: RulePhase::EnemyAi,
+                    cost: RuleCost::Tick,
+                    source_lines: &[
+                        "(defrule ogre-charge",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    (step-toward! *self* *player*)))",
+                    ],
+                    body_form: parse_rule_body(&[
+                        "(defrule ogre-charge",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    (step-toward! *self* *player*)))",
+                    ]),
                 },
             ],
         }
@@ -92,9 +189,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn core_registry_has_two_rules() {
+    fn core_registry_has_five_rules() {
         let registry = RuleRegistry::core();
-        assert_eq!(registry.len(), 2);
+        assert_eq!(registry.len(), 5);
     }
 
     #[test]
@@ -125,6 +222,15 @@ mod tests {
     fn iter_visits_all_rules() {
         let registry = RuleRegistry::core();
         let ids: Vec<&str> = registry.iter().map(|r| r.id).collect();
-        assert_eq!(ids, vec!["slime-hunt", "flashlight"]);
+        assert_eq!(
+            ids,
+            vec![
+                "slime-hunt",
+                "flashlight",
+                "goblin-patrol",
+                "bat-flutter",
+                "ogre-charge"
+            ]
+        );
     }
 }

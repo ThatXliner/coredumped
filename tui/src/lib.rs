@@ -13,6 +13,7 @@ pub mod game;
 pub mod glyph;
 pub mod input;
 pub mod map;
+pub mod no_hit;
 pub mod render;
 pub mod rules;
 
@@ -21,4 +22,5 @@ pub use entity::{Direction, EntityId, EntityKind, EntityView, Hp, Position, Rend
 pub use event_log::EventLog;
 pub use game::{ActionCost, Intent, Mode, World};
 pub use map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH};
+pub use no_hit::{detect_no_hit_route, NoHitAction, NoHitAnalysis, NoHitOptions};
 pub use rules::{Rule, RuleCost, RulePhase, RuleRegistry};

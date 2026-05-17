@@ -10,6 +10,7 @@ pub mod ecs;
 pub mod entity;
 pub mod event_log;
 pub mod game;
+pub mod glyph;
 pub mod input;
 pub mod map;
 pub mod render;

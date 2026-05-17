@@ -12,7 +12,7 @@ use crate::{
     entity::{Direction, EntityId, EntityView, Hp, Position},
     event_log::EventLog,
     glyph::{self, Env, Value},
-    map::{Map, MAP_HEIGHT, MAP_WIDTH},
+    map::{Map, MapGenOutput, TileType, MAP_HEIGHT, MAP_WIDTH},
     rules::RuleRegistry,
 };
 
@@ -34,6 +34,8 @@ pub enum Intent {
     ConsoleBackspace,
     ConsoleSubmit,
     CloseOverlay,
+    Descend,
+    Ascend,
     Quit,
     Noop,
 }
@@ -52,6 +54,7 @@ pub struct World {
     pub registry: RuleRegistry,
     pub player_id: EntityId,
     pub player_facing: Direction,
+    pub depth: u32,
     pub turn: u64,
     pub mode: Mode,
     pub event_log: EventLog,
@@ -84,6 +87,7 @@ impl World {
             registry,
             player_id,
             player_facing: Direction::East,
+            depth: 0,
             turn: 0,
             mode: Mode::Normal,
             event_log,
@@ -95,30 +99,34 @@ impl World {
         }
     }
 
-    /// Create a world with a procedurally generated dungeon.
+    /// Create a world with a procedurally generated dungeon starting at depth 1.
     pub fn new_game() -> Self {
-        let (map, player_start, enemy_spawns) = Map::generate(MAP_WIDTH, MAP_HEIGHT);
+        let depth = 1;
+        let gen = Self::generate_level(depth);
+        let map = gen.map;
+        let player_start = gen.player_start;
+        let combat_spawns = gen.combat_spawns.clone();
+        let boss_spawns = gen.boss_spawns.clone();
 
         let mut event_log = EventLog::new();
         event_log.push("Xlyph runtime booted.");
         event_log.push("Move with arrows or hjkl. ` opens the console. i inspects code.");
         event_log.push("Your flashlight ray-casts in the direction you last moved.");
+        event_log.push(format!("Depth {depth}. Find the stairs down."));
 
         let registry = RuleRegistry::core();
         let mut ecs = Ecs::new();
         let player_id = ecs.spawn_player(player_start);
-        for spawn in enemy_spawns.iter().take(4) {
-            ecs.spawn_slime(*spawn);
-        }
 
         let glyph_env = setup_glyph_env();
 
-        Self {
+        let mut world = Self {
             map,
             ecs,
             registry,
             player_id,
             player_facing: Direction::East,
+            depth,
             turn: 0,
             mode: Mode::Normal,
             event_log,
@@ -127,7 +135,10 @@ impl World {
             glyph_env,
             inspector_scroll: 0,
             running: true,
-        }
+        };
+
+        world.spawn_level_enemies_from(&combat_spawns, &boss_spawns);
+        world
     }
 
     pub fn apply_intent(&mut self, intent: Intent) -> ActionCost {
@@ -188,6 +199,24 @@ impl World {
                 self.mode = Mode::Normal;
                 ActionCost::Free
             }
+            Intent::Descend => {
+                if self.map.tile(self.player_pos()) == TileType::StairsDown {
+                    self.descend();
+                    ActionCost::Tick
+                } else {
+                    self.event_log.push("There are no stairs going down here.");
+                    ActionCost::Free
+                }
+            }
+            Intent::Ascend => {
+                if self.map.tile(self.player_pos()) == TileType::StairsUp {
+                    self.ascend();
+                    ActionCost::Tick
+                } else {
+                    self.event_log.push("There are no stairs going up here.");
+                    ActionCost::Free
+                }
+            }
             Intent::Quit => {
                 self.running = false;
                 ActionCost::Quit
@@ -234,6 +263,102 @@ impl World {
             self.map.idx(self.player_pos()),
             &self.map,
         )
+    }
+
+    /// Generate a level appropriate for the given depth.
+    /// Depth 1, 3, 5... = rooms-and-corridors; depth 2, 4, 6... = caves.
+    fn generate_level(depth: u32) -> MapGenOutput {
+        if depth % 2 == 0 {
+            Map::generate_cave(depth)
+        } else {
+            Map::generate(MAP_WIDTH, MAP_HEIGHT, depth)
+        }
+    }
+
+    /// Spawn enemies on a freshly generated level.
+    fn spawn_level_enemies_from(&mut self, combat_spawns: &[Position], boss_spawns: &[Position]) {
+        for pos in combat_spawns {
+            self.spawn_enemy_at(*pos, self.depth);
+        }
+        for pos in boss_spawns {
+            self.spawn_boss_at(*pos);
+        }
+    }
+
+    /// Spawn a depth-appropriate enemy at the given position.
+    fn spawn_enemy_at(&mut self, pos: Position, depth: u32) {
+        let hash = (pos.x.wrapping_mul(31).wrapping_add(pos.y.wrapping_mul(17))) as u32;
+        let roll = (hash % 100) as i32;
+        match depth {
+            1 => {
+                self.ecs.spawn_slime(pos);
+            }
+            2..=3 => {
+                if roll < 60 {
+                    self.ecs.spawn_slime(pos);
+                } else if roll < 90 {
+                    self.ecs.spawn_goblin(pos);
+                } else {
+                    self.ecs.spawn_bat(pos);
+                }
+            }
+            _ => {
+                if roll < 30 {
+                    self.ecs.spawn_slime(pos);
+                } else if roll < 65 {
+                    self.ecs.spawn_goblin(pos);
+                } else if roll < 90 {
+                    self.ecs.spawn_bat(pos);
+                } else {
+                    self.ecs.spawn_ogre(pos);
+                }
+            }
+        }
+    }
+
+    fn spawn_boss_at(&mut self, pos: Position) {
+        self.ecs.spawn_ogre(pos);
+    }
+
+    fn descend(&mut self) {
+        self.depth += 1;
+        let gen = Self::generate_level(self.depth);
+        let player_start = gen.player_start;
+        let combat_spawns = gen.combat_spawns;
+        let boss_spawns = gen.boss_spawns;
+        self.clear_all_enemies();
+        self.ecs.set_position(self.player_id, player_start);
+        self.map = gen.map;
+        self.spawn_level_enemies_from(&combat_spawns, &boss_spawns);
+        self.event_log
+            .push(format!("You descend to depth {}.", self.depth));
+        self.turn += 1;
+    }
+
+    fn ascend(&mut self) {
+        if self.depth <= 1 {
+            self.event_log.push("You are already at the surface.");
+            return;
+        }
+        self.depth -= 1;
+        let gen = Self::generate_level(self.depth);
+        let player_start = gen.player_start;
+        let combat_spawns = gen.combat_spawns;
+        let boss_spawns = gen.boss_spawns;
+        self.clear_all_enemies();
+        self.ecs.set_position(self.player_id, player_start);
+        self.map = gen.map;
+        self.spawn_level_enemies_from(&combat_spawns, &boss_spawns);
+        self.event_log
+            .push(format!("You ascend to depth {}.", self.depth));
+        self.turn += 1;
+    }
+
+    fn clear_all_enemies(&mut self) {
+        let ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
+        for id in ids {
+            self.ecs.remove(id);
+        }
     }
 
     fn apply_player_move(&mut self, direction: Direction) {
@@ -319,14 +444,6 @@ impl World {
         }
 
         Some(next_pos)
-    }
-
-    #[cfg(test)]
-    fn clear_enemies(&mut self) {
-        let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
-        for enemy_id in enemy_ids {
-            self.ecs.remove(enemy_id);
-        }
     }
 
     #[cfg(test)]
@@ -425,11 +542,19 @@ fn setup_glyph_env() -> Env {
     env
 }
 
-fn builtin_quit(_args: &[Value], _env: &Env, _opts: &glyph::SandboxOptions) -> glyph::EvalResult<Value> {
+fn builtin_quit(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
     Ok(glyph::kw("quit"))
 }
 
-fn builtin_help(_args: &[Value], _env: &Env, _opts: &glyph::SandboxOptions) -> glyph::EvalResult<Value> {
+fn builtin_help(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+) -> glyph::EvalResult<Value> {
     Ok(Value::String(
         "\
 Available special forms:
@@ -492,7 +617,7 @@ mod tests {
         let mut world = World::new();
         world.set_player_pos(Position::new(5, 5));
         world.ecs.set_hp(world.player_id, Hp::new(12));
-        world.clear_enemies();
+        world.clear_all_enemies();
         world.spawn_slime(enemy_pos);
         world.turn = 0;
         world.event_log = EventLog::new();

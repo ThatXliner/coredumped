@@ -210,6 +210,7 @@ mod tests {
             registry: RuleRegistry::core(),
             player_id,
             player_facing: Direction::East,
+            depth: 0,
             turn: 0,
             mode: crate::game::Mode::Normal,
             event_log: EventLog::new(),

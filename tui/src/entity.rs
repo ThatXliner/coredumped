@@ -88,6 +88,9 @@ impl Hp {
 pub enum EntityKind {
     Player,
     Slime,
+    Goblin,
+    Bat,
+    Ogre,
 }
 
 impl EntityKind {
@@ -95,6 +98,9 @@ impl EntityKind {
         match self {
             EntityKind::Player => '@',
             EntityKind::Slime => 's',
+            EntityKind::Goblin => 'g',
+            EntityKind::Bat => 'b',
+            EntityKind::Ogre => 'O',
         }
     }
 
@@ -102,6 +108,9 @@ impl EntityKind {
         match self {
             EntityKind::Player => "player",
             EntityKind::Slime => "slime",
+            EntityKind::Goblin => "goblin",
+            EntityKind::Bat => "bat",
+            EntityKind::Ogre => "ogre",
         }
     }
 }

@@ -53,6 +53,8 @@ fn render_map(ctx: &mut BTerm, world: &World, lit_tiles: &HashSet<Position>) {
             let pos = Position::new(x, y);
             let lit = lit_tiles.contains(&pos);
             let (glyph, fg) = match (world.map.tile(pos), lit) {
+                (TileType::StairsDown, _) => ('>', RGB::named(CYAN)),
+                (TileType::StairsUp, _) => ('<', RGB::named(MAGENTA)),
                 (TileType::Floor, true) => ('.', RGB::named(GOLD)),
                 (TileType::Wall, true) => ('#', RGB::named(LIGHT_YELLOW)),
                 (TileType::Floor, false) => ('.', RGB::named(DARK_GRAY)),
@@ -73,6 +75,12 @@ fn draw_entity(ctx: &mut BTerm, entity: EntityView, lit_tiles: &HashSet<Position
         (EntityKind::Player, _) => RGB::named(YELLOW),
         (EntityKind::Slime, true) => RGB::named(ORANGE),
         (EntityKind::Slime, false) => RGB::named(DARK_GREEN),
+        (EntityKind::Goblin, true) => RGB::named(RED),
+        (EntityKind::Goblin, false) => RGB::named(DARK_RED),
+        (EntityKind::Bat, true) => RGB::named(WHITE),
+        (EntityKind::Bat, false) => RGB::named(GRAY),
+        (EntityKind::Ogre, true) => RGB::named(MAGENTA),
+        (EntityKind::Ogre, false) => RGB::named(PURPLE),
     };
 
     ctx.set(
@@ -118,6 +126,14 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
         PANEL_X + 2,
         y,
         PANEL_WIDTH - 4,
+        &format!("depth: {}", world.depth),
+    );
+    y += 1;
+    print_clipped(
+        ctx,
+        PANEL_X + 2,
+        y,
+        PANEL_WIDTH - 4,
         &format!(
             "hp: {}/{}",
             world.player_hp().current,
@@ -138,7 +154,8 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
     y += 1;
     for line in [
         "hjkl/arrows move",
-        ". waits",
+        ". waits  > descend",
+        "< ascend",
         "i inspector",
         "` console",
         "esc/q quit",

@@ -13,22 +13,24 @@ use crate::{
 
 pub fn key_to_intent(key: VirtualKeyCode, shift: bool, world: &World) -> Intent {
     match world.mode {
-        Mode::Normal => normal_key_to_intent(key),
+        Mode::Normal => normal_key_to_intent(key, shift),
         Mode::Inspector => inspector_key_to_intent(key),
         Mode::Console => console_key_to_intent(key, shift),
     }
 }
 
-fn normal_key_to_intent(key: VirtualKeyCode) -> Intent {
-    match key {
-        VirtualKeyCode::Left | VirtualKeyCode::H => Intent::Move(Direction::West),
-        VirtualKeyCode::Right | VirtualKeyCode::L => Intent::Move(Direction::East),
-        VirtualKeyCode::Up | VirtualKeyCode::K => Intent::Move(Direction::North),
-        VirtualKeyCode::Down | VirtualKeyCode::J => Intent::Move(Direction::South),
-        VirtualKeyCode::Period => Intent::Wait,
-        VirtualKeyCode::I => Intent::ToggleInspector,
-        VirtualKeyCode::Grave => Intent::ToggleConsole,
-        VirtualKeyCode::Escape | VirtualKeyCode::Q => Intent::Quit,
+fn normal_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
+    match (key, shift) {
+        (VirtualKeyCode::Left, _) | (VirtualKeyCode::H, _) => Intent::Move(Direction::West),
+        (VirtualKeyCode::Right, _) | (VirtualKeyCode::L, _) => Intent::Move(Direction::East),
+        (VirtualKeyCode::Up, _) | (VirtualKeyCode::K, _) => Intent::Move(Direction::North),
+        (VirtualKeyCode::Down, _) | (VirtualKeyCode::J, _) => Intent::Move(Direction::South),
+        (VirtualKeyCode::Period, true) => Intent::Descend,
+        (VirtualKeyCode::Period, false) => Intent::Wait,
+        (VirtualKeyCode::Comma, true) => Intent::Ascend,
+        (VirtualKeyCode::I, _) => Intent::ToggleInspector,
+        (VirtualKeyCode::Grave, _) => Intent::ToggleConsole,
+        (VirtualKeyCode::Escape, _) | (VirtualKeyCode::Q, _) => Intent::Quit,
         _ => Intent::Noop,
     }
 }

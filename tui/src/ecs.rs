@@ -43,6 +43,18 @@ impl Ecs {
         self.spawn_actor(EntityKind::Slime, pos, Hp::new(3), true)
     }
 
+    pub fn spawn_goblin(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::Goblin, pos, Hp::new(5), true)
+    }
+
+    pub fn spawn_bat(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::Bat, pos, Hp::new(2), true)
+    }
+
+    pub fn spawn_ogre(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::Ogre, pos, Hp::new(10), true)
+    }
+
     pub fn remove(&mut self, id: EntityId) {
         self.entities.remove(&id);
         self.kinds.remove(&id);

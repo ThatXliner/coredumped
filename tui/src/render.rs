@@ -369,13 +369,9 @@ fn render_console(ctx: &mut BTerm, world: &World) {
         print_clipped(ctx, x + 2, y + 4, width - 4, &output);
     }
 
-    print_clipped(
-        ctx,
-        x + 2,
-        y + 6,
-        width - 4,
-        &format!("> {}", world.console_buffer),
-    );
+    ctx.print_color(x + 2, y + 6, RGB::named(WHITE), RGB::named(BLACK), "> ");
+    let spans = highlight::highlight(&world.console_buffer);
+    print_highlighted(ctx, x + 4, y + 6, width - 6, &spans);
 }
 
 fn draw_box(ctx: &mut BTerm, x: i32, y: i32, width: i32, height: i32, title: &str) {

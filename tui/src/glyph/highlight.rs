@@ -321,8 +321,8 @@ mod tests {
     #[test]
     fn test_special_forms() {
         let spans = highlight("(if true :ok :no)");
-        assert_eq!(spans[1].tok, Tok::Paren); // (
-        assert_eq!(spans[2].tok, Tok::Special); // if
+        assert_eq!(spans[0].tok, Tok::Paren); // (
+        assert_eq!(spans[1].tok, Tok::Special); // if
     }
 
     #[test]

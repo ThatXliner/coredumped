@@ -68,7 +68,7 @@ impl World {
             player_facing: Direction::East,
             enemies: vec![
                 Entity::slime(1, Position::new(19, 5)),
-                Entity::slime(2, Position::new(47, 18)),
+                Entity::slime(2, Position::new(45, 12)),
             ],
             turn: 0,
             mode: Mode::Normal,

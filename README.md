@@ -1,12 +1,18 @@
 # Xlyph
 
-Xlyph is a terminal roguelike about understanding, editing, and eventually
-rewriting the rules of the thing trying to kill you.
+Welcome, traveler.
+
+Before thee lies a dungeon of rules, lamps, slimes, and suspiciously readable
+machinery. Xlyph is a terminal roguelike about understanding, editing, and
+eventually rewriting the rules of the thing trying to kill you.
+
+Past this point, the scroll becomes plain.
 
 The current beta is a small playable vertical slice: a text-graphical dungeon,
-turn-based movement, pathing enemies, an inspector panel, an event log, and a
-stub console for future live queries. It is intentionally tiny, but the loop is
-real: every gameplay action advances the world exactly one tick.
+turn-based movement, pathing enemies, a directional flashlight, an inspector
+panel, an event log, and a stub console for future live queries. It is
+intentionally tiny, but the loop is real: every gameplay action advances the
+world exactly one tick.
 
 > Inspired by [xsofy](https://github.com/nooga/xsofy), which was inspired by
 > [Brogue](https://sites.google.com/site/broguegame/).
@@ -30,11 +36,13 @@ Beta vertical slice. Playable, small, and not balanced.
 What works now:
 
 - A fixed dungeon map rendered with `bracket-lib`
+- A real terminal backend through `bracket-lib`'s Crossterm support
 - Keyboard movement with arrow keys or Vim keys
 - Deterministic turn ticks
 - Wall bumps, waits, enemy bumps, and movement all consume a tick
 - UI-only actions such as inspector navigation and console typing are free
 - Enemies path toward the player and attack when adjacent
+- A warm directional flashlight that ray-casts from the player's facing
 - A right-side status/inspector panel
 - A bottom event log
 - A console overlay with placeholder query responses
@@ -44,7 +52,7 @@ What is not in this beta:
 
 - Procedural generation
 - Save files or replay
-- Field of view
+- Full field of view or fog of war
 - Inventory
 - A finished Glyph parser/runtime
 - Any claim that the game is fair yet
@@ -104,7 +112,9 @@ asks you to manipulate it.
 ## Architecture
 
 The beta uses [`bracket-lib`](https://docs.rs/bracket-lib) for rendering, input,
-geometry, colors, pathfinding, and the game loop.
+geometry, colors, pathfinding, and the game loop. Default OpenGL features are
+disabled; the prototype runs in the actual terminal through bracket-lib's
+Crossterm backend.
 
 The game state is intentionally plain Rust:
 

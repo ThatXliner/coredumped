@@ -14,11 +14,26 @@ use crate::{
 
 pub fn key_to_intent(key: VirtualKeyCode, shift: bool, world: &World) -> Intent {
     match world.mode {
-        Mode::Normal => normal_key_to_intent(key, shift),
+        Mode::Normal => {
+            let intent = normal_key_to_intent(key, shift);
+            if intent == Intent::Noop {
+                // Check player-defined keybindings for unhandled keys
+                if let Some(name) = key_to_binding_name(key, shift) {
+                    if world.bindings.contains_key(&name) {
+                        return Intent::ExecuteBinding(name);
+                    }
+                }
+            }
+            intent
+        }
         Mode::Inspector => inspector_key_to_intent(key),
         Mode::Console => console_key_to_intent(key, shift),
         Mode::Dead => dead_key_to_intent(key, shift),
     }
+}
+
+fn key_to_binding_name(key: VirtualKeyCode, shift: bool) -> Option<String> {
+    key_to_console_char(key, shift).map(|c| c.to_string())
 }
 
 fn normal_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {

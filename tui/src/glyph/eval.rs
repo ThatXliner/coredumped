@@ -953,10 +953,13 @@ fn builtin_print(
     args: &[Value],
     _env: &Env,
     _opts: &SandboxOptions,
-    _world: &mut World,
+    world: &mut World,
 ) -> EvalResult<Value> {
-    for arg in args {
-        print!("{}", arg);
+    for (i, arg) in args.iter().enumerate() {
+        if i > 0 {
+            world.console_output.push(' ');
+        }
+        world.console_output.push_str(&print_value(arg));
     }
     Ok(Value::Nil)
 }
@@ -965,13 +968,23 @@ fn builtin_println(
     args: &[Value],
     _env: &Env,
     _opts: &SandboxOptions,
-    _world: &mut World,
+    world: &mut World,
 ) -> EvalResult<Value> {
-    for arg in args {
-        print!("{}", arg);
+    for (i, arg) in args.iter().enumerate() {
+        if i > 0 {
+            world.console_output.push(' ');
+        }
+        world.console_output.push_str(&print_value(arg));
     }
-    println!();
+    world.console_output.push('\n');
     Ok(Value::Nil)
+}
+
+fn print_value(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        other => other.to_string(),
+    }
 }
 
 fn builtin_type_of(
@@ -1293,6 +1306,8 @@ pub fn default_env() -> Env {
     env.bind("empty?", builtin_fn("empty?", builtin_emptyq));
     env.bind("map", builtin_fn("map", builtin_map_fn));
 
+    env.bind("print", builtin_fn("print", builtin_print));
+    env.bind("println", builtin_fn("println", builtin_println));
     env.bind("print!", builtin_fn("print!", builtin_print));
     env.bind("println!", builtin_fn("println!", builtin_println));
     env.bind("slurp", builtin_fn("slurp", builtin_slurp));

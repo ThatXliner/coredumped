@@ -5,7 +5,9 @@
 //! systems that read or mutate those components: player intent handling,
 //! enemy AI, ticking, console state, and inspector state.
 
-use bracket_lib::prelude::{a_star_search, NavigationPath};
+use std::collections::HashMap;
+
+use bracket_lib::prelude::{a_star_search, NavigationPath, CYAN, DARK_GRAY, GREEN, ORANGE, RGB};
 
 use crate::{
     ai_builtins,
@@ -41,6 +43,7 @@ pub enum Intent {
     Attack,
     Respawn,
     Restart,
+    ExecuteBinding(String),
     Quit,
     Noop,
 }
@@ -91,6 +94,7 @@ impl World {
             player_can_attack: false,
             wizard_taught: false,
             wizard_id: None,
+            bindings: HashMap::new(),
         }
     }
 
@@ -135,6 +139,7 @@ impl World {
             player_can_attack: false,
             wizard_taught: false,
             wizard_id: None,
+            bindings: HashMap::new(),
         };
 
         world.spawn_level_enemies_from(&combat_spawns, &boss_spawns);
@@ -244,6 +249,10 @@ impl World {
             Intent::Restart => {
                 self.restart();
                 ActionCost::Free
+            }
+            Intent::ExecuteBinding(command) => {
+                self.execute_binding(&command);
+                ActionCost::Tick
             }
             Intent::Quit => {
                 self.running = false;
@@ -466,19 +475,25 @@ impl World {
                 .damage(target_id, 1)
                 .expect("combat targets should have an Hp component");
 
-            self.event_log
-                .push(format!("You strike the {target_name} for 1 damage."));
+            self.event_log.push_colored(
+                format!("You strike the {target_name} for 1 damage."),
+                RGB::named(ORANGE),
+            );
 
             if hp.current <= 0 {
-                self.event_log
-                    .push(format!("The {target_name} collapses into inert code."));
+                self.event_log.push_colored(
+                    format!("The {target_name} collapses into inert code."),
+                    RGB::named(ORANGE),
+                );
             }
             return;
         }
 
         self.ecs.set_position(self.player_id, target);
-        self.event_log
-            .push(format!("You move to {},{}.", target.x, target.y));
+        self.event_log.push_colored(
+            format!("You move to {},{}.", target.x, target.y),
+            RGB::named(DARK_GRAY),
+        );
     }
 
     /// Deal 1 damage to the first entity in the given direction. Does not move the player.
@@ -487,7 +502,10 @@ impl World {
         let target = self.player_pos().offset(dx, dy);
 
         if !self.map.is_walkable(target) {
-            self.event_log.push("You strike the wall. Nothing happens.");
+            self.event_log.push_colored(
+                "You strike the wall. Nothing happens.",
+                RGB::named(DARK_GRAY),
+            );
             return;
         }
 
@@ -498,26 +516,35 @@ impl World {
                 .damage(target_id, 1)
                 .expect("combat targets should have an Hp component");
 
-            self.event_log
-                .push(format!("You strike the {target_name} for 1 damage."));
+            self.event_log.push_colored(
+                format!("You strike the {target_name} for 1 damage."),
+                RGB::named(ORANGE),
+            );
 
             if hp.current <= 0 {
-                self.event_log
-                    .push(format!("The {target_name} collapses into inert code."));
+                self.event_log.push_colored(
+                    format!("The {target_name} collapses into inert code."),
+                    RGB::named(ORANGE),
+                );
             }
         } else {
-            self.event_log.push("You swing at empty air.");
+            self.event_log
+                .push_colored("You swing at empty air.", RGB::named(DARK_GRAY));
         }
     }
 
     fn interact_with_wizard(&mut self, _wizard_id: EntityId) {
         if self.wizard_taught {
-            self.event_log
-                .push("The wizard smiles. \"You already know the art of striking.\"");
+            self.event_log.push_colored(
+                "The wizard smiles. \"You already know the art of striking.\"",
+                RGB::named(CYAN),
+            );
             let max_hp = self.player_hp().max;
             self.ecs.set_hp(self.player_id, Hp::new(max_hp));
-            self.event_log
-                .push("The wizard taps your shoulder. You feel refreshed.");
+            self.event_log.push_colored(
+                "The wizard taps your shoulder. You feel refreshed.",
+                RGB::named(CYAN),
+            );
             return;
         }
 
@@ -526,21 +553,32 @@ impl World {
         self.player_can_attack = true;
         self.wizard_taught = true;
 
-        self.event_log.push("The wizard raises a glowing hand...");
         self.event_log
-            .push("\"Ah, a lost soul! Let me mend your wounds.\"");
-        self.event_log
-            .push("Warmth spreads through your body. HP fully restored.");
-        self.event_log
-            .push("\"Now — you are not helpless. I teach you the art of striking.\"");
-        self.event_log.push(
-            "Press `a` to attack in the direction you face, or open the console (`) and try:",
+            .push_colored("The wizard raises a glowing hand...", RGB::named(CYAN));
+        self.event_log.push_colored(
+            "\"Ah, a lost soul! Let me mend your wounds.\"",
+            RGB::named(CYAN),
+        );
+        self.event_log.push_colored(
+            "Warmth spreads through your body. HP fully restored.",
+            RGB::named(CYAN),
+        );
+        self.event_log.push_colored(
+            "\"Now — you are not helpless. I teach you the art of striking.\"",
+            RGB::named(CYAN),
+        );
+        self.event_log.push_colored(
+            "Open the console (`) and bind attack to a key:",
+            RGB::named(CYAN),
         );
         self.event_log
-            .push("  (do-attack :east)   (do-attack :west)");
+            .push_colored("  (bind-key :z (do-attack :facing))", RGB::named(GREEN));
+        self.event_log.push_colored(
+            "  (bind-key :x (do-attack :east))   (bind-key :c (do-attack :west))",
+            RGB::named(GREEN),
+        );
         self.event_log
-            .push("  (do-attack :north)  (do-attack :south)");
-        self.event_log.push("\"Strike with purpose, traveler.\"");
+            .push_colored("\"Strike with purpose, traveler.\"", RGB::named(CYAN));
     }
 
     fn finish_tick(&mut self) {
@@ -625,6 +663,7 @@ impl World {
             return;
         }
         self.event_log.push(format!("> {}", command));
+        self.console_output.clear();
         match glyph::read_string(&command) {
             Ok(forms) => {
                 let mut last = Value::Nil;
@@ -681,7 +720,7 @@ impl World {
                             self.running = false;
                             return;
                         }
-                        let msg = format!("=> {}", last);
+                        let msg = console_response(&self.console_output, &last);
                         self.event_log.push(&msg);
                         self.console_output = msg;
                     }
@@ -696,6 +735,85 @@ impl World {
             }
         }
         self.console_buffer.clear();
+    }
+
+    fn execute_binding(&mut self, key: &str) {
+        let command = match self.bindings.get(key) {
+            Some(cmd) => cmd.clone(),
+            None => return,
+        };
+
+        let forms = match glyph::read_string(&command) {
+            Ok(f) => f,
+            Err(e) => {
+                self.event_log
+                    .push(format!("Binding error: {}", e.report(&command)));
+                return;
+            }
+        };
+
+        let env = self.glyph_env.clone();
+        let mut last = Value::Nil;
+        let mut err = None;
+        for form in &forms {
+            match glyph::eval_with_opts(form, &env, glyph::SandboxOptions::default(), self) {
+                Ok(val) => last = val,
+                Err(e) => {
+                    err = Some(e);
+                    break;
+                }
+            }
+        }
+
+        if let Some(e) = err {
+            self.event_log.push(format!("Binding error: {}", e));
+            return;
+        }
+
+        // Check for do-attack sentinel
+        if let Value::Keyword(ref kw) = last {
+            let dir = match kw.name.as_str() {
+                "player-attack-north" => Some(Direction::North),
+                "player-attack-south" => Some(Direction::South),
+                "player-attack-east" => Some(Direction::East),
+                "player-attack-west" => Some(Direction::West),
+                "player-attack-facing" => Some(self.player_facing),
+                _ => None,
+            };
+            if let Some(direction) = dir {
+                if !self.player_can_attack {
+                    self.event_log
+                        .push("You don't know how to attack yet. Find the wizard.");
+                } else {
+                    self.player_facing = direction;
+                    self.attack_in_direction(direction);
+                }
+                return;
+            }
+        }
+    }
+}
+
+fn console_response(printed: &str, value: &Value) -> String {
+    let mut response = printed.trim_end_matches('\n').to_string();
+    if value != &Value::Nil {
+        if !response.is_empty() {
+            response.push('\n');
+        }
+        response.push_str("=> ");
+        response.push_str(&console_value_text(value));
+    }
+    if response.is_empty() {
+        "=> nil".to_string()
+    } else {
+        response
+    }
+}
+
+fn console_value_text(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        other => other.to_string(),
     }
 }
 
@@ -720,6 +838,13 @@ fn setup_glyph_env() -> Env {
         Value::Builtin(glyph::BuiltinFn {
             name: "do-attack",
             func: builtin_do_attack,
+        }),
+    );
+    env.bind(
+        "bind-key",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "bind-key",
+            func: builtin_bind_key,
         }),
     );
     ai_builtins::register_all(&env);
@@ -780,6 +905,42 @@ fn builtin_do_attack(
     }
 }
 
+fn builtin_bind_key(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 2 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    let key = match &args[0] {
+        Value::Keyword(kw) => kw.name.clone(),
+        other => {
+            return Err(glyph::EvalError::TypeError {
+                expected: "keyword (e.g. :z, :x)",
+                got: other.to_string(),
+            })
+        }
+    };
+    if key.is_empty() || key.len() != 1 {
+        return Err(glyph::EvalError::TypeError {
+            expected: "single-character keyword (e.g. :z, :x)",
+            got: format!(":{}", key),
+        });
+    }
+    let command = args[1].to_string();
+    world.bindings.insert(key.clone(), command.clone());
+    world.event_log.push_colored(
+        format!("Bound key '{}' to: {}", key, command),
+        RGB::named(GREEN),
+    );
+    Ok(args[1].clone())
+}
+
 fn builtin_help(
     _args: &[Value],
     _env: &Env,
@@ -828,7 +989,9 @@ Syntax:
 
 Console commands (game-specific):
   (help)        — show this help text
-  (quit)        — exit the game"
+  (quit)        — exit the game
+  (do-attack :dir) — strike in direction (:north/:south/:east/:west/:facing)
+  (bind-key :k (expr)) — bind a key to a Glyph expression"
             .into(),
     ))
 }
@@ -927,6 +1090,30 @@ mod tests {
 
         assert_eq!(world.turn, 0);
         assert_eq!(world.console_buffer, "xy");
+    }
+
+    #[test]
+    fn console_print_output_stays_in_console() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "(println \"hello\" \"glyph\")".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert_eq!(world.console_output, "hello glyph");
+        assert!(world.console_buffer.is_empty());
+    }
+
+    #[test]
+    fn console_string_results_are_readable_text() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "\"line one\nline two\"".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert_eq!(world.console_output, "=> line one\nline two");
+        assert!(world.console_buffer.is_empty());
     }
 
     #[test]

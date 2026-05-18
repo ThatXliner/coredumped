@@ -3,6 +3,8 @@
 //! Defined here so the glyph module can reference it in `BuiltinFn`'s
 //! signature without creating circular `use` confusion.
 
+use std::collections::HashMap;
+
 use crate::{
     ecs::Ecs,
     entity::{Direction, EntityId},
@@ -33,6 +35,7 @@ pub struct World {
     pub player_can_attack: bool,
     pub wizard_taught: bool,
     pub wizard_id: Option<EntityId>,
+    pub bindings: HashMap<String, String>,
 }
 
 impl World {
@@ -57,6 +60,7 @@ impl World {
             player_can_attack: false,
             wizard_taught: false,
             wizard_id: None,
+            bindings: HashMap::new(),
         }
     }
 }

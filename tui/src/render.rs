@@ -48,7 +48,7 @@ pub fn render(ctx: &mut BTerm, world: &World) {
         return;
     }
 
-    if world.mode == Mode::Inspector || world.mode == Mode::Console {
+    if world.mode == Mode::Inspector {
         render_overlay_backdrop(ctx);
     }
 
@@ -346,21 +346,32 @@ fn render_event_log(ctx: &mut BTerm, world: &World) {
     let start = entries.len().saturating_sub(visible_lines);
 
     for (line_index, entry) in entries[start..].iter().enumerate() {
-        print_clipped(
-            ctx,
-            LOG_X + 1,
-            LOG_Y + line_index as i32,
-            LOG_WIDTH - 4,
-            entry,
-        );
+        if let Some(color) = entry.color {
+            print_clipped_color(
+                ctx,
+                LOG_X + 1,
+                LOG_Y + line_index as i32,
+                LOG_WIDTH - 4,
+                &entry.text,
+                color,
+            );
+        } else {
+            print_clipped(
+                ctx,
+                LOG_X + 1,
+                LOG_Y + line_index as i32,
+                LOG_WIDTH - 4,
+                &entry.text,
+            );
+        }
     }
 }
 
 fn render_console(ctx: &mut BTerm, world: &World) {
     let x = 3;
-    let y = 12;
+    let y = 8;
     let width = 60;
-    let height = 13;
+    let height = 21;
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " glyph console ");
 
@@ -372,18 +383,63 @@ fn render_console(ctx: &mut BTerm, world: &World) {
         "Glyph REPL. Try (help). Enter (quit) to exit.",
     );
 
+    let output_y = y + 4;
+    let prompt_y = y + height - 2;
+    let output_height = prompt_y - output_y - 1;
+
     if !world.console_output.is_empty() {
-        let output: String = world
-            .console_output
-            .chars()
-            .take((width - 4) as usize)
-            .collect();
-        print_clipped(ctx, x + 2, y + 4, width - 4, &output);
+        let lines = wrap_console_text(&world.console_output, (width - 4) as usize);
+        for (i, line) in lines.iter().take(output_height as usize).enumerate() {
+            print_clipped(ctx, x + 2, output_y + i as i32, width - 4, line);
+        }
     }
 
-    ctx.print_color(x + 2, y + 6, RGB::named(WHITE), RGB::named(BLACK), "> ");
+    ctx.print_color(x + 2, prompt_y, RGB::named(WHITE), RGB::named(BLACK), "> ");
     let spans = highlight::highlight(&world.console_buffer);
-    print_highlighted(ctx, x + 4, y + 6, width - 6, &spans);
+    print_highlighted(ctx, x + 4, prompt_y, width - 6, &spans);
+}
+
+fn wrap_console_text(text: &str, max_width: usize) -> Vec<String> {
+    if max_width == 0 {
+        return Vec::new();
+    }
+
+    let mut lines = Vec::new();
+    for raw_line in text.lines() {
+        if raw_line.is_empty() {
+            lines.push(String::new());
+            continue;
+        }
+
+        let mut remaining = raw_line.trim_end();
+        while remaining.chars().count() > max_width {
+            let mut split = 0;
+            let mut last_space = None;
+            for (idx, ch) in remaining.char_indices() {
+                if split >= max_width {
+                    break;
+                }
+                if ch.is_whitespace() {
+                    last_space = Some(idx);
+                }
+                split += 1;
+            }
+
+            let byte_split = last_space.unwrap_or_else(|| {
+                remaining
+                    .char_indices()
+                    .nth(max_width)
+                    .map(|(idx, _)| idx)
+                    .unwrap_or(remaining.len())
+            });
+            lines.push(remaining[..byte_split].trim_end().to_string());
+            remaining = remaining[byte_split..].trim_start();
+        }
+
+        lines.push(remaining.to_string());
+    }
+
+    lines
 }
 
 fn render_death_screen(ctx: &mut BTerm, world: &World) {
@@ -485,4 +541,13 @@ fn print_clipped(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str) {
 
     let clipped: String = text.chars().take(max_width as usize).collect();
     ctx.print(x, y, clipped);
+}
+
+fn print_clipped_color(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str, color: RGB) {
+    if max_width <= 0 || !(0..SCREEN_HEIGHT).contains(&y) {
+        return;
+    }
+
+    let clipped: String = text.chars().take(max_width as usize).collect();
+    ctx.print_color(x, y, color, RGB::named(BLACK), &clipped);
 }

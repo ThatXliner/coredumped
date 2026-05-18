@@ -3,11 +3,19 @@
 //! The log is intentionally tiny for v1: game systems push human-readable
 //! strings, and the renderer shows the newest lines in the bottom panel.
 
+use bracket_lib::prelude::RGB;
+
 pub const MAX_LOG_LINES: usize = 100;
 
 #[derive(Clone, Debug)]
+pub struct LogEntry {
+    pub text: String,
+    pub color: Option<RGB>,
+}
+
+#[derive(Clone, Debug)]
 pub struct EventLog {
-    entries: Vec<String>,
+    entries: Vec<LogEntry>,
 }
 
 impl EventLog {
@@ -18,18 +26,31 @@ impl EventLog {
     }
 
     pub fn push(&mut self, message: impl Into<String>) {
-        self.entries.push(message.into());
+        self.entries.push(LogEntry {
+            text: message.into(),
+            color: None,
+        });
         if self.entries.len() > MAX_LOG_LINES {
             self.entries.remove(0);
         }
     }
 
-    pub fn entries(&self) -> &[String] {
+    pub fn push_colored(&mut self, message: impl Into<String>, color: RGB) {
+        self.entries.push(LogEntry {
+            text: message.into(),
+            color: Some(color),
+        });
+        if self.entries.len() > MAX_LOG_LINES {
+            self.entries.remove(0);
+        }
+    }
+
+    pub fn entries(&self) -> &[LogEntry] {
         &self.entries
     }
 
     pub fn contains(&self, needle: &str) -> bool {
-        self.entries.iter().any(|entry| entry.contains(needle))
+        self.entries.iter().any(|entry| entry.text.contains(needle))
     }
 }
 

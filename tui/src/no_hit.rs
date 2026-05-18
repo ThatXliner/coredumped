@@ -224,6 +224,7 @@ mod tests {
             player_can_attack: false,
             wizard_taught: false,
             wizard_id: None,
+            bindings: std::collections::HashMap::new(),
         }
     }
 

@@ -4,6 +4,8 @@
 //! `step-toward!`, etc. They receive `&mut World` directly through the
 //! eval chain's context parameter.
 
+use bracket_lib::prelude::{ORANGE, RED, RGB};
+
 use crate::{
     entity::{EntityId, Position},
     glyph::{self, Env, Value},
@@ -87,25 +89,28 @@ fn builtin_ai_attack(
         return Ok(Value::Nil);
     }
     if target == world.player_id && world.blocking {
-        world.event_log.push(format!(
-            "You block the {}'s attack.",
-            world.ecs.name(attacker)
-        ));
+        world.event_log.push_colored(
+            format!("You block the {}'s attack.", world.ecs.name(attacker)),
+            RGB::named(ORANGE),
+        );
     } else {
         world.ecs.damage(target, dmg);
         let attacker_name = world.ecs.name(attacker);
         if target == world.player_id {
-            world.event_log.push(format!(
-                "The {} attacks you for {} damage.",
-                attacker_name, dmg
-            ));
+            world.event_log.push_colored(
+                format!("The {} attacks you for {} damage.", attacker_name, dmg),
+                RGB::named(RED),
+            );
         } else {
-            world.event_log.push(format!(
-                "The {} attacks the {} for {} damage.",
-                attacker_name,
-                world.ecs.name(target),
-                dmg
-            ));
+            world.event_log.push_colored(
+                format!(
+                    "The {} attacks the {} for {} damage.",
+                    attacker_name,
+                    world.ecs.name(target),
+                    dmg
+                ),
+                RGB::named(RED),
+            );
         }
     }
     Ok(Value::Nil)

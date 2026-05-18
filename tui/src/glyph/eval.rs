@@ -150,6 +150,14 @@ fn eval_inner(
                             world,
                         )
                     }
+                    "recur" => {
+                        return eval_recur_inner(
+                            &items[1..],
+                            env,
+                            opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
+                        )
+                    }
                     _ => {}
                 }
             }
@@ -264,6 +272,25 @@ fn eval_call_inner(
     )
 }
 
+fn find_arity<'a>(arities: &'a [Arity], nargs: usize) -> EvalResult<&'a Arity> {
+    for arity in arities {
+        let has_rest = arity.params.iter().any(|p| p == "&");
+        if has_rest {
+            let rest_idx = arity.params.iter().position(|p| p == "&").unwrap();
+            if nargs >= rest_idx {
+                return Ok(arity);
+            }
+        } else if nargs == arity.params.len() {
+            return Ok(arity);
+        }
+    }
+    Err(EvalError::Custom(format!(
+        "no matching arity for {} argument{}",
+        nargs,
+        if nargs == 1 { "" } else { "s" }
+    )))
+}
+
 fn apply_inner(
     callee: &Value,
     args: &[Value],
@@ -274,18 +301,43 @@ fn apply_inner(
     match callee {
         Value::Builtin(b) => (b.func)(args, env, &opts, world),
         Value::Closure(c) => {
-            let closure_env = Env::extend(&c.env);
-            bind_params(&c.params, args, &closure_env)?;
-            let mut result = Value::Nil;
-            for expr in &c.body {
-                result = eval_inner(
-                    expr,
-                    &closure_env,
-                    opts.descend().ok_or(EvalError::RecursionLimit)?,
-                    world,
-                )?;
+            let mut current_args = args.to_vec();
+            'tco: loop {
+                let arity = find_arity(&c.arities, current_args.len())?;
+                let closure_env = Env::extend(&c.env);
+                bind_params(&arity.params, &current_args, &closure_env)?;
+
+                // Evaluate body — the last expression is in tail position
+                let body = &arity.body;
+                let mut result = Value::Nil;
+                let mut found_recur = false;
+                for (i, expr) in body.iter().enumerate() {
+                    let is_last = i == body.len() - 1;
+                    if is_last {
+                        let sub = opts.descend().ok_or(EvalError::RecursionLimit)?;
+                        match eval_inner(expr, &closure_env, sub.with_recur(true), world) {
+                            Ok(val) => result = val,
+                            Err(EvalError::Recur(recur_args)) => {
+                                current_args = recur_args;
+                                found_recur = true;
+                                break;
+                            }
+                            Err(e) => return Err(e),
+                        }
+                    } else {
+                        result = eval_inner(
+                            expr,
+                            &closure_env,
+                            opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
+                        )?;
+                    }
+                }
+                if found_recur {
+                    continue 'tco;
+                }
+                return Ok(result);
             }
-            Ok(result)
         }
         other => Err(EvalError::NotCallable(other.to_string())),
     }
@@ -347,7 +399,9 @@ fn eval_if_inner(
     let test = eval_inner(
         &args[0],
         env,
-        opts.descend().ok_or(EvalError::RecursionLimit)?,
+        opts.descend()
+            .ok_or(EvalError::RecursionLimit)?
+            .with_recur(false),
         world,
     )?;
     let truthy = !matches!(test, Value::Nil | Value::Bool(false));
@@ -377,13 +431,13 @@ fn eval_do_inner(
     world: &mut World,
 ) -> EvalResult<Value> {
     let mut result = Value::Nil;
-    for arg in args {
-        result = eval_inner(
-            arg,
-            env,
-            opts.descend().ok_or(EvalError::RecursionLimit)?,
-            world,
-        )?;
+    for (i, arg) in args.iter().enumerate() {
+        let is_last = i == args.len() - 1;
+        let sub_opts = opts
+            .descend()
+            .ok_or(EvalError::RecursionLimit)?
+            .with_recur(is_last);
+        result = eval_inner(arg, env, sub_opts, world)?;
     }
     Ok(result)
 }
@@ -412,19 +466,22 @@ fn eval_let_inner(
     let value = eval_inner(
         &args[1],
         env,
-        opts.descend().ok_or(EvalError::RecursionLimit)?,
+        opts.descend()
+            .ok_or(EvalError::RecursionLimit)?
+            .with_recur(false),
         world,
     )?;
     let let_env = Env::extend(env);
     let_env.bind(&name, value);
+    let body = &args[2..];
     let mut result = Value::Nil;
-    for expr in &args[2..] {
-        result = eval_inner(
-            expr,
-            &let_env,
-            opts.descend().ok_or(EvalError::RecursionLimit)?,
-            world,
-        )?;
+    for (i, expr) in body.iter().enumerate() {
+        let is_last = i == body.len() - 1;
+        let sub_opts = opts
+            .descend()
+            .ok_or(EvalError::RecursionLimit)?
+            .with_recur(is_last);
+        result = eval_inner(expr, &let_env, sub_opts, world)?;
     }
     Ok(result)
 }
@@ -436,13 +493,38 @@ fn eval_fn(args: &[Value], env: &Env) -> EvalResult<Value> {
             got: 0,
         });
     }
-    let params = parse_param_vec(&args[0])?;
-    let body: Vec<Value> = args[1..].to_vec();
-    Ok(Value::Closure(ClosureData {
-        params,
-        body,
-        env: env.clone(),
-    }))
+    // Multi-arity: (fn ([params] body...) ([params] body...)*)
+    // Each clause is a list whose first element is a param spec (vec or symbol).
+    if args.len() > 1 && args.iter().all(|a| matches!(a, Value::List(_))) {
+        let mut arities = Vec::new();
+        for clause in args {
+            let items = match clause {
+                Value::List(items) => items,
+                _ => unreachable!(),
+            };
+            if items.is_empty() {
+                return Err(EvalError::Custom("empty arity clause in fn".into()));
+            }
+            let params = parse_param_vec(&items[0])?;
+            let body = items[1..].to_vec();
+            arities.push(Arity { params, body });
+        }
+        if arities.is_empty() {
+            return Err(EvalError::Custom("fn requires at least one arity".into()));
+        }
+        Ok(Value::Closure(ClosureData {
+            arities,
+            env: env.clone(),
+        }))
+    } else {
+        // Single arity: (fn [params] body...) or (fn sym body...)
+        let params = parse_param_vec(&args[0])?;
+        let body: Vec<Value> = args[1..].to_vec();
+        Ok(Value::Closure(ClosureData {
+            arities: vec![Arity { params, body }],
+            env: env.clone(),
+        }))
+    }
 }
 
 fn eval_const_inner(
@@ -702,13 +784,13 @@ fn eval_and_inner(
     opts: SandboxOptions,
     world: &mut World,
 ) -> EvalResult<Value> {
-    for arg in args {
-        let val = eval_inner(
-            arg,
-            env,
-            opts.descend().ok_or(EvalError::RecursionLimit)?,
-            world,
-        )?;
+    for (i, arg) in args.iter().enumerate() {
+        let is_last = i == args.len() - 1;
+        let sub_opts = opts
+            .descend()
+            .ok_or(EvalError::RecursionLimit)?
+            .with_recur(is_last);
+        let val = eval_inner(arg, env, sub_opts, world)?;
         if matches!(val, Value::Nil | Value::Bool(false)) {
             return Ok(val);
         }
@@ -716,12 +798,7 @@ fn eval_and_inner(
     if args.is_empty() {
         return Ok(Value::Bool(true));
     }
-    eval_inner(
-        &args[args.len() - 1],
-        env,
-        opts.descend().ok_or(EvalError::RecursionLimit)?,
-        world,
-    )
+    Ok(Value::Bool(true))
 }
 
 fn eval_or_inner(
@@ -730,13 +807,13 @@ fn eval_or_inner(
     opts: SandboxOptions,
     world: &mut World,
 ) -> EvalResult<Value> {
-    for arg in args {
-        let val = eval_inner(
-            arg,
-            env,
-            opts.descend().ok_or(EvalError::RecursionLimit)?,
-            world,
-        )?;
+    for (i, arg) in args.iter().enumerate() {
+        let is_last = i == args.len() - 1;
+        let sub_opts = opts
+            .descend()
+            .ok_or(EvalError::RecursionLimit)?
+            .with_recur(is_last);
+        let val = eval_inner(arg, env, sub_opts, world)?;
         if !matches!(val, Value::Nil | Value::Bool(false)) {
             return Ok(val);
         }
@@ -759,7 +836,9 @@ fn eval_match_inner(
     let expr = eval_inner(
         &args[0],
         env,
-        opts.descend().ok_or(EvalError::RecursionLimit)?,
+        opts.descend()
+            .ok_or(EvalError::RecursionLimit)?
+            .with_recur(false),
         world,
     )?;
     for clause in &args[1..] {
@@ -787,6 +866,27 @@ fn eval_match_inner(
         }
     }
     Err(EvalError::PatternMatchFailed(expr.to_string()))
+}
+
+fn eval_recur_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
+    if !opts.recur_allowed {
+        return Err(EvalError::Custom("recur outside function body".into()));
+    }
+    let mut recur_args = Vec::with_capacity(args.len());
+    for arg in args {
+        recur_args.push(eval_inner(
+            arg,
+            env,
+            opts.descend().ok_or(EvalError::RecursionLimit)?,
+            world,
+        )?);
+    }
+    Err(EvalError::Recur(recur_args))
 }
 
 fn eval_bind_key_inner(
@@ -864,6 +964,7 @@ fn as_float(v: &Value) -> EvalResult<f64> {
     }
 }
 
+#[cfg(not(feature = "prelude"))]
 fn as_int(v: &Value) -> EvalResult<i64> {
     match v {
         Value::I64(n) => Ok(*n),
@@ -1303,6 +1404,7 @@ fn builtin_map_fn(
     Ok(Value::List(result))
 }
 
+#[cfg(not(feature = "prelude"))]
 fn builtin_range(
     args: &[Value],
     _env: &Env,
@@ -1418,6 +1520,7 @@ pub fn default_env() -> Env {
     env.bind("rest", builtin_fn("rest", builtin_rest));
     env.bind("empty?", builtin_fn("empty?", builtin_emptyq));
     env.bind("map", builtin_fn("map", builtin_map_fn));
+    #[cfg(not(feature = "prelude"))]
     env.bind("range", builtin_fn("range", builtin_range));
 
     env.bind("print", builtin_fn("print", builtin_print));

@@ -15,8 +15,8 @@ pub use env::Env;
 pub use eval::{default_env, eval, eval_with_opts, macroexpand_all};
 pub use reader::read_string;
 pub use value::{
-    BuiltinFn, ClosureData, EvalError, EvalResult, Keyword, MacroData, ReadError, ReadResult,
-    SandboxOptions, Symbol, Value,
+    Arity, BuiltinFn, ClosureData, EvalError, EvalResult, Keyword, MacroData, ReadError,
+    ReadResult, SandboxOptions, Symbol, Value,
 };
 
 /// Create a symbol value.
@@ -452,6 +452,61 @@ mod tests {
             );
         }
 
+        #[test]
+        fn test_multi_arity_fn() {
+            let env = default_env();
+            eval_str(
+                "(const multi (fn ([x] x) ([x y] (+ x y)) ([x y z] (* x y z))))",
+                &env,
+            )
+            .unwrap();
+            assert_eq!(eval_str("(multi 5)", &env).unwrap(), Value::I64(5));
+            assert_eq!(eval_str("(multi 3 4)", &env).unwrap(), Value::I64(7));
+            assert_eq!(eval_str("(multi 2 3 4)", &env).unwrap(), Value::I64(24));
+        }
+
+        #[test]
+        fn test_recur_tail_call() {
+            let env = default_env();
+            eval_str(
+                "(const countdown (fn [n acc]
+                  (if (= n 0)
+                      acc
+                      (recur (- n 1) (+ acc n)))))",
+                &env,
+            )
+            .unwrap();
+            assert_eq!(
+                eval_str("(countdown 1000 0)", &env).unwrap(),
+                Value::I64(500500)
+            );
+        }
+
+        #[test]
+        fn test_recur_outside_fn_errors() {
+            let env = default_env();
+            let result = eval_str("(recur 1 2 3)", &env);
+            assert!(result.is_err());
+            let msg = result.unwrap_err().to_string();
+            assert!(msg.contains("outside function body"), "got: {}", msg);
+        }
+
+        #[test]
+        fn test_multi_arity_with_rest() {
+            let env = default_env();
+            eval_str(
+                "(const varargs (fn ([x] x) ([x & rest] (cons x rest))))",
+                &env,
+            )
+            .unwrap();
+            assert_eq!(eval_str("(varargs 1)", &env).unwrap(), Value::I64(1));
+            assert_eq!(
+                eval_str("(varargs 1 2 3)", &env).unwrap(),
+                Value::List(vec![Value::I64(1), Value::I64(2), Value::I64(3)])
+            );
+        }
+
+        #[cfg(not(feature = "prelude"))]
         #[test]
         fn test_range() {
             let env = default_env();

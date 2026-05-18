@@ -6,9 +6,6 @@
 
 pub const SOURCE: &str = r#";; ---- Glyph Prelude ---------------------------------------------------
 ;; Sequence operations built from cons/first/rest/empty?
-;;
-;; Note: Glyph's `let` is single-binding: (let name value body...)
-;; Use nested lets instead of vector bindings.
 
 (const second (fn [lst]
   (first (rest lst))))
@@ -71,23 +68,13 @@ pub const SOURCE: &str = r#";; ---- Glyph Prelude ------------------------------
       acc
       (reverse-acc (rest lst) (cons (first lst) acc)))))
 
-;; (range-internal start end step)
-;; Bound as `range` at load time to shadow the Rust builtin.
+;; Multi-arity range — demonstrates the (fn ([x] ...) ([x y] ...)) syntax
+(const range (fn ([end]       (range-internal 0 end 1))
+                  ([s e]     (range-internal s e 1))
+                  ([s e st]  (range-internal s e st))))
+
 (const range-internal (fn [start end step]
   (if (if (< step 0) (> start end) (< start end))
       (cons start (range-internal (+ start step) end step))
       (list))))
-
-;; Multi-arity entry point: (range end) | (range start end) | (range start end step)
-(const range-entry (fn [& args]
-  (let a (first args)
-    (let rest-1 (rest args)
-      (if (empty? rest-1)
-          (range-internal 0 a 1)
-          (let b (first rest-1)
-            (let rest-2 (rest rest-1)
-              (if (empty? rest-2)
-                  (range-internal a b 1)
-                  (let c (first rest-2)
-                    (range-internal a b c))))))))))
 "#;

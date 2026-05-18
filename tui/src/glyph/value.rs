@@ -84,12 +84,20 @@ pub type ReadResult<T> = Result<T, ReadError>;
 pub enum EvalError {
     UnboundSymbol(String),
     NotCallable(String),
-    WrongArgCount { expected: usize, got: usize },
+    WrongArgCount {
+        expected: usize,
+        got: usize,
+    },
     NotInList(String, String),
     DivisionByZero,
     RecursionLimit,
-    TypeError { expected: &'static str, got: String },
+    TypeError {
+        expected: &'static str,
+        got: String,
+    },
     PatternMatchFailed(String),
+    /// Tail-call signal: not an error, caught by the closure application loop.
+    Recur(Vec<Value>),
     Custom(String),
 }
 
@@ -112,6 +120,7 @@ impl fmt::Display for EvalError {
                 write!(f, "type error: expected {}, got {}", expected, got)
             }
             EvalError::PatternMatchFailed(v) => write!(f, "no pattern matched: {}", v),
+            EvalError::Recur(_) => write!(f, "recur outside function body"),
             EvalError::Custom(s) => write!(f, "error: {}", s),
         }
     }
@@ -130,6 +139,9 @@ pub struct SandboxOptions {
     /// Optional virtual filesystem for I/O sandboxing.
     /// When set, I/O built-ins read through this instead of the real filesystem.
     pub vfs: Option<Arc<dyn VirtualFileSystem>>,
+    /// If true, `recur` is allowed in the current evaluation context
+    /// (i.e. we're in the tail position of a function body).
+    pub recur_allowed: bool,
 }
 
 impl SandboxOptions {
@@ -138,6 +150,7 @@ impl SandboxOptions {
             max_depth,
             depth: max_depth,
             vfs: None,
+            recur_allowed: false,
         }
     }
 
@@ -147,11 +160,18 @@ impl SandboxOptions {
             None
         } else {
             Some(SandboxOptions {
+                max_depth: self.max_depth,
                 depth: self.depth - 1,
                 vfs: self.vfs.clone(),
-                ..*self
+                recur_allowed: self.recur_allowed,
             })
         }
+    }
+
+    /// Override to enable/disable recur in a specific position.
+    pub(crate) fn with_recur(mut self, allowed: bool) -> SandboxOptions {
+        self.recur_allowed = allowed;
+        self
     }
 }
 
@@ -224,11 +244,18 @@ impl PartialEq for BuiltinFn {
     }
 }
 
-/// User-defined function with captured environment.
+/// A single arity clause for a multi-arity function.
 #[derive(Debug, Clone)]
-pub struct ClosureData {
+pub struct Arity {
     pub params: Vec<String>,
     pub body: Vec<Value>,
+}
+
+/// User-defined function with captured environment.
+/// Holds one or more arity clauses for multi-arity dispatch.
+#[derive(Debug, Clone)]
+pub struct ClosureData {
+    pub arities: Vec<Arity>,
     pub env: super::env::Env,
 }
 
@@ -277,7 +304,13 @@ impl PartialEq for Value {
             (Map(a), Map(b)) => a == b,
             (Set(a), Set(b)) => a == b,
             (Builtin(a), Builtin(b)) => a == b,
-            (Closure(a), Closure(b)) => a.params == b.params && a.body == b.body,
+            (Closure(a), Closure(b)) => {
+                a.arities.len() == b.arities.len()
+                    && a.arities
+                        .iter()
+                        .zip(&b.arities)
+                        .all(|(x, y)| x.params == y.params && x.body == y.body)
+            }
             (Macro(a), Macro(b)) => a.params == b.params && a.body == b.body,
             _ => false,
         }
@@ -332,7 +365,7 @@ impl Ord for Value {
             (Value::Map(a), Value::Map(b)) => a.cmp(b),
             (Value::Set(a), Value::Set(b)) => a.cmp(b),
             (Value::Builtin(a), Value::Builtin(b)) => a.name.cmp(b.name),
-            (Value::Closure(a), Value::Closure(b)) => a.params.cmp(&b.params),
+            (Value::Closure(a), Value::Closure(b)) => a.arities.len().cmp(&b.arities.len()),
             (Value::Macro(a), Value::Macro(b)) => a.params.cmp(&b.params),
             _ => Equal,
         }
@@ -400,7 +433,13 @@ impl fmt::Display for Value {
                 write!(f, "}}")
             }
             Value::Builtin(b) => write!(f, "#<builtin {}>", b.name),
-            Value::Closure(c) => write!(f, "#<closure (fn [{}] ...)>", c.params.join(" ")),
+            Value::Closure(c) => {
+                if c.arities.len() == 1 {
+                    write!(f, "#<closure (fn [{}] ...)>", c.arities[0].params.join(" "))
+                } else {
+                    write!(f, "#<closure (fn {} arities)>", c.arities.len())
+                }
+            }
             Value::Macro(m) => write!(f, "#<macro {}>", m.params.join(" ")),
         }
     }

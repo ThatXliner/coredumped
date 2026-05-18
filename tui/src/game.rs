@@ -822,10 +822,6 @@ fn setup_glyph_env() -> Env {
         for form in &forms {
             let _ = glyph::eval(form, &env, &mut dummy);
         }
-        // Shadow selected Rust builtins with Glyph versions
-        if let Some(val) = env.lookup("range-entry") {
-            env.bind("range", val);
-        }
     }
 
     env

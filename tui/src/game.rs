@@ -502,38 +502,14 @@ impl World {
             .push_colored("              SIGN", RGB::named(CYAN));
         self.event_log.push("===================================");
 
-        // Sign at (5, 3) — the cryptic hint near the player start
-        if self.ecs.position(sign_id) == Some(Position::new(5, 3)) {
-            self.event_log.push("");
-            self.event_log
-                .push("This is a lot of barrels...");
-            self.event_log.push("Think about rebinding your keys.");
-            self.event_log.push("One key can (do) what many cannot.");
-            return;
+        let message = self.ecs.sign_message(sign_id).unwrap_or("");
+        for line in message.lines() {
+            if line.is_empty() {
+                self.event_log.push("");
+            } else {
+                self.event_log.push_colored(line.to_string(), RGB::named(CYAN));
+            }
         }
-
-        // Every other sign — the full explanation
-        self.event_log
-            .push_colored("Welcome to the Barrel Depths!", RGB::named(CYAN));
-        self.event_log.push("");
-        self.event_log.push("Each (do-attack) costs 1 tick. But");
-        self.event_log.push("you can chain them with (do ...):");
-        self.event_log.push_colored(
-            "  (do (do-attack :north) (do-attack :south))",
-            RGB::named(GREEN),
-        );
-        self.event_log.push("That attacks twice — 2 ticks total.");
-        self.event_log.push("Bind the full combo to ONE key:");
-        self.event_log.push_colored(
-            "  (bind-key :x (do (do-attack :north) (do-attack :south)",
-            RGB::named(GREEN),
-        );
-        self.event_log.push_colored(
-            "                  (do-attack :east)  (do-attack :west)))",
-            RGB::named(GREEN),
-        );
-        self.event_log
-            .push("Now clear these barrels and find the exit!");
     }
 
     fn bump_barrel(&mut self, barrel_id: EntityId) {
@@ -1085,9 +1061,9 @@ fn builtin_help(
     _args: &[Value],
     _env: &Env,
     _opts: &glyph::SandboxOptions,
-    _world: &mut World,
+    world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    Ok(Value::String(
+    let mut help = String::from(
         "\
 Available special forms:
   (quote form)       — return form unevaluated
@@ -1127,13 +1103,19 @@ Syntax:
   #{:a :b}      — set literals
   ;             — line comment
 
-Console commands (game-specific):
-  (help)        — show this help text
-  (quit-terminal) — close the console overlay
-  (do-attack :dir) — strike in direction (:north/:south/:east/:west/:facing)
-  (bind-key :k (expr)) — bind a key to a Glyph expression"
-            .into(),
-    ))
+Console commands (game-specific):\n\
+  (help)        — show this help text\n\
+  (quit-terminal) — close the console overlay",
+    );
+
+    if world.player_can_attack {
+        help.push_str(
+            "\n  (do-attack :dir) — strike in direction (:north/:south/:east/:west/:facing)\n\
+             \n  (bind-key :k (expr)) — bind a key to a Glyph expression",
+        );
+    }
+
+    Ok(Value::String(help))
 }
 
 impl Default for World {

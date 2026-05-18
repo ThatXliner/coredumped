@@ -19,6 +19,7 @@ pub struct Ecs {
     alive: BTreeSet<EntityId>,
     enemy_ai: BTreeSet<EntityId>,
     render_glyphs: BTreeMap<EntityId, RenderGlyph>,
+    sign_messages: BTreeMap<EntityId, String>,
 }
 
 impl Ecs {
@@ -32,6 +33,7 @@ impl Ecs {
             alive: BTreeSet::new(),
             enemy_ai: BTreeSet::new(),
             render_glyphs: BTreeMap::new(),
+            sign_messages: BTreeMap::new(),
         }
     }
 
@@ -63,8 +65,10 @@ impl Ecs {
         self.spawn_actor(EntityKind::Barrel, pos, Hp::new(1), false)
     }
 
-    pub fn spawn_sign(&mut self, pos: Position) -> EntityId {
-        self.spawn_actor(EntityKind::Sign, pos, Hp::new(999), false)
+    pub fn spawn_sign(&mut self, pos: Position, message: &str) -> EntityId {
+        let id = self.spawn_actor(EntityKind::Sign, pos, Hp::new(999), false);
+        self.sign_messages.insert(id, message.to_string());
+        id
     }
 
     pub fn remove(&mut self, id: EntityId) {
@@ -75,6 +79,7 @@ impl Ecs {
         self.alive.remove(&id);
         self.enemy_ai.remove(&id);
         self.render_glyphs.remove(&id);
+        self.sign_messages.remove(&id);
     }
 
     pub fn position(&self, id: EntityId) -> Option<Position> {
@@ -125,6 +130,10 @@ impl Ecs {
             .get(&id)
             .map(EntityKind::name)
             .unwrap_or("entity")
+    }
+
+    pub fn sign_message(&self, id: EntityId) -> Option<&str> {
+        self.sign_messages.get(&id).map(|s| s.as_str())
     }
 
     pub fn kind(&self, id: EntityId) -> Option<EntityKind> {

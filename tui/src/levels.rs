@@ -147,11 +147,25 @@ fn build_barrel_depths(world: &mut World) {
 
     // Subtle hint sign at the right edge of the clear zone
     let subtle_sign_pos = Position::new(5, 3);
-    world.ecs.spawn_sign(subtle_sign_pos);
+    world.ecs.spawn_sign(
+        subtle_sign_pos,
+        "This is a lot of barrels...\nThink about rebinding your keys.\nOne key can (do) what many cannot.",
+    );
 
     // Obvious hint sign buried somewhere in the barrels
     let obvious_sign_pos = Position::new(MAP_WIDTH - 5, MAP_HEIGHT / 2);
-    world.ecs.spawn_sign(obvious_sign_pos);
+    world.ecs.spawn_sign(
+        obvious_sign_pos,
+        "\
+Welcome to the Barrel Depths!\n\n\
+Each (do-attack) costs 1 tick. But\nyou can chain them with (do ...):\n  \
+(do (do-attack :north) (do-attack :south))\n\
+That attacks twice — 2 ticks total.\n\
+Bind the full combo to ONE key:\n  \
+(bind-key :x (do (do-attack :north) (do-attack :south)\n  \
+                  (do-attack :east)  (do-attack :west)))\n\
+Now clear these barrels and find the exit!",
+    );
 
     // Fill every walkable tile with 1-HP barrels, except the clear zone and signs
     for y in 1..MAP_HEIGHT - 1 {

@@ -41,6 +41,7 @@ pub enum Intent {
     /// Scroll console output history (positive = up/older).
     ConsoleScroll(i32),
     ConsoleInput(char),
+    ConsoleNewline,
     ConsoleBackspace,
     ConsoleSubmit,
     CloseOverlay,
@@ -198,6 +199,12 @@ impl World {
             Intent::ConsoleInput(ch) => {
                 if self.mode == Mode::Console {
                     self.console_buffer.push(ch);
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleNewline => {
+                if self.mode == Mode::Console {
+                    self.console_buffer.push('\n');
                 }
                 ActionCost::Free
             }

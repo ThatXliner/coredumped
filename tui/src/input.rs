@@ -65,13 +65,14 @@ fn inspector_key_to_intent(key: VirtualKeyCode) -> Intent {
 }
 
 fn console_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
-    match key {
-        VirtualKeyCode::Escape => Intent::CloseOverlay,
-        VirtualKeyCode::Grave => Intent::ToggleConsole,
-        VirtualKeyCode::Back => Intent::ConsoleBackspace,
-        VirtualKeyCode::Return => Intent::ConsoleSubmit,
-        VirtualKeyCode::Up => Intent::ConsoleScroll(-1),
-        VirtualKeyCode::Down => Intent::ConsoleScroll(1),
+    match (key, shift) {
+        (VirtualKeyCode::Escape, _) => Intent::CloseOverlay,
+        (VirtualKeyCode::Grave, _) => Intent::ToggleConsole,
+        (VirtualKeyCode::Back, _) => Intent::ConsoleBackspace,
+        (VirtualKeyCode::Return, false) => Intent::ConsoleSubmit,
+        (VirtualKeyCode::Return, true) => Intent::ConsoleNewline,
+        (VirtualKeyCode::Up, _) => Intent::ConsoleScroll(-1),
+        (VirtualKeyCode::Down, _) => Intent::ConsoleScroll(1),
         _ => key_to_console_char(key, shift)
             .map(Intent::ConsoleInput)
             .unwrap_or(Intent::Noop),

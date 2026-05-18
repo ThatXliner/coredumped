@@ -11,6 +11,8 @@ use bracket_lib::prelude::{
     a_star_search, NavigationPath, CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB,
 };
 
+const KONAMI_CODE: [&str; 8] = ["up", "up", "down", "down", "left", "right", "left", "right"];
+
 use crate::{
     ai_builtins,
     ecs::Ecs,
@@ -97,6 +99,8 @@ impl World {
             wizard_taught: false,
             wizard_id: None,
             bindings: default_bindings(),
+            konami_index: 0,
+            cheat_unlocked: false,
         }
     }
 
@@ -139,6 +143,8 @@ impl World {
             wizard_taught: false,
             wizard_id: None,
             bindings: default_bindings(),
+            konami_index: 0,
+            cheat_unlocked: false,
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -160,6 +166,7 @@ impl World {
             Intent::ExecuteBinding(key) => {
                 let before = self.turn;
                 self.execute_binding(&key);
+                self.check_konami(&key);
                 if !self.running {
                     ActionCost::Quit
                 } else if self.turn > before {
@@ -507,7 +514,8 @@ impl World {
             if line.is_empty() {
                 self.event_log.push("");
             } else {
-                self.event_log.push_colored(line.to_string(), RGB::named(CYAN));
+                self.event_log
+                    .push_colored(line.to_string(), RGB::named(CYAN));
             }
         }
     }
@@ -601,6 +609,29 @@ impl World {
         }
     }
 
+    fn check_konami(&mut self, key: &str) {
+        if self.cheat_unlocked {
+            return;
+        }
+        // Only direction keys advance/affect the Konami sequence
+        if !matches!(key, "up" | "down" | "left" | "right") {
+            return;
+        }
+        if KONAMI_CODE.get(self.konami_index) == Some(&key) {
+            self.konami_index += 1;
+            if self.konami_index >= KONAMI_CODE.len() {
+                self.cheat_unlocked = true;
+                self.event_log.push_colored(
+                    "Cheat codes activated! (heal) and (set-level) now available in the console.",
+                    RGB::named(GREEN),
+                );
+            }
+        } else {
+            // Wrong direction — reset, but if the key is "up" it starts a new attempt
+            self.konami_index = if key == "up" { 1 } else { 0 };
+        }
+    }
+
     fn submit_console(&mut self) {
         let command = self.console_buffer.trim().to_string();
         if command.is_empty() {
@@ -634,33 +665,6 @@ impl World {
                         self.console_output_color = Some(RGB::named(RED));
                     }
                     None => {
-                        // Check for do-attack sentinel
-                        if let Value::Keyword(ref kw) = last {
-                            let dir = match kw.name.as_str() {
-                                "player-attack-north" => Some(Direction::North),
-                                "player-attack-south" => Some(Direction::South),
-                                "player-attack-east" => Some(Direction::East),
-                                "player-attack-west" => Some(Direction::West),
-                                "player-attack-facing" => Some(self.player_facing),
-                                _ => None,
-                            };
-                            if let Some(direction) = dir {
-                                if !self.player_can_attack {
-                                    self.console_output =
-                                        "You don't know how to attack yet. Find the wizard.".into();
-                                    self.event_log.push("You flail uselessly.");
-                                } else {
-                                    self.player_facing = direction;
-                                    self.attack_in_direction(direction);
-                                    self.finish_tick();
-                                    self.console_output =
-                                        format!("You attack {:?}. Turn {}.", direction, self.turn);
-                                }
-                                self.console_buffer.clear();
-                                return;
-                            }
-                        }
-
                         if last == glyph::kw("quit-terminal") {
                             self.console_output = "Terminal closed.".to_string();
                             self.event_log.push("Terminal closed.");
@@ -702,42 +706,11 @@ impl World {
         };
 
         let env = self.glyph_env.clone();
-        let mut last = Value::Nil;
-        let mut err = None;
         for form in &forms {
-            match glyph::eval_with_opts(form, &env, glyph::SandboxOptions::default(), self) {
-                Ok(val) => last = val,
-                Err(e) => {
-                    err = Some(e);
-                    break;
-                }
-            }
-        }
-
-        if let Some(e) = err {
-            self.event_log.push(format!("Binding error: {}", e));
-            return;
-        }
-
-        // Check for do-attack sentinel
-        if let Value::Keyword(ref kw) = last {
-            let dir = match kw.name.as_str() {
-                "player-attack-north" => Some(Direction::North),
-                "player-attack-south" => Some(Direction::South),
-                "player-attack-east" => Some(Direction::East),
-                "player-attack-west" => Some(Direction::West),
-                "player-attack-facing" => Some(self.player_facing),
-                _ => None,
-            };
-            if let Some(direction) = dir {
-                if !self.player_can_attack {
-                    self.event_log
-                        .push("You don't know how to attack yet. Find the wizard.");
-                } else {
-                    self.player_facing = direction;
-                    self.attack_in_direction(direction);
-                }
-                self.finish_tick();
+            if let Err(e) =
+                glyph::eval_with_opts(form, &env, glyph::SandboxOptions::default(), self)
+            {
+                self.event_log.push(format!("Binding error: {}", e));
                 return;
             }
         }
@@ -808,7 +781,6 @@ fn setup_glyph_env() -> Env {
     reg!("quit-terminal", builtin_quit_terminal);
     reg!("quit!", builtin_quit_bang);
     reg!("do-attack", builtin_do_attack);
-    reg!("bind-key", builtin_bind_key);
     reg!("move!", builtin_move);
     reg!("wait!", builtin_wait);
     reg!("block!", builtin_block);
@@ -817,6 +789,8 @@ fn setup_glyph_env() -> Env {
     reg!("toggle-keybindings!", builtin_toggle_keybindings);
     reg!("descend!", builtin_descend);
     reg!("ascend!", builtin_ascend);
+    reg!("heal", builtin_heal);
+    reg!("set-level", builtin_set_level);
     ai_builtins::register_all(&env);
     env
 }
@@ -935,10 +909,7 @@ fn builtin_descend(
         world.event_log.push("There are no stairs going down here.");
         return Ok(Value::Nil);
     }
-    let has_attack_binding = world
-        .bindings
-        .values()
-        .any(|cmd| cmd.strip_prefix(':').is_some_and(|rest| ATTACK_SENTINEL_NAMES.contains(&rest)));
+    let has_attack_binding = world.bindings.values().any(|cmd| cmd.contains("do-attack"));
     if world.depth >= 3 && (!world.wizard_taught || !has_attack_binding) {
         world.event_log.push("A shimmering barrier blocks the stairs. The wizard's voice echoes: \"Bind your attack to a key first! Open the console (`) and try (bind-key :z (do-attack)).\"");
         return Ok(Value::Nil);
@@ -962,28 +933,6 @@ fn builtin_ascend(
     Ok(Value::Nil)
 }
 
-/// Keyword names returned by (do-attack) used as sentinel values that signal
-/// "this binding produces an attack action" to both the binding executor and
-/// the descend gate.
-const ATTACK_SENTINEL_NAMES: &[&str] = &[
-    "player-attack-facing",
-    "player-attack-north",
-    "player-attack-south",
-    "player-attack-east",
-    "player-attack-west",
-];
-
-/// Look up the sentinel keyword name for an optional direction (None = facing).
-fn attack_sentinel_name(dir: Option<Direction>) -> &'static str {
-    match dir {
-        None => "player-attack-facing",
-        Some(Direction::North) => "player-attack-north",
-        Some(Direction::South) => "player-attack-south",
-        Some(Direction::East) => "player-attack-east",
-        Some(Direction::West) => "player-attack-west",
-    }
-}
-
 fn parse_attack_direction(value: &Value) -> Option<Direction> {
     match value {
         Value::Keyword(kw) => match kw.name.as_str() {
@@ -1001,60 +950,32 @@ fn builtin_do_attack(
     args: &[Value],
     _env: &Env,
     _opts: &glyph::SandboxOptions,
-    _world: &mut World,
+    world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    if args.is_empty() {
-        return Ok(glyph::kw(attack_sentinel_name(None)));
-    }
-    if args.len() != 1 {
+    let direction = if args.is_empty() {
+        world.player_facing
+    } else if args.len() == 1 {
+        parse_attack_direction(&args[0]).ok_or_else(|| glyph::EvalError::TypeError {
+            expected: "direction keyword (:north, :south, :east, :west)",
+            got: args[0].to_string(),
+        })?
+    } else {
         return Err(glyph::EvalError::WrongArgCount {
             expected: 1,
             got: args.len(),
         });
-    }
-    match parse_attack_direction(&args[0]) {
-        Some(dir) => Ok(glyph::kw(attack_sentinel_name(Some(dir)))),
-        None => Err(glyph::EvalError::TypeError {
-            expected: "direction keyword (:north, :south, :east, :west)",
-            got: format!("{}", args[0]),
-        }),
-    }
-}
-
-fn builtin_bind_key(
-    args: &[Value],
-    _env: &Env,
-    _opts: &glyph::SandboxOptions,
-    world: &mut World,
-) -> glyph::EvalResult<Value> {
-    if args.len() != 2 {
-        return Err(glyph::EvalError::WrongArgCount {
-            expected: 2,
-            got: args.len(),
-        });
-    }
-    let key = match &args[0] {
-        Value::Keyword(kw) => kw.name.clone(),
-        other => {
-            return Err(glyph::EvalError::TypeError {
-                expected: "keyword (e.g. :z, :x)",
-                got: other.to_string(),
-            })
-        }
     };
-    if key.is_empty() || key.len() != 1 {
-        return Err(glyph::EvalError::TypeError {
-            expected: "single-character keyword (e.g. :z, :x)",
-            got: format!(":{}", key),
-        });
+
+    if !world.player_can_attack {
+        world
+            .event_log
+            .push("You don't know how to attack yet. Find the wizard.");
+    } else {
+        world.player_facing = direction;
+        world.attack_in_direction(direction);
     }
-    let command = args[1].to_string();
-    world.bindings.insert(key.clone(), command.clone());
-    world.event_log.push_colored(
-        format!("Bound key '{}' to: {}", key, command),
-        RGB::named(GREEN),
-    );
-    Ok(args[1].clone())
+    world.finish_tick();
+    Ok(Value::Nil)
 }
 
 fn builtin_help(
@@ -1115,7 +1036,112 @@ Console commands (game-specific):\n\
         );
     }
 
+    if world.cheat_unlocked {
+        help.push_str(
+            "\n\nCheat commands:\n\
+             \n  (heal N)        — heal N HP (overflows as shield)\n\
+             \n  (heal :all)     — fully restore HP\n\
+             \n  (set-level N)   — warp to depth N",
+        );
+    }
+
     Ok(Value::String(help))
+}
+
+fn builtin_heal(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    if !world.cheat_unlocked {
+        return Err(glyph::EvalError::Custom(
+            "cheats not activated — enter the Konami code first".into(),
+        ));
+    }
+
+    match args.first() {
+        Some(Value::Keyword(kw)) if kw.name == "all" => {
+            let max = world.player_hp().max;
+            world
+                .ecs
+                .set_hp(world.player_id, crate::entity::Hp::new(max));
+            world.event_log.push_colored(
+                format!("Cheat: fully healed to {max} HP."),
+                RGB::named(GREEN),
+            );
+            Ok(Value::Nil)
+        }
+        Some(Value::I64(n)) if *n > 0 => {
+            let hp = world.player_hp();
+            let new_current = hp.current + *n as i32;
+            world.ecs.set_hp(
+                world.player_id,
+                crate::entity::Hp {
+                    current: new_current,
+                    max: hp.max,
+                },
+            );
+            world.event_log.push_colored(
+                format!("Cheat: healed +{n} HP (now {new_current}/{}).", hp.max),
+                RGB::named(GREEN),
+            );
+            Ok(Value::Nil)
+        }
+        Some(Value::F64(n)) if *n > 0.0 => {
+            let n = *n as i32;
+            let hp = world.player_hp();
+            let new_current = hp.current + n;
+            world.ecs.set_hp(
+                world.player_id,
+                crate::entity::Hp {
+                    current: new_current,
+                    max: hp.max,
+                },
+            );
+            world.event_log.push_colored(
+                format!("Cheat: healed +{n} HP (now {new_current}/{}).", hp.max),
+                RGB::named(GREEN),
+            );
+            Ok(Value::Nil)
+        }
+        _ => Err(glyph::EvalError::WrongArgCount {
+            expected: 1,
+            got: args.len(),
+        }),
+    }
+}
+
+fn builtin_set_level(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    if !world.cheat_unlocked {
+        return Err(glyph::EvalError::Custom(
+            "cheats not activated — enter the Konami code first".into(),
+        ));
+    }
+
+    let depth = match args.first() {
+        Some(Value::I64(n)) if *n >= 1 => *n as u32,
+        Some(Value::F64(n)) if *n >= 1.0 => *n as u32,
+        _ => {
+            return Err(glyph::EvalError::WrongArgCount {
+                expected: 1,
+                got: args.len(),
+            })
+        }
+    };
+
+    world.depth = depth;
+    world.clear_all_enemies();
+    crate::levels::build_level(world, depth);
+    world
+        .event_log
+        .push(format!("Cheat: warped to depth {depth}."));
+    Ok(Value::Nil)
 }
 
 impl Default for World {
@@ -1462,8 +1488,10 @@ mod tests {
     // --- do-attack builtin tests ---
 
     #[test]
-    fn do_attack_builtin_returns_direction_sentinel() {
-        let mut world = World::minimal();
+    fn do_attack_builtin_performs_attack() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = true;
+        world.player_facing = Direction::East;
         let env = setup_glyph_env();
         let forms = crate::glyph::read_string("(do-attack :east)").unwrap();
         let result = crate::glyph::eval_with_opts(
@@ -1473,12 +1501,16 @@ mod tests {
             &mut world,
         )
         .unwrap();
-        assert_eq!(result, crate::glyph::kw("player-attack-east"));
+        assert_eq!(result, Value::Nil);
+        assert_eq!(world.turn, 1);
+        assert_eq!(single_enemy(&world).hp.current, 2); // Slime starts at 3
     }
 
     #[test]
-    fn do_attack_builtin_no_args_returns_facing_sentinel() {
-        let mut world = World::minimal();
+    fn do_attack_builtin_no_args_uses_facing() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = true;
+        world.player_facing = Direction::East;
         let env = setup_glyph_env();
         let forms = crate::glyph::read_string("(do-attack)").unwrap();
         let result = crate::glyph::eval_with_opts(
@@ -1488,7 +1520,9 @@ mod tests {
             &mut world,
         )
         .unwrap();
-        assert_eq!(result, crate::glyph::kw("player-attack-facing"));
+        assert_eq!(result, Value::Nil);
+        assert_eq!(world.turn, 1);
+        assert_eq!(single_enemy(&world).hp.current, 2);
     }
 
     #[test]
@@ -1606,9 +1640,7 @@ mod tests {
         let mut world = World::new();
         world.depth = 3;
         world.wizard_taught = true;
-        world
-            .bindings
-            .insert("z".into(), ":player-attack-facing".into());
+        world.bindings.insert("z".into(), "(do-attack)".into());
         world.clear_all_enemies();
         world.map.set_tile(world.player_pos(), TileType::StairsDown);
 
@@ -1641,16 +1673,16 @@ mod tests {
         world.clear_all_enemies();
         world.map.set_tile(world.player_pos(), TileType::StairsDown);
 
-        // Bind (do-attack) to `z` via the console — the real code path
-        // that evaluates the form before storing the keyword sentinel.
+        // Bind (do-attack) to `z` via the console — bind-key is now a
+        // special form, so the second argument is stored unevaluated.
         world.mode = Mode::Console;
         world.console_buffer = "(bind-key :z (do-attack))".to_string();
         world.apply_intent(Intent::ConsoleSubmit);
 
-        // Confirm the binding was stored as the evaluated sentinel
+        // Confirm the binding was stored as the source form, not a sentinel
         assert_eq!(
             world.bindings.get("z").map(|s| s.as_str()),
-            Some(":player-attack-facing")
+            Some("(do-attack)")
         );
 
         // Now descend should work

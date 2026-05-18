@@ -226,6 +226,8 @@ mod tests {
             wizard_taught: false,
             wizard_id: None,
             bindings: std::collections::HashMap::new(),
+            konami_index: 0,
+            cheat_unlocked: false,
         }
     }
 

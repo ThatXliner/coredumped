@@ -40,10 +40,6 @@ fn build_procedural_level(world: &mut World, depth: u32) {
     }
 
     apply_map(world, &gen);
-
-    if depth >= 4 {
-        spawn_wizard_near_player(world);
-    }
 }
 
 // ---------------------------------------------------------------------------

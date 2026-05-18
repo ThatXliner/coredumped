@@ -39,6 +39,11 @@ pub struct World {
     pub wizard_taught: bool,
     pub wizard_id: Option<EntityId>,
     pub bindings: HashMap<String, String>,
+
+    /// Tracks progress through the Konami code (↑↑↓↓←→←→).
+    pub konami_index: usize,
+    /// Set to true when the full Konami code is entered.
+    pub cheat_unlocked: bool,
 }
 
 impl World {
@@ -65,6 +70,8 @@ impl World {
             wizard_taught: false,
             wizard_id: None,
             bindings: HashMap::new(),
+            konami_index: 0,
+            cheat_unlocked: false,
         }
     }
 }

@@ -1,5 +1,7 @@
 //! Evaluator for Glyph: special forms, built-ins, default environment.
 
+use bracket_lib::prelude::{GREEN, RGB};
+
 use super::env::Env;
 use super::value::*;
 use crate::world::World;
@@ -134,6 +136,14 @@ fn eval_inner(
                     }
                     "match" => {
                         return eval_match_inner(
+                            &items[1..],
+                            env,
+                            opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
+                        )
+                    }
+                    "bind-key" => {
+                        return eval_bind_key_inner(
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
@@ -777,6 +787,51 @@ fn eval_match_inner(
         }
     }
     Err(EvalError::PatternMatchFailed(expr.to_string()))
+}
+
+fn eval_bind_key_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
+    if args.len() != 2 {
+        return Err(EvalError::WrongArgCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    let key_val = eval_inner(
+        &args[0],
+        env,
+        opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
+    )?;
+    let key = match &key_val {
+        Value::Keyword(kw) => kw.name.clone(),
+        _ => {
+            return Err(EvalError::TypeError {
+                expected: "keyword (e.g. :z, :x)",
+                got: key_val.to_string(),
+            })
+        }
+    };
+    if key.is_empty() || key.len() != 1 {
+        return Err(EvalError::TypeError {
+            expected: "single-character keyword (e.g. :z, :x)",
+            got: format!(":{}", key),
+        });
+    }
+    // Second arg is NOT evaluated — store its source text so the full
+    // expression is re-evaluated when the key is pressed later.
+    let source = args[1].to_string();
+    world.bindings.insert(key.clone(), source.clone());
+    world.event_log.push_colored(
+        format!("Bound key '{}' to: {}", key, source),
+        RGB::named(GREEN),
+    );
+    // Return the source as a value so it shows in console output
+    Ok(args[1].clone())
 }
 
 // --- Built-in functions ---

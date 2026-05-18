@@ -160,6 +160,9 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
     if world.blocking {
         ctx.print_color(c2, y, RGB::named(CYAN), RGB::named(BLACK), "guarding");
     }
+    if world.cheat_unlocked {
+        ctx.print_color(c2 + 9, y, RGB::named(GREEN), RGB::named(BLACK), "cheat!");
+    }
     y += 2;
 
     // --- Keys section ---
@@ -457,6 +460,17 @@ fn render_console(ctx: &mut BTerm, world: &World) {
             ctx.print_color(x + 2, line_y, RGB::named(WHITE), RGB::named(BLACK), "> ");
             let spans = highlight::highlight(line);
             print_highlighted(ctx, x + 4, line_y, input_inner_width, &spans);
+            // Cursor
+            let cursor_x = x + 4 + span_width(&spans) as i32;
+            if cursor_x < x + 2 + input_inner_width {
+                ctx.set(
+                    cursor_x,
+                    line_y,
+                    RGB::named(WHITE),
+                    RGB::named(BLACK),
+                    to_cp437('█'),
+                );
+            }
         } else {
             let spans = highlight::highlight(line);
             print_highlighted(ctx, x + 4, line_y, input_inner_width, &spans);
@@ -671,6 +685,10 @@ fn print_highlighted(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, spans: &[S
             }
         }
     }
+}
+
+fn span_width(spans: &[Span]) -> usize {
+    spans.iter().map(|s| s.text.len()).sum()
 }
 
 fn print_clipped(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str) {

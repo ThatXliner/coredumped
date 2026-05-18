@@ -174,16 +174,46 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
         y += 1;
     }
 
-    // Collect and sort bindings for display
-    let mut sorted: Vec<_> = world.bindings.iter().collect();
-    sorted.sort_by_key(|(k, _)| *k);
-    for (key, command) in &sorted {
-        let label = short_command_name(command);
-        print_clipped(ctx, c1, y, w - 9, label);
-        print_clipped(ctx, c1 + w - 9, y, 9, key);
+    let bind = |cmd: &str| -> String {
+        world
+            .bindings
+            .iter()
+            .find(|(_, v)| *v == cmd)
+            .map(|(k, _)| k.clone())
+            .unwrap_or_default()
+    };
+
+    // Movement — collect all direction keys
+    let move_keys: Vec<String> = [
+        bind("(move! :north)"),
+        bind("(move! :south)"),
+        bind("(move! :east)"),
+        bind("(move! :west)"),
+    ]
+    .into_iter()
+    .filter(|k| !k.is_empty())
+    .collect();
+    let move_str = move_keys.join("/");
+    if !move_str.is_empty() {
+        print_clipped(ctx, c1, y, 6, "move");
+        print_clipped(ctx, c1 + 6, y, w - 6, &move_str);
         y += 1;
-        if y > SCREEN_HEIGHT - 2 {
-            break;
+    }
+
+    // Single-key actions
+    let descend_key = bind("(descend!)");
+    let console_key = bind("(toggle-console!)");
+    let bindings_key = bind("(toggle-keybindings!)");
+    let extras: [(&str, &str); 3] = [
+        ("descend", display_key(&descend_key)),
+        ("console", &console_key),
+        ("bindings", &bindings_key),
+    ];
+    for (label, key) in &extras {
+        if !key.is_empty() {
+            print_clipped(ctx, c1, y, 8, label);
+            print_clipped(ctx, c1 + 9, y, w - 9, key);
+            y += 1;
         }
     }
 }
@@ -687,23 +717,12 @@ fn print_clipped_color(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &s
     ctx.print_color(x, y, color, RGB::named(BLACK), &clipped);
 }
 
-/// Shortens a Glyph command source for display in the side panel.
-fn short_command_name(command: &str) -> &str {
-    match command {
-        "(move! :north)" => "move N",
-        "(move! :south)" => "move S",
-        "(move! :east)" => "move E",
-        "(move! :west)" => "move W",
-        "(wait!)" => "wait",
-        "(block!)" => "block",
-        "(descend!)" => "descend",
-        "(ascend!)" => "ascend",
-        "(toggle-inspector!)" => "inspect",
-        "(toggle-console!)" => "console",
-        "(toggle-keybindings!)" => "bindings",
-        "(quit!)" => "quit",
-        _ if command.starts_with("(do-attack") => "attack",
-        _ => command,
+/// Maps a binding key to a clearer display string.
+fn display_key(key: &str) -> &str {
+    match key {
+        ">" => "shift+.",
+        "<" => "shift+,",
+        k => k,
     }
 }
 

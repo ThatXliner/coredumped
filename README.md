@@ -6,8 +6,6 @@ Before thee lies a dungeon of rules, lamps, slimes, and suspiciously readable
 machinery. Xlyph is a text-graphical roguelike about understanding, editing, and
 eventually rewriting the rules of the thing trying to kill you.
 
-Past this point, the scroll becomes plain.
-
 The current beta is a small playable vertical slice: a text-graphical dungeon,
 turn-based movement, pathing enemies, a directional flashlight, an inspector
 panel, an event log, and a stub console for future live queries. It is
@@ -25,9 +23,15 @@ experiment in making the system itself part of the dungeon.
 The long-term idea is that monsters, items, terrain, and mechanics can expose
 source-like behavior to the player. You inspect what a creature does, reason
 about it, and eventually use an in-game language to query or change parts of the
-world. The beta does not include the full language runtime yet, but it does
-include the first honest version of that interface: an enemy AI inspector whose
-displayed rule matches the implemented rule.
+world.
+
+Glyph is not a gimmick — it already runs the game. Enemy AI rules like
+`slime-hunt` and `goblin-patrol` are written in Glyph source and evaluated at
+runtime by the Glyph interpreter (`glyph::eval_with_opts`), not hardcoded in
+Rust. The rule you see in the inspector is the actual code driving each enemy.
+Modifying a rule's Glyph source changes how that enemy behaves. This is the
+first honest version of that interface: an enemy AI inspector whose displayed
+rule matches the implemented rule.
 
 ## Status
 

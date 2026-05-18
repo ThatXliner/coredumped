@@ -149,10 +149,6 @@ fn build_barrel_depths(world: &mut World) {
     let sign_pos = Position::new(5, 3);
     world.ecs.spawn_sign(sign_pos);
 
-    // Wizard in the clear zone
-    let wizard_pos = Position::new(3, 3);
-    world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
-
     // Fill every walkable tile with 1-HP barrels, except the clear zone and sign
     for y in 1..MAP_HEIGHT - 1 {
         for x in 1..MAP_WIDTH - 1 {

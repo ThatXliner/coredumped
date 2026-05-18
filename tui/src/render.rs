@@ -168,27 +168,23 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
     // --- Keys section ---
     print_section_header(ctx, c1, y, w, "keys");
     y += 1;
-    let mut controls: Vec<(&str, &str)> = vec![
-        ("move", "arrows/hjkl"),
-        ("wait", "."),
-        ("block", "b"),
-        ("descend", "shift+."),
-        ("ascend", "shift+,"),
-        ("inspect", "i"),
-        ("console", "`"),
-        ("quit", "esc/q"),
-    ];
 
-    if world.player_can_attack {
-        controls.insert(1, ("attack", "bump/a"));
-    } else {
-        controls.insert(1, ("status", "HELPLESS - find wizard!"));
+    if !world.player_can_attack {
+        print_clipped(ctx, c1, y, w, "HELPLESS - find wizard!");
+        y += 1;
     }
 
-    for (label, key) in &controls {
-        print_clipped(ctx, c1, y, 8, label);
-        print_clipped(ctx, c1 + 9, y, w - 9, key);
+    // Collect and sort bindings for display
+    let mut sorted: Vec<_> = world.bindings.iter().collect();
+    sorted.sort_by_key(|(k, _)| *k);
+    for (key, command) in &sorted {
+        let label = short_command_name(command);
+        print_clipped(ctx, c1, y, w - 9, label);
+        print_clipped(ctx, c1 + w - 9, y, 9, key);
         y += 1;
+        if y > SCREEN_HEIGHT - 2 {
+            break;
+        }
     }
 }
 
@@ -552,28 +548,7 @@ fn render_keybindings(ctx: &mut BTerm, world: &World) {
     let inner_w = width - 4;
     let mut line_y = y + 2;
 
-    print_section_header(ctx, inner_x, line_y, inner_w, "built-in");
-    line_y += 1;
-    let controls = [
-        ("move", "arrows/hjkl"),
-        ("attack", "bump/a"),
-        ("block", "b"),
-        ("wait", "."),
-        ("descend", "shift+."),
-        ("ascend", "shift+,"),
-        ("inspect", "i"),
-        ("bindings", "tab"),
-        ("console", "`"),
-        ("quit", "esc/q"),
-    ];
-    for (label, key) in &controls {
-        print_clipped(ctx, inner_x + 1, line_y, 12, label);
-        print_clipped(ctx, inner_x + 13, line_y, inner_w - 13, key);
-        line_y += 1;
-    }
-
-    line_y += 1;
-    print_section_header(ctx, inner_x, line_y, inner_w, "player bindings");
+    print_section_header(ctx, inner_x, line_y, inner_w, "bindings");
     line_y += 1;
 
     if world.bindings.is_empty() {
@@ -586,7 +561,6 @@ fn render_keybindings(ctx: &mut BTerm, world: &World) {
         );
         line_y += 1;
     } else {
-        // Collect and sort for display
         let mut sorted: Vec<_> = world.bindings.iter().collect();
         sorted.sort_by_key(|(k, _)| *k);
         for (key, command) in &sorted {
@@ -711,6 +685,26 @@ fn print_clipped_color(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &s
 
     let clipped: String = text.chars().take(max_width as usize).collect();
     ctx.print_color(x, y, color, RGB::named(BLACK), &clipped);
+}
+
+/// Shortens a Glyph command source for display in the side panel.
+fn short_command_name(command: &str) -> &str {
+    match command {
+        "(move! :north)" => "move N",
+        "(move! :south)" => "move S",
+        "(move! :east)" => "move E",
+        "(move! :west)" => "move W",
+        "(wait!)" => "wait",
+        "(block!)" => "block",
+        "(descend!)" => "descend",
+        "(ascend!)" => "ascend",
+        "(toggle-inspector!)" => "inspect",
+        "(toggle-console!)" => "console",
+        "(toggle-keybindings!)" => "bindings",
+        "(quit!)" => "quit",
+        _ if command.starts_with("(do-attack") => "attack",
+        _ => command,
+    }
 }
 
 #[cfg(test)]

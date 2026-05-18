@@ -12,8 +12,8 @@ use bracket_lib::prelude::{
 
 use crate::entity::{Direction, Position};
 
-pub const MAP_WIDTH: i32 = 40;
-pub const MAP_HEIGHT: i32 = 25;
+pub const MAP_WIDTH: i32 = 55;
+pub const MAP_HEIGHT: i32 = 33;
 pub const FLASHLIGHT_RADIUS: i32 = 12;
 const FLASHLIGHT_SPREAD_DOT: f32 = 0.70;
 
@@ -327,7 +327,7 @@ impl Map {
         map.set_tile(stairs_down, TileType::StairsDown);
 
         // 5. Scatter combat spawns at minimum distance from player and each other
-        let spawn_count = 3 + depth as usize;
+        let spawn_count = 1 + depth as usize;
         let mut combat_spawns: Vec<Position> = Vec::new();
         let mut candidates: Vec<Position> = connected
             .iter()

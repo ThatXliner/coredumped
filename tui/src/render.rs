@@ -18,17 +18,18 @@ use crate::{
     world::World,
 };
 
-const SCREEN_HEIGHT: i32 = 41;
+const SCREEN_WIDTH: i32 = 90;
+const SCREEN_HEIGHT: i32 = 50;
 const MAP_X: i32 = 1;
 const MAP_Y: i32 = 1;
-const PANEL_X: i32 = 42;
+const PANEL_X: i32 = 57;
 const PANEL_Y: i32 = 1;
-const PANEL_WIDTH: i32 = 24;
-const PANEL_HEIGHT: i32 = 27;
+const PANEL_WIDTH: i32 = 32;
+const PANEL_HEIGHT: i32 = 35;
 const LOG_X: i32 = 1;
-const LOG_Y: i32 = 27;
-const LOG_WIDTH: i32 = 66;
-const LOG_HEIGHT: i32 = 14;
+const LOG_Y: i32 = 35;
+const LOG_WIDTH: i32 = 88;
+const LOG_HEIGHT: i32 = 15;
 
 pub fn render(ctx: &mut BTerm, world: &World) {
     let lit_tiles = world
@@ -191,7 +192,7 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
 fn render_overlay_backdrop(ctx: &mut BTerm) {
     let bg = RGB::named(BLACK);
     for y in 0..SCREEN_HEIGHT {
-        for x in 0..78i32.min(SCREEN_HEIGHT + 37) {
+        for x in 0..SCREEN_WIDTH {
             ctx.set(x, y, RGB::named(BLACK), bg, to_cp437(' '));
         }
     }
@@ -201,8 +202,8 @@ fn render_overlay_backdrop(ctx: &mut BTerm) {
 fn render_inspector(ctx: &mut BTerm, world: &World) {
     let x = 2;
     let y = 1;
-    let width = 62;
-    let height = 38;
+    let width = 86;
+    let height = 46;
 
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " rules ");
@@ -294,7 +295,7 @@ fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
         format!("pos: ({}, {})", entity.pos.x, entity.pos.y),
     ];
 
-    let tooltip_x = (mx + 2).min(78 - 24);
+    let tooltip_x = (mx + 2).min(SCREEN_WIDTH - 28);
     let tooltip_y = my.min(LOG_Y - 4 - tip_lines.len() as i32);
     let tooltip_w = 24;
     let tooltip_h = tip_lines.len() as i32 + 2;
@@ -394,8 +395,8 @@ fn wrapped_log_lines(entries: &[LogEntry], max_width: usize) -> Vec<LogEntry> {
 fn render_console(ctx: &mut BTerm, world: &World) {
     let x = 3;
     let y = 8;
-    let width = 60;
-    let height = 21;
+    let width = 84;
+    let height = 27;
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " glyph console ");
 
@@ -485,10 +486,10 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
 }
 
 fn render_keybindings(ctx: &mut BTerm, world: &World) {
-    let x = 10;
-    let y = 4;
-    let width = 46;
-    let height = 32;
+    let x = 15;
+    let y = 5;
+    let width = 60;
+    let height = 38;
 
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " keybindings ");
@@ -549,10 +550,10 @@ fn render_keybindings(ctx: &mut BTerm, world: &World) {
 }
 
 fn render_death_screen(ctx: &mut BTerm, world: &World) {
-    let x = 10;
-    let y = 10;
-    let width = 46;
-    let height = 16;
+    let x = 15;
+    let y = 12;
+    let width = 60;
+    let height = 18;
 
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " death ");

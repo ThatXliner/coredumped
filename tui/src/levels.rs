@@ -124,42 +124,58 @@ fn build_barrel_depths(world: &mut World) {
     apply_map(world, &gen);
 
     let stairs = find_stairs_down(&world.map);
+    let player_start = world.player_pos();
 
-    // A 4×3 clear zone at the top-left — no barrels here
-    let clear_zone: [Position; 12] = [
-        Position::new(2, 2),
-        Position::new(3, 2),
-        Position::new(4, 2),
-        Position::new(5, 2),
-        Position::new(2, 3),
-        Position::new(3, 3),
-        Position::new(4, 3),
+    // Fill every walkable tile with a 1-HP barrel
+    for y in 1..MAP_HEIGHT - 1 {
+        for x in 1..MAP_WIDTH - 1 {
+            let pos = Position::new(x, y);
+            if pos != player_start {
+                world.ecs.spawn_barrel(pos);
+            }
+        }
+    }
+
+    // Remove barrel from the exit stairs and re-hide it
+    if let Some(barrel) = world.ecs.entity_at(stairs) {
+        world.ecs.remove(barrel);
+    }
+    world.ecs.spawn_barrel(stairs);
+
+    // Clear a 4×3 zone at the top-left so the player has room to move
+    for x in 2..=5 {
+        for y in 2..=4 {
+            if Position::new(x, y) != player_start {
+                if let Some(barrel) = world.ecs.entity_at(Position::new(x, y)) {
+                    world.ecs.remove(barrel);
+                }
+            }
+        }
+    }
+
+    // Place signs (remove the barrel underneath first)
+    let place_sign = |world: &mut World, pos: Position, msg: &str| {
+        if let Some(barrel) = world.ecs.entity_at(pos) {
+            world.ecs.remove(barrel);
+        }
+        world.ecs.spawn_sign(pos, msg);
+    };
+
+    place_sign(
+        world,
         Position::new(5, 3),
-        Position::new(2, 4),
-        Position::new(3, 4),
-        Position::new(4, 4),
-        Position::new(5, 4),
-    ];
-
-    // Subtle hint sign at the right edge of the clear zone
-    let subtle_sign_pos = Position::new(5, 3);
-    world.ecs.spawn_sign(
-        subtle_sign_pos,
         "This is a lot of barrels...\nThink about rebinding your keys.\nOne key can (do) what many cannot.",
     );
 
-    // Movement macro hint sign buried in the barrels — teaches the player about
-    // (move! :dir) and (do ...) chaining
-    let macro_sign_pos = Position::new(15, 20);
-    world.ecs.spawn_sign(
-        macro_sign_pos,
+    place_sign(
+        world,
+        Position::new(15, 20),
         "Program your character with Glyph commands:\n  (move! :east)  (move! :south)  (move! :north)\nChain moves and attacks in (do ...):\n  (do (move! :east) (do-attack :east) (move! :east) (do-attack :east))\nBind to one key and your character does the work!",
     );
 
-    // Obvious hint sign buried somewhere in the barrels
-    let obvious_sign_pos = Position::new(MAP_WIDTH - 5, MAP_HEIGHT / 2);
-    world.ecs.spawn_sign(
-        obvious_sign_pos,
+    place_sign(
+        world,
+        Position::new(MAP_WIDTH - 5, MAP_HEIGHT / 2),
         "\
 Welcome to the Barrel Depths!\n\n\
 Each (do-attack) costs 1 tick. But\nyou can chain them with (do ...):\n  \
@@ -170,25 +186,6 @@ Bind the full combo to ONE key:\n  \
                   (do-attack :east)  (do-attack :west)))\n\
 Now clear these barrels and find the exit!",
     );
-
-    // Fill every walkable tile with 1-HP barrels, except the clear zone and signs
-    for y in 1..MAP_HEIGHT - 1 {
-        for x in 1..MAP_WIDTH - 1 {
-            let pos = Position::new(x, y);
-            if clear_zone.contains(&pos)
-                || pos == subtle_sign_pos
-                || pos == macro_sign_pos
-                || pos == obvious_sign_pos
-                || pos == stairs
-            {
-                continue;
-            }
-            world.ecs.spawn_barrel(pos);
-        }
-    }
-
-    // One barrel on top of the exit stairs, hiding it
-    world.ecs.spawn_barrel(stairs);
 }
 
 // ---------------------------------------------------------------------------

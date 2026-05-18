@@ -6,6 +6,8 @@
 pub mod env;
 pub mod eval;
 pub mod highlight;
+#[cfg(feature = "prelude")]
+pub mod prelude;
 pub mod reader;
 pub mod value;
 

@@ -71,4 +71,10 @@ impl Env {
     pub fn exists(&self, name: &str) -> bool {
         self.lookup(name).is_some()
     }
+
+    /// Remove a binding from the current scope only (not parents).
+    pub fn unbind(&self, name: &str) {
+        let lower = name.to_lowercase();
+        self.0.borrow_mut().bindings.remove(&lower);
+    }
 }

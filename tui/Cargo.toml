@@ -6,3 +6,8 @@ edition = "2021"
 [dependencies]
 bracket-lib = "~0.8"
 ariadne = "0.4"
+
+[features]
+default = ["prelude"]
+# Load Glyph prelude functions, shadowing selected Rust builtins.
+prelude = []

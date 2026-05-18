@@ -806,6 +806,21 @@ fn setup_glyph_env() -> Env {
     reg!("heal", builtin_heal);
     reg!("set-level", builtin_set_level);
     ai_builtins::register_all(&env);
+
+    #[cfg(feature = "prelude")]
+    {
+        // Load Glyph prelude — evaluate source against the env
+        let forms = glyph::read_string(glyph::prelude::SOURCE).unwrap();
+        let mut dummy = crate::world::World::minimal();
+        for form in &forms {
+            let _ = glyph::eval(form, &env, &mut dummy);
+        }
+        // Shadow selected Rust builtins with Glyph versions
+        if let Some(val) = env.lookup("range-entry") {
+            env.bind("range", val);
+        }
+    }
+
     env
 }
 
@@ -1720,5 +1735,32 @@ mod tests {
 
         assert_eq!(cost, ActionCost::Tick);
         assert_eq!(world.depth, 4);
+    }
+
+    #[cfg(feature = "prelude")]
+    #[test]
+    fn prelude_functions_work_in_console() {
+        let mut world = World::new();
+        world.mode = Mode::Console;
+
+        // Glyph range (shadows Rust builtin)
+        world.console_buffer = "(range 5)".to_string();
+        world.apply_intent(Intent::ConsoleSubmit);
+        assert_eq!(world.console_output, "=> (0 1 2 3 4)");
+
+        // Glyph filter
+        world.console_buffer = "(filter (fn [x] (> x 3)) (range 10))".to_string();
+        world.apply_intent(Intent::ConsoleSubmit);
+        assert_eq!(world.console_output, "=> (4 5 6 7 8 9)");
+
+        // Glyph reduce
+        world.console_buffer = "(reduce + 0 (range 5))".to_string();
+        world.apply_intent(Intent::ConsoleSubmit);
+        assert_eq!(world.console_output, "=> 10");
+
+        // Glyph some
+        world.console_buffer = "(some (fn [x] (= x 3)) (range 10))".to_string();
+        world.apply_intent(Intent::ConsoleSubmit);
+        assert_eq!(world.console_output, "=> true");
     }
 }

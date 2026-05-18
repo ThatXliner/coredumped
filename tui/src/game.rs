@@ -107,6 +107,7 @@ impl World {
             konami_index: 0,
             cheat_unlocked: false,
             console_scroll: 0,
+            confirming_quit: false,
         }
     }
 
@@ -154,6 +155,7 @@ impl World {
             konami_index: 0,
             cheat_unlocked: false,
             console_scroll: 0,
+            confirming_quit: false,
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -161,6 +163,16 @@ impl World {
     }
 
     pub fn apply_intent(&mut self, intent: Intent) -> ActionCost {
+        // Any action other than q when confirming quit should cancel it
+        if self.confirming_quit {
+            match &intent {
+                Intent::ExecuteBinding(name) if name == "q" => {}
+                _ => {
+                    self.confirming_quit = false;
+                }
+            }
+        }
+
         match intent {
             Intent::Move(direction) => {
                 self.player_facing = direction;
@@ -779,7 +791,6 @@ fn default_bindings() -> HashMap<String, String> {
     m.insert("i".into(), "(toggle-inspector!)".into());
     m.insert("`".into(), "(toggle-console!)".into());
     m.insert("tab".into(), "(toggle-keybindings!)".into());
-    m.insert("esc".into(), "(quit!)".into());
     m.insert("q".into(), "(quit!)".into());
     m
 }
@@ -883,7 +894,14 @@ fn builtin_quit_bang(
     _opts: &glyph::SandboxOptions,
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    world.running = false;
+    if world.confirming_quit {
+        world.running = false;
+    } else {
+        world.confirming_quit = true;
+        world
+            .event_log
+            .push("Press q again to quit. Any other key to cancel.");
+    }
     Ok(Value::Nil)
 }
 

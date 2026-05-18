@@ -48,6 +48,9 @@ pub struct World {
 
     /// Scroll offset for console output (0 = bottom/latest).
     pub console_scroll: usize,
+
+    /// Set to true when q is pressed to confirm quitting.
+    pub confirming_quit: bool,
 }
 
 impl World {
@@ -78,6 +81,7 @@ impl World {
             konami_index: 0,
             cheat_unlocked: false,
             console_scroll: 0,
+            confirming_quit: false,
         }
     }
 }

@@ -230,6 +230,7 @@ mod tests {
             konami_index: 0,
             cheat_unlocked: false,
             console_scroll: 0,
+            confirming_quit: false,
         }
     }
 

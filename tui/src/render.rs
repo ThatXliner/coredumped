@@ -410,15 +410,34 @@ fn render_console(ctx: &mut BTerm, world: &World) {
 
     let output_y = y + 4;
     let prompt_y = y + height - 2;
-    let output_height = prompt_y - output_y - 1;
+    let output_height = prompt_y - output_y - 1; // total lines available for output + input
 
-    if !world.console_output.is_empty() {
+    // Wrap input buffer into lines for multi-line display (word-wrap at inner width)
+    let input_wrap_width = (width - 6) as usize;
+    let input_wrapped = if world.console_buffer.is_empty() {
+        vec![String::new()]
+    } else {
+        wrap_text(&world.console_buffer, input_wrap_width)
+    };
+
+    // Reserve space for input at the bottom — cap to keep at least 1 line for output
+    let max_input_lines = (output_height - 1).max(1) as usize;
+    let input_line_count = input_wrapped.len().min(max_input_lines);
+    let visible_input = if input_wrapped.len() > max_input_lines {
+        &input_wrapped[input_wrapped.len() - max_input_lines..]
+    } else {
+        &input_wrapped[..]
+    };
+
+    // Output rendered in remaining space above the input area
+    let output_available = output_height - input_line_count as i32;
+    if !world.console_output.is_empty() && output_available > 0 {
         let lines = if is_diagnostic_output(&world.console_output) {
             clipped_lines(&world.console_output, (width - 4) as usize)
         } else {
             wrap_text(&world.console_output, (width - 4) as usize)
         };
-        for (i, line) in lines.iter().take(output_height as usize).enumerate() {
+        for (i, line) in lines.iter().take(output_available as usize).enumerate() {
             if let Some(color) = world.console_output_color {
                 print_clipped_color(ctx, x + 2, output_y + i as i32, width - 4, line, color);
             } else {
@@ -427,9 +446,22 @@ fn render_console(ctx: &mut BTerm, world: &World) {
         }
     }
 
-    ctx.print_color(x + 2, prompt_y, RGB::named(WHITE), RGB::named(BLACK), "> ");
-    let spans = highlight::highlight(&world.console_buffer);
-    print_highlighted(ctx, x + 4, prompt_y, width - 6, &spans);
+    // Render wrapped input lines at the bottom
+    let input_inner_width = width - 6;
+    let input_start_y = prompt_y - input_line_count as i32 + 1;
+    for (i, line) in visible_input.iter().enumerate() {
+        let line_y = input_start_y + i as i32;
+        let is_last = i == visible_input.len() - 1;
+
+        if is_last {
+            ctx.print_color(x + 2, line_y, RGB::named(WHITE), RGB::named(BLACK), "> ");
+            let spans = highlight::highlight(line);
+            print_highlighted(ctx, x + 4, line_y, input_inner_width, &spans);
+        } else {
+            let spans = highlight::highlight(line);
+            print_highlighted(ctx, x + 4, line_y, input_inner_width, &spans);
+        }
+    }
 }
 
 fn is_diagnostic_output(text: &str) -> bool {

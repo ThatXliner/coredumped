@@ -449,5 +449,49 @@ mod tests {
                 Value::List(vec![Value::I64(1), Value::I64(2), Value::I64(3)])
             );
         }
+
+        #[test]
+        fn test_range() {
+            let env = default_env();
+            assert_eq!(
+                eval_str("(range 5)", &env).unwrap(),
+                Value::List(vec![
+                    Value::I64(0),
+                    Value::I64(1),
+                    Value::I64(2),
+                    Value::I64(3),
+                    Value::I64(4)
+                ])
+            );
+            assert_eq!(
+                eval_str("(range 3 7)", &env).unwrap(),
+                Value::List(vec![
+                    Value::I64(3),
+                    Value::I64(4),
+                    Value::I64(5),
+                    Value::I64(6)
+                ])
+            );
+            assert_eq!(
+                eval_str("(range 0 10 2)", &env).unwrap(),
+                Value::List(vec![
+                    Value::I64(0),
+                    Value::I64(2),
+                    Value::I64(4),
+                    Value::I64(6),
+                    Value::I64(8)
+                ])
+            );
+            assert_eq!(
+                eval_str("(range 5 0 -1)", &env).unwrap(),
+                Value::List(vec![
+                    Value::I64(5),
+                    Value::I64(4),
+                    Value::I64(3),
+                    Value::I64(2),
+                    Value::I64(1)
+                ])
+            );
+        }
     }
 }

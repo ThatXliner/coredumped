@@ -864,6 +864,16 @@ fn as_float(v: &Value) -> EvalResult<f64> {
     }
 }
 
+fn as_int(v: &Value) -> EvalResult<i64> {
+    match v {
+        Value::I64(n) => Ok(*n),
+        other => Err(EvalError::TypeError {
+            expected: "int",
+            got: other.to_string(),
+        }),
+    }
+}
+
 macro_rules! arith_binop {
     ($name:ident, $op:tt) => {
         fn $name(
@@ -1293,6 +1303,54 @@ fn builtin_map_fn(
     Ok(Value::List(result))
 }
 
+fn builtin_range(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
+    let (start, end, step) =
+        match args.len() {
+            1 => {
+                let e = as_int(&args[0])?;
+                (0i64, e, 1i64)
+            }
+            2 => {
+                let s = as_int(&args[0])?;
+                let e = as_int(&args[1])?;
+                (s, e, 1i64)
+            }
+            3 => {
+                let s = as_int(&args[0])?;
+                let e = as_int(&args[1])?;
+                let st = as_int(&args[2])?;
+                if st == 0 {
+                    return Err(EvalError::Custom("range step cannot be zero".into()));
+                }
+                (s, e, st)
+            }
+            _ => return Err(EvalError::Custom(
+                "range expects 1-3 args: (range end), (range start end), or (range start end step)"
+                    .into(),
+            )),
+        };
+    let mut items = Vec::new();
+    if step > 0 {
+        let mut i = start;
+        while i < end {
+            items.push(Value::I64(i));
+            i += step;
+        }
+    } else {
+        let mut i = start;
+        while i > end {
+            items.push(Value::I64(i));
+            i += step;
+        }
+    }
+    Ok(Value::List(items))
+}
+
 // --- Environment Setup ---
 
 fn builtin_fn(
@@ -1360,6 +1418,7 @@ pub fn default_env() -> Env {
     env.bind("rest", builtin_fn("rest", builtin_rest));
     env.bind("empty?", builtin_fn("empty?", builtin_emptyq));
     env.bind("map", builtin_fn("map", builtin_map_fn));
+    env.bind("range", builtin_fn("range", builtin_range));
 
     env.bind("print", builtin_fn("print", builtin_print));
     env.bind("println", builtin_fn("println", builtin_println));

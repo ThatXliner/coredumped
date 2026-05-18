@@ -412,7 +412,11 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     let output_height = prompt_y - output_y - 1;
 
     if !world.console_output.is_empty() {
-        let lines = wrap_text(&world.console_output, (width - 4) as usize);
+        let lines = if is_diagnostic_output(&world.console_output) {
+            clipped_lines(&world.console_output, (width - 4) as usize)
+        } else {
+            wrap_text(&world.console_output, (width - 4) as usize)
+        };
         for (i, line) in lines.iter().take(output_height as usize).enumerate() {
             if let Some(color) = world.console_output_color {
                 print_clipped_color(ctx, x + 2, output_y + i as i32, width - 4, line, color);
@@ -425,6 +429,16 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     ctx.print_color(x + 2, prompt_y, RGB::named(WHITE), RGB::named(BLACK), "> ");
     let spans = highlight::highlight(&world.console_buffer);
     print_highlighted(ctx, x + 4, prompt_y, width - 6, &spans);
+}
+
+fn is_diagnostic_output(text: &str) -> bool {
+    text.contains("Error: syntax error") && text.contains("[glyph:")
+}
+
+fn clipped_lines(text: &str, max_width: usize) -> Vec<String> {
+    text.lines()
+        .map(|line| line.chars().take(max_width).collect())
+        .collect()
 }
 
 fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
@@ -667,5 +681,20 @@ mod tests {
             vec!["Open the console", "(`) and bind", "attack to a key"]
         );
         assert!(lines.iter().all(|line| line.color == Some(color)));
+    }
+
+    #[test]
+    fn diagnostic_lines_are_clipped_without_reflowing() {
+        let report = "Error: syntax error\n   +-[glyph:1:17]\n 1 | (bind-key :z (do";
+
+        assert!(is_diagnostic_output(report));
+        assert_eq!(
+            clipped_lines(report, 80),
+            vec![
+                "Error: syntax error",
+                "   +-[glyph:1:17]",
+                " 1 | (bind-key :z (do",
+            ]
+        );
     }
 }

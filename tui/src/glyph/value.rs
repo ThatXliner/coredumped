@@ -38,12 +38,16 @@ impl ReadError {
     }
 
     pub fn report(&self, source: &str) -> String {
-        use ariadne::{Color, Config, Label, Report, ReportKind, Source};
+        use ariadne::{CharSet, Color, Config, Label, Report, ReportKind, Source};
         let offset = self.offset();
         let msg = self.to_string();
-        let span = offset..offset + 1;
+        let span = offset..source.len().min(offset + 1);
         let report = Report::build(ReportKind::Error, "glyph", offset)
-            .with_config(Config::default().with_color(false))
+            .with_config(
+                Config::default()
+                    .with_color(false)
+                    .with_char_set(CharSet::Ascii),
+            )
             .with_message("syntax error")
             .with_label(
                 Label::new(("glyph", span))
@@ -399,5 +403,20 @@ impl fmt::Display for Value {
             Value::Closure(c) => write!(f, "#<closure (fn [{}] ...)>", c.params.join(" ")),
             Value::Macro(m) => write!(f, "#<macro {}>", m.params.join(" ")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn read_error_report_is_ascii_at_eof() {
+        let source = "(bind-key :z (do";
+        let report = ReadError::UnexpectedEof("reading list".into(), source.len()).report(source);
+
+        assert!(report.is_ascii());
+        assert!(report.contains("[glyph:1:17]"));
+        assert!(report.contains(source));
     }
 }

@@ -496,11 +496,23 @@ impl World {
         );
     }
 
-    fn interact_with_sign(&mut self, _sign_id: EntityId) {
+    fn interact_with_sign(&mut self, sign_id: EntityId) {
         self.event_log.push("===================================");
         self.event_log
             .push_colored("              SIGN", RGB::named(CYAN));
         self.event_log.push("===================================");
+
+        // Sign at (5, 3) — the cryptic hint near the player start
+        if self.ecs.position(sign_id) == Some(Position::new(5, 3)) {
+            self.event_log.push("");
+            self.event_log
+                .push("This is a lot of barrels...");
+            self.event_log.push("Think about rebinding your keys.");
+            self.event_log.push("One key can (do) what many cannot.");
+            return;
+        }
+
+        // Every other sign — the full explanation
         self.event_log
             .push_colored("Welcome to the Barrel Depths!", RGB::named(CYAN));
         self.event_log.push("");

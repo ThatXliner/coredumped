@@ -145,15 +145,23 @@ fn build_barrel_depths(world: &mut World) {
         Position::new(5, 4),
     ];
 
-    // Sign at the right edge of the clear zone
-    let sign_pos = Position::new(5, 3);
-    world.ecs.spawn_sign(sign_pos);
+    // Subtle hint sign at the right edge of the clear zone
+    let subtle_sign_pos = Position::new(5, 3);
+    world.ecs.spawn_sign(subtle_sign_pos);
 
-    // Fill every walkable tile with 1-HP barrels, except the clear zone and sign
+    // Obvious hint sign buried somewhere in the barrels
+    let obvious_sign_pos = Position::new(MAP_WIDTH - 5, MAP_HEIGHT / 2);
+    world.ecs.spawn_sign(obvious_sign_pos);
+
+    // Fill every walkable tile with 1-HP barrels, except the clear zone and signs
     for y in 1..MAP_HEIGHT - 1 {
         for x in 1..MAP_WIDTH - 1 {
             let pos = Position::new(x, y);
-            if clear_zone.contains(&pos) || pos == sign_pos || pos == stairs {
+            if clear_zone.contains(&pos)
+                || pos == subtle_sign_pos
+                || pos == obvious_sign_pos
+                || pos == stairs
+            {
                 continue;
             }
             world.ecs.spawn_barrel(pos);

@@ -57,6 +57,11 @@ pub fn render(ctx: &mut BTerm, world: &World) {
         render_inspector(ctx, world);
     }
 
+    if world.mode == Mode::Keybindings {
+        render_overlay_backdrop(ctx);
+        render_keybindings(ctx, world);
+    }
+
     if world.mode == Mode::Console {
         render_console(ctx, world);
     }
@@ -100,6 +105,10 @@ fn draw_entity(ctx: &mut BTerm, entity: EntityView, lit_tiles: &HashSet<Position
         (EntityKind::Ogre, false) => RGB::named(PURPLE),
         (EntityKind::Wizard, true) => RGB::named(BLUE),
         (EntityKind::Wizard, false) => RGB::named(DARK_BLUE),
+        (EntityKind::Barrel, true) => RGB::from_u8(180, 100, 30),
+        (EntityKind::Barrel, false) => RGB::from_u8(80, 50, 20),
+        (EntityKind::Sign, true) => RGB::from_u8(200, 200, 100),
+        (EntityKind::Sign, false) => RGB::from_u8(120, 120, 60),
     };
 
     ctx.set(
@@ -405,7 +414,11 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     if !world.console_output.is_empty() {
         let lines = wrap_text(&world.console_output, (width - 4) as usize);
         for (i, line) in lines.iter().take(output_height as usize).enumerate() {
-            print_clipped(ctx, x + 2, output_y + i as i32, width - 4, line);
+            if let Some(color) = world.console_output_color {
+                print_clipped_color(ctx, x + 2, output_y + i as i32, width - 4, line, color);
+            } else {
+                print_clipped(ctx, x + 2, output_y + i as i32, width - 4, line);
+            }
         }
     }
 
@@ -455,6 +468,70 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     }
 
     lines
+}
+
+fn render_keybindings(ctx: &mut BTerm, world: &World) {
+    let x = 10;
+    let y = 4;
+    let width = 46;
+    let height = 32;
+
+    fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
+    draw_box(ctx, x, y, width, height, " keybindings ");
+
+    let inner_x = x + 2;
+    let inner_w = width - 4;
+    let mut line_y = y + 2;
+
+    print_section_header(ctx, inner_x, line_y, inner_w, "built-in");
+    line_y += 1;
+    let controls = [
+        ("move", "arrows/hjkl"),
+        ("attack", "bump/a"),
+        ("block", "b"),
+        ("wait", "."),
+        ("descend", "shift+."),
+        ("ascend", "shift+,"),
+        ("inspect", "i"),
+        ("bindings", "tab"),
+        ("console", "`"),
+        ("quit", "esc/q"),
+    ];
+    for (label, key) in &controls {
+        print_clipped(ctx, inner_x + 1, line_y, 12, label);
+        print_clipped(ctx, inner_x + 13, line_y, inner_w - 13, key);
+        line_y += 1;
+    }
+
+    line_y += 1;
+    print_section_header(ctx, inner_x, line_y, inner_w, "player bindings");
+    line_y += 1;
+
+    if world.bindings.is_empty() {
+        ctx.print_color(
+            inner_x + 1,
+            line_y,
+            RGB::named(GRAY),
+            RGB::named(BLACK),
+            "(none — use the console to bind keys)",
+        );
+        line_y += 1;
+    } else {
+        // Collect and sort for display
+        let mut sorted: Vec<_> = world.bindings.iter().collect();
+        sorted.sort_by_key(|(k, _)| *k);
+        for (key, command) in &sorted {
+            print_clipped(ctx, inner_x + 1, line_y, 6, &format!("[{}]", key));
+            print_clipped(ctx, inner_x + 8, line_y, inner_w - 8, command);
+            line_y += 1;
+            if line_y > y + height - 3 {
+                break;
+            }
+        }
+    }
+
+    line_y = (y + height - 2).min(line_y + 1);
+    print_clipped(ctx, inner_x, line_y, inner_w, "tab/esc close");
 }
 
 fn render_death_screen(ctx: &mut BTerm, world: &World) {

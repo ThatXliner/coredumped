@@ -92,6 +92,8 @@ pub enum EntityKind {
     Bat,
     Ogre,
     Wizard,
+    Barrel,
+    Sign,
 }
 
 impl EntityKind {
@@ -103,6 +105,8 @@ impl EntityKind {
             EntityKind::Bat => 'b',
             EntityKind::Ogre => 'O',
             EntityKind::Wizard => 'W',
+            EntityKind::Barrel => 'B',
+            EntityKind::Sign => '=',
         }
     }
 
@@ -114,6 +118,8 @@ impl EntityKind {
             EntityKind::Bat => "bat",
             EntityKind::Ogre => "ogre",
             EntityKind::Wizard => "wizard",
+            EntityKind::Barrel => "barrel",
+            EntityKind::Sign => "sign",
         }
     }
 
@@ -123,7 +129,7 @@ impl EntityKind {
             EntityKind::Goblin => "goblin-patrol",
             EntityKind::Bat => "bat-flutter",
             EntityKind::Ogre => "ogre-charge",
-            EntityKind::Player | EntityKind::Wizard => "",
+            EntityKind::Player | EntityKind::Wizard | EntityKind::Barrel | EntityKind::Sign => "",
         }
     }
 }

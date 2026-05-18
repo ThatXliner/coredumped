@@ -59,6 +59,14 @@ impl Ecs {
         self.spawn_actor(EntityKind::Wizard, pos, Hp::new(20), false)
     }
 
+    pub fn spawn_barrel(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::Barrel, pos, Hp::new(1), false)
+    }
+
+    pub fn spawn_sign(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::Sign, pos, Hp::new(999), false)
+    }
+
     pub fn remove(&mut self, id: EntityId) {
         self.entities.remove(&id);
         self.kinds.remove(&id);

@@ -7,7 +7,9 @@
 
 use std::collections::HashMap;
 
-use bracket_lib::prelude::{a_star_search, NavigationPath, CYAN, DARK_GRAY, GREEN, ORANGE, RGB};
+use bracket_lib::prelude::{
+    a_star_search, NavigationPath, CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB,
+};
 
 use crate::{
     ai_builtins,
@@ -43,6 +45,7 @@ pub enum Intent {
     Attack,
     Respawn,
     Restart,
+    ToggleKeybindings,
     ExecuteBinding(String),
     Quit,
     Noop,
@@ -56,6 +59,7 @@ pub enum Mode {
     Inspector,
     Console,
     Dead,
+    Keybindings,
 }
 
 impl World {
@@ -87,6 +91,7 @@ impl World {
             event_log,
             console_buffer: String::new(),
             console_output: String::new(),
+            console_output_color: None,
             glyph_env,
             inspector_selection: 0,
             blocking: false,
@@ -132,6 +137,7 @@ impl World {
             event_log,
             console_buffer: String::new(),
             console_output: String::new(),
+            console_output_color: None,
             glyph_env,
             inspector_selection: 0,
             blocking: false,
@@ -201,6 +207,14 @@ impl World {
             }
             Intent::CloseOverlay => {
                 self.mode = Mode::Normal;
+                ActionCost::Free
+            }
+            Intent::ToggleKeybindings => {
+                self.mode = if self.mode == Mode::Keybindings {
+                    Mode::Normal
+                } else {
+                    Mode::Keybindings
+                };
                 ActionCost::Free
             }
             Intent::Descend => {
@@ -325,6 +339,28 @@ impl World {
             return;
         }
 
+        if self.depth == 4 {
+            // Depth 4 is the Barrel Depths: mix of barrels and enemies
+            for pos in combat_spawns {
+                let hash = (pos.x.wrapping_mul(31).wrapping_add(pos.y.wrapping_mul(17))) as u32;
+                if hash % 3 == 0 {
+                    self.spawn_enemy_at(*pos, self.depth);
+                } else {
+                    self.ecs.spawn_barrel(*pos);
+                }
+            }
+            for pos in boss_spawns {
+                self.spawn_boss_at(*pos);
+            }
+            // Place a barrel on the stairs
+            let stairs = find_stairs_down(&self.map);
+            self.ecs.spawn_barrel(stairs);
+            // Spawn sign near player
+            self.spawn_sign_near_player();
+            self.spawn_wizard_near_player();
+            return;
+        }
+
         for pos in combat_spawns {
             self.spawn_enemy_at(*pos, self.depth);
         }
@@ -356,6 +392,26 @@ impl World {
             .find(|&p| self.map.is_walkable(p) && self.ecs.entity_at(p).is_none())
             .unwrap_or(player_pos.offset(2, 0));
         self.wizard_id = Some(self.ecs.spawn_wizard(wizard_pos));
+    }
+
+    fn spawn_sign_near_player(&mut self) {
+        let player_pos = self.player_pos();
+        let candidates = [
+            player_pos.offset(3, 0),
+            player_pos.offset(-3, 0),
+            player_pos.offset(0, 3),
+            player_pos.offset(0, -3),
+            player_pos.offset(4, 0),
+            player_pos.offset(-4, 0),
+            player_pos.offset(0, 4),
+            player_pos.offset(0, -4),
+        ];
+        if let Some(&pos) = candidates
+            .iter()
+            .find(|&&p| self.map.is_walkable(p) && self.ecs.entity_at(p).is_none())
+        {
+            self.ecs.spawn_sign(pos);
+        }
     }
 
     /// Spawn a depth-appropriate enemy at the given position.
@@ -457,10 +513,20 @@ impl World {
         }
 
         if let Some(target_id) = self.ecs.entity_at(target) {
-            // Wizard interaction is always non-hostile
-            if self.ecs.kind(target_id) == Some(EntityKind::Wizard) {
-                self.interact_with_wizard(target_id);
-                return;
+            match self.ecs.kind(target_id) {
+                Some(EntityKind::Wizard) => {
+                    self.interact_with_wizard(target_id);
+                    return;
+                }
+                Some(EntityKind::Sign) => {
+                    self.interact_with_sign(target_id);
+                    return;
+                }
+                Some(EntityKind::Barrel) => {
+                    self.bump_barrel(target_id);
+                    return;
+                }
+                _ => {}
             }
 
             if !self.player_can_attack {
@@ -512,6 +578,10 @@ impl World {
         }
 
         if let Some(target_id) = self.ecs.entity_at(target) {
+            if self.ecs.kind(target_id) == Some(EntityKind::Barrel) {
+                self.bump_barrel(target_id);
+                return;
+            }
             let target_name = self.ecs.name(target_id);
             let hp = self
                 .ecs
@@ -583,6 +653,49 @@ impl World {
             "\"Strike with purpose, traveler — once you bind it, the way down will open.\"",
             RGB::named(CYAN),
         );
+    }
+
+    fn interact_with_sign(&mut self, _sign_id: EntityId) {
+        self.event_log.push("===================================");
+        self.event_log
+            .push_colored("              SIGN", RGB::named(CYAN));
+        self.event_log.push("===================================");
+        self.event_log
+            .push_colored("Welcome to the Barrel Depths!", RGB::named(CYAN));
+        self.event_log.push("");
+        self.event_log.push("Each (do-attack) costs 1 tick. But");
+        self.event_log.push("you can chain them with (do ...):");
+        self.event_log.push_colored(
+            "  (do (do-attack :north) (do-attack :south))",
+            RGB::named(GREEN),
+        );
+        self.event_log.push("That attacks twice — 2 ticks total.");
+        self.event_log.push("Bind the full combo to ONE key:");
+        self.event_log.push_colored(
+            "  (bind-key :x (do (do-attack :north) (do-attack :south)",
+            RGB::named(GREEN),
+        );
+        self.event_log.push_colored(
+            "                  (do-attack :east)  (do-attack :west)))",
+            RGB::named(GREEN),
+        );
+        self.event_log
+            .push("Now clear these barrels and find the exit!");
+    }
+
+    fn bump_barrel(&mut self, barrel_id: EntityId) {
+        let pos = self
+            .ecs
+            .position(barrel_id)
+            .expect("barrel should have a position");
+        self.ecs.damage(barrel_id, 1);
+        self.event_log
+            .push_colored("The barrel shatters into splinters!", RGB::named(ORANGE));
+
+        if self.map.tile(pos) == TileType::StairsDown {
+            self.event_log
+                .push_colored("The stairs down are revealed!", RGB::named(CYAN));
+        }
     }
 
     fn finish_tick(&mut self) {
@@ -668,6 +781,7 @@ impl World {
         }
         self.event_log.push(format!("> {}", command));
         self.console_output.clear();
+        self.console_output_color = None;
         match glyph::read_string(&command) {
             Ok(forms) => {
                 let mut last = Value::Nil;
@@ -688,6 +802,7 @@ impl World {
                         let msg = format!("Error: {}", e);
                         self.event_log.push(&msg);
                         self.console_output = msg;
+                        self.console_output_color = Some(RGB::named(RED));
                     }
                     None => {
                         // Check for do-attack sentinel
@@ -733,9 +848,10 @@ impl World {
             Err(e) => {
                 let report = e.report(&command);
                 for line in report.lines() {
-                    self.event_log.push(line);
+                    self.event_log.push_colored(line, RGB::named(RED));
                 }
                 self.console_output = report;
+                self.console_output_color = Some(RGB::named(RED));
             }
         }
         self.console_buffer.clear();
@@ -819,6 +935,18 @@ fn console_value_text(value: &Value) -> String {
         Value::String(text) => text.clone(),
         other => other.to_string(),
     }
+}
+
+fn find_stairs_down(map: &Map) -> Position {
+    for y in 0..map.height {
+        for x in 0..map.width {
+            let pos = Position::new(x, y);
+            if map.tile(pos) == TileType::StairsDown {
+                return pos;
+            }
+        }
+    }
+    Position::new(2, 2)
 }
 
 fn setup_glyph_env() -> Env {
@@ -1117,6 +1245,20 @@ mod tests {
         world.apply_intent(Intent::ConsoleSubmit);
 
         assert_eq!(world.console_output, "=> line one\nline two");
+        assert!(world.console_buffer.is_empty());
+    }
+
+    #[test]
+    fn console_syntax_errors_are_tui_colored_without_ansi_codes() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "(bin".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert!(world.console_output.contains("syntax error"));
+        assert!(!world.console_output.contains('\u{1b}'));
+        assert_eq!(world.console_output_color, Some(RGB::named(RED)));
         assert!(world.console_buffer.is_empty());
     }
 

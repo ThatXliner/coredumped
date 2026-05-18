@@ -27,6 +27,7 @@ pub fn key_to_intent(key: VirtualKeyCode, shift: bool, world: &World) -> Intent 
             intent
         }
         Mode::Inspector => inspector_key_to_intent(key),
+        Mode::Keybindings => keybindings_key_to_intent(key),
         Mode::Console => console_key_to_intent(key, shift),
         Mode::Dead => dead_key_to_intent(key, shift),
     }
@@ -49,7 +50,18 @@ fn normal_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
         (VirtualKeyCode::A, _) => Intent::Attack,
         (VirtualKeyCode::B, _) => Intent::Block,
         (VirtualKeyCode::Grave, _) => Intent::ToggleConsole,
+        (VirtualKeyCode::Tab, _) => Intent::ToggleKeybindings,
         (VirtualKeyCode::Escape, _) | (VirtualKeyCode::Q, _) => Intent::Quit,
+        _ => Intent::Noop,
+    }
+}
+
+fn keybindings_key_to_intent(key: VirtualKeyCode) -> Intent {
+    match key {
+        VirtualKeyCode::Escape | VirtualKeyCode::Tab => Intent::CloseOverlay,
+        VirtualKeyCode::Grave => Intent::ToggleConsole,
+        VirtualKeyCode::Up | VirtualKeyCode::K => Intent::InspectorScroll(-1),
+        VirtualKeyCode::Down | VirtualKeyCode::J => Intent::InspectorScroll(1),
         _ => Intent::Noop,
     }
 }

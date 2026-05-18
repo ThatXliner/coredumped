@@ -38,11 +38,12 @@ impl ReadError {
     }
 
     pub fn report(&self, source: &str) -> String {
-        use ariadne::{Color, Label, Report, ReportKind, Source};
+        use ariadne::{Color, Config, Label, Report, ReportKind, Source};
         let offset = self.offset();
         let msg = self.to_string();
         let span = offset..offset + 1;
         let report = Report::build(ReportKind::Error, "glyph", offset)
+            .with_config(Config::default().with_color(false))
             .with_message("syntax error")
             .with_label(
                 Label::new(("glyph", span))

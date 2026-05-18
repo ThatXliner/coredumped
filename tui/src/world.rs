@@ -5,6 +5,8 @@
 
 use std::collections::HashMap;
 
+use bracket_lib::prelude::RGB;
+
 use crate::{
     ecs::Ecs,
     entity::{Direction, EntityId},
@@ -28,6 +30,7 @@ pub struct World {
     pub event_log: EventLog,
     pub console_buffer: String,
     pub console_output: String,
+    pub console_output_color: Option<RGB>,
     pub glyph_env: Env,
     pub inspector_selection: usize,
     pub blocking: bool,
@@ -53,6 +56,7 @@ impl World {
             event_log: EventLog::new(),
             console_buffer: String::new(),
             console_output: String::new(),
+            console_output_color: None,
             glyph_env: Env::extend(&crate::glyph::default_env()),
             inspector_selection: 0,
             blocking: false,

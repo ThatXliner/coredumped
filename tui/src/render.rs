@@ -440,7 +440,15 @@ fn render_console(ctx: &mut BTerm, world: &World) {
         } else {
             wrap_text(&world.console_output, (width - 4) as usize)
         };
-        for (i, line) in lines.iter().take(output_available as usize).enumerate() {
+        let total_lines = lines.len();
+        let max_scroll = total_lines.saturating_sub(output_available as usize);
+        let scroll = world.console_scroll.min(max_scroll);
+        let start = total_lines.saturating_sub(output_available as usize + scroll);
+        for (i, line) in lines[start..]
+            .iter()
+            .enumerate()
+            .take(output_available as usize)
+        {
             if let Some(color) = world.console_output_color {
                 print_clipped_color(ctx, x + 2, output_y + i as i32, width - 4, line, color);
             } else {
@@ -460,8 +468,8 @@ fn render_console(ctx: &mut BTerm, world: &World) {
             ctx.print_color(x + 2, line_y, RGB::named(WHITE), RGB::named(BLACK), "> ");
             let spans = highlight::highlight(line);
             print_highlighted(ctx, x + 4, line_y, input_inner_width, &spans);
-            // Cursor
-            let cursor_x = x + 4 + span_width(&spans) as i32;
+            // Cursor at end of input
+            let cursor_x = x + 4 + line.len() as i32;
             if cursor_x < x + 2 + input_inner_width {
                 ctx.set(
                     cursor_x,
@@ -500,7 +508,7 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
             continue;
         }
 
-        let mut remaining = raw_line.trim_end();
+        let mut remaining = raw_line;
         while remaining.chars().count() > max_width {
             let mut split = 0;
             let mut last_space = None;
@@ -685,10 +693,6 @@ fn print_highlighted(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, spans: &[S
             }
         }
     }
-}
-
-fn span_width(spans: &[Span]) -> usize {
-    spans.iter().map(|s| s.text.len()).sum()
 }
 
 fn print_clipped(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str) {

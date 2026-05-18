@@ -70,6 +70,8 @@ fn console_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
         VirtualKeyCode::Grave => Intent::ToggleConsole,
         VirtualKeyCode::Back => Intent::ConsoleBackspace,
         VirtualKeyCode::Return => Intent::ConsoleSubmit,
+        VirtualKeyCode::Up => Intent::ConsoleScroll(-1),
+        VirtualKeyCode::Down => Intent::ConsoleScroll(1),
         _ => key_to_console_char(key, shift)
             .map(Intent::ConsoleInput)
             .unwrap_or(Intent::Noop),

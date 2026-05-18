@@ -45,6 +45,9 @@ pub struct World {
     pub konami_index: usize,
     /// Set to true when the full Konami code is entered.
     pub cheat_unlocked: bool,
+
+    /// Scroll offset for console output (0 = bottom/latest).
+    pub console_scroll: usize,
 }
 
 impl World {
@@ -74,6 +77,7 @@ impl World {
             bindings: HashMap::new(),
             konami_index: 0,
             cheat_unlocked: false,
+            console_scroll: 0,
         }
     }
 }

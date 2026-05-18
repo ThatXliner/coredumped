@@ -38,6 +38,8 @@ pub enum Intent {
     Wait,
     /// Scroll in overlays (inspector, keybindings).
     InspectorScroll(i32),
+    /// Scroll console output history (positive = up/older).
+    ConsoleScroll(i32),
     ConsoleInput(char),
     ConsoleBackspace,
     ConsoleSubmit,
@@ -103,6 +105,7 @@ impl World {
             bindings: default_bindings(),
             konami_index: 0,
             cheat_unlocked: false,
+            console_scroll: 0,
         }
     }
 
@@ -149,6 +152,7 @@ impl World {
             bindings: default_bindings(),
             konami_index: 0,
             cheat_unlocked: false,
+            console_scroll: 0,
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -180,8 +184,14 @@ impl World {
                 }
             }
             Intent::InspectorScroll(delta) => {
-                if self.mode == Mode::Inspector {
+                if self.mode == Mode::Inspector || self.mode == Mode::Keybindings {
                     self.scroll_inspector(delta);
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleScroll(delta) => {
+                if self.mode == Mode::Console {
+                    self.console_scroll = self.console_scroll.saturating_add_signed(delta as isize);
                 }
                 ActionCost::Free
             }
@@ -200,6 +210,7 @@ impl World {
             Intent::ConsoleSubmit => {
                 if self.mode == Mode::Console {
                     self.submit_console();
+                    self.console_scroll = 0;
                 }
                 ActionCost::Free
             }

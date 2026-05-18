@@ -7,7 +7,6 @@
 use bracket_lib::prelude::VirtualKeyCode;
 
 use crate::{
-    entity::Direction,
     game::{Intent, Mode},
     world::World,
 };
@@ -15,16 +14,12 @@ use crate::{
 pub fn key_to_intent(key: VirtualKeyCode, shift: bool, world: &World) -> Intent {
     match world.mode {
         Mode::Normal => {
-            let intent = normal_key_to_intent(key, shift);
-            if intent == Intent::Noop {
-                // Check player-defined keybindings for unhandled keys
-                if let Some(name) = key_to_binding_name(key, shift) {
-                    if world.bindings.contains_key(&name) {
-                        return Intent::ExecuteBinding(name);
-                    }
+            if let Some(name) = key_to_binding_name(key, shift) {
+                if world.bindings.contains_key(&name) {
+                    return Intent::ExecuteBinding(name);
                 }
             }
-            intent
+            Intent::Noop
         }
         Mode::Inspector => inspector_key_to_intent(key),
         Mode::Keybindings => keybindings_key_to_intent(key),
@@ -34,25 +29,18 @@ pub fn key_to_intent(key: VirtualKeyCode, shift: bool, world: &World) -> Intent 
 }
 
 fn key_to_binding_name(key: VirtualKeyCode, shift: bool) -> Option<String> {
-    key_to_console_char(key, shift).map(|c| c.to_string())
-}
-
-fn normal_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
-    match (key, shift) {
-        (VirtualKeyCode::Left, _) | (VirtualKeyCode::H, _) => Intent::Move(Direction::West),
-        (VirtualKeyCode::Right, _) | (VirtualKeyCode::L, _) => Intent::Move(Direction::East),
-        (VirtualKeyCode::Up, _) | (VirtualKeyCode::K, _) => Intent::Move(Direction::North),
-        (VirtualKeyCode::Down, _) | (VirtualKeyCode::J, _) => Intent::Move(Direction::South),
-        (VirtualKeyCode::Period, true) => Intent::Descend,
-        (VirtualKeyCode::Period, false) => Intent::Wait,
-        (VirtualKeyCode::Comma, true) => Intent::Ascend,
-        (VirtualKeyCode::I, _) => Intent::ToggleInspector,
-        (VirtualKeyCode::A, _) => Intent::Attack,
-        (VirtualKeyCode::B, _) => Intent::Block,
-        (VirtualKeyCode::Grave, _) => Intent::ToggleConsole,
-        (VirtualKeyCode::Tab, _) => Intent::ToggleKeybindings,
-        (VirtualKeyCode::Escape, _) | (VirtualKeyCode::Q, _) => Intent::Quit,
-        _ => Intent::Noop,
+    match key {
+        VirtualKeyCode::Escape => Some("esc".into()),
+        VirtualKeyCode::Tab => Some("tab".into()),
+        VirtualKeyCode::Grave => Some("`".into()),
+        VirtualKeyCode::Left => Some("left".into()),
+        VirtualKeyCode::Right => Some("right".into()),
+        VirtualKeyCode::Up => Some("up".into()),
+        VirtualKeyCode::Down => Some("down".into()),
+        VirtualKeyCode::Return => Some("enter".into()),
+        VirtualKeyCode::Back => Some("backspace".into()),
+        VirtualKeyCode::Space => Some(" ".into()),
+        _ => key_to_console_char(key, shift).map(|c| c.to_string()),
     }
 }
 

@@ -30,23 +30,20 @@ pub enum ActionCost {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Intent {
-    Move(Direction),
+    /// Execute a keybinding (checks bindings map).
+    ExecuteBinding(String),
+    Move(crate::entity::Direction),
     Wait,
-    ToggleInspector,
-    ToggleConsole,
+    /// Scroll in overlays (inspector, keybindings).
     InspectorScroll(i32),
     ConsoleInput(char),
     ConsoleBackspace,
     ConsoleSubmit,
     CloseOverlay,
-    Descend,
-    Ascend,
-    Block,
-    Attack,
+    ToggleConsole,
+    ToggleKeybindings,
     Respawn,
     Restart,
-    ToggleKeybindings,
-    ExecuteBinding(String),
     Quit,
     Noop,
 }
@@ -99,7 +96,7 @@ impl World {
             player_can_attack: false,
             wizard_taught: false,
             wizard_id: None,
-            bindings: HashMap::new(),
+            bindings: default_bindings(),
         }
     }
 
@@ -141,7 +138,7 @@ impl World {
             player_can_attack: false,
             wizard_taught: false,
             wizard_id: None,
-            bindings: HashMap::new(),
+            bindings: default_bindings(),
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -157,25 +154,19 @@ impl World {
                 ActionCost::Tick
             }
             Intent::Wait => {
-                self.event_log.push("You wait (one tick advanced).");
                 self.finish_tick();
                 ActionCost::Tick
             }
-            Intent::ToggleInspector => {
-                self.mode = if self.mode == Mode::Inspector {
-                    Mode::Normal
+            Intent::ExecuteBinding(key) => {
+                let before = self.turn;
+                self.execute_binding(&key);
+                if !self.running {
+                    ActionCost::Quit
+                } else if self.turn > before {
+                    ActionCost::Tick
                 } else {
-                    Mode::Inspector
-                };
-                ActionCost::Free
-            }
-            Intent::ToggleConsole => {
-                self.mode = if self.mode == Mode::Console {
-                    Mode::Normal
-                } else {
-                    Mode::Console
-                };
-                ActionCost::Free
+                    ActionCost::Free
+                }
             }
             Intent::InspectorScroll(delta) => {
                 if self.mode == Mode::Inspector {
@@ -205,6 +196,14 @@ impl World {
                 self.mode = Mode::Normal;
                 ActionCost::Free
             }
+            Intent::ToggleConsole => {
+                self.mode = if self.mode == Mode::Console {
+                    Mode::Normal
+                } else {
+                    Mode::Console
+                };
+                ActionCost::Free
+            }
             Intent::ToggleKeybindings => {
                 self.mode = if self.mode == Mode::Keybindings {
                     Mode::Normal
@@ -213,47 +212,6 @@ impl World {
                 };
                 ActionCost::Free
             }
-            Intent::Descend => {
-                if self.map.tile(self.player_pos()) == TileType::StairsDown {
-                    let has_attack_binding =
-                        self.bindings.values().any(|cmd| cmd.contains("do-attack"));
-                    if self.depth >= 3 && (!self.wizard_taught || !has_attack_binding) {
-                        self.event_log.push("A shimmering barrier blocks the stairs. The wizard's voice echoes: \"Bind your attack to a key first! Open the console (`) and try (bind-key :z (do-attack :facing)).\"");
-                        ActionCost::Free
-                    } else {
-                        self.descend();
-                        ActionCost::Tick
-                    }
-                } else {
-                    self.event_log.push("There are no stairs going down here.");
-                    ActionCost::Free
-                }
-            }
-            Intent::Ascend => {
-                if self.map.tile(self.player_pos()) == TileType::StairsUp {
-                    self.ascend();
-                    ActionCost::Tick
-                } else {
-                    self.event_log.push("There are no stairs going up here.");
-                    ActionCost::Free
-                }
-            }
-            Intent::Attack => {
-                if !self.player_can_attack {
-                    self.event_log
-                        .push("You flail uselessly. Find the wizard to learn how to fight!");
-                } else {
-                    self.attack_in_direction(self.player_facing);
-                }
-                self.finish_tick();
-                ActionCost::Tick
-            }
-            Intent::Block => {
-                self.blocking = true;
-                self.event_log.push("You raise your guard.");
-                self.finish_tick();
-                ActionCost::Tick
-            }
             Intent::Respawn => {
                 self.respawn();
                 ActionCost::Free
@@ -261,10 +219,6 @@ impl World {
             Intent::Restart => {
                 self.restart();
                 ActionCost::Free
-            }
-            Intent::ExecuteBinding(command) => {
-                self.execute_binding(&command);
-                ActionCost::Tick
             }
             Intent::Quit => {
                 self.running = false;
@@ -528,8 +482,10 @@ impl World {
             "Open the console (`) and bind attack to a key:",
             RGB::named(CYAN),
         );
-        self.event_log
-            .push_colored("  (bind-key :z (do-attack :facing))", RGB::named(GREEN));
+        self.event_log.push_colored(
+            "  (bind-key :z (do-attack))    -- attacks in facing direction",
+            RGB::named(GREEN),
+        );
         self.event_log.push_colored(
             "  (bind-key :x (do-attack :east))   (bind-key :c (do-attack :west))",
             RGB::named(GREEN),
@@ -793,6 +749,7 @@ impl World {
                     self.player_facing = direction;
                     self.attack_in_direction(direction);
                 }
+                self.finish_tick();
                 return;
             }
         }
@@ -822,36 +779,56 @@ fn console_value_text(value: &Value) -> String {
     }
 }
 
+fn default_bindings() -> HashMap<String, String> {
+    let mut m = HashMap::new();
+    m.insert("h".into(), "(move! :west)".into());
+    m.insert("j".into(), "(move! :south)".into());
+    m.insert("k".into(), "(move! :north)".into());
+    m.insert("l".into(), "(move! :east)".into());
+    m.insert("left".into(), "(move! :west)".into());
+    m.insert("right".into(), "(move! :east)".into());
+    m.insert("up".into(), "(move! :north)".into());
+    m.insert("down".into(), "(move! :south)".into());
+    m.insert(".".into(), "(wait!)".into());
+    m.insert("b".into(), "(block!)".into());
+    m.insert(">".into(), "(descend!)".into());
+    m.insert("<".into(), "(ascend!)".into());
+    m.insert("i".into(), "(toggle-inspector!)".into());
+    m.insert("`".into(), "(toggle-console!)".into());
+    m.insert("tab".into(), "(toggle-keybindings!)".into());
+    m.insert("esc".into(), "(quit!)".into());
+    m.insert("q".into(), "(quit!)".into());
+    m
+}
+
 fn setup_glyph_env() -> Env {
     let env = Env::extend(&glyph::default_env());
-    env.bind(
-        "help",
-        Value::Builtin(glyph::BuiltinFn {
-            name: "help",
-            func: builtin_help,
-        }),
-    );
-    env.bind(
-        "quit-terminal",
-        Value::Builtin(glyph::BuiltinFn {
-            name: "quit-terminal",
-            func: builtin_quit_terminal,
-        }),
-    );
-    env.bind(
-        "do-attack",
-        Value::Builtin(glyph::BuiltinFn {
-            name: "do-attack",
-            func: builtin_do_attack,
-        }),
-    );
-    env.bind(
-        "bind-key",
-        Value::Builtin(glyph::BuiltinFn {
-            name: "bind-key",
-            func: builtin_bind_key,
-        }),
-    );
+
+    macro_rules! reg {
+        ($name:expr, $func:ident) => {
+            env.bind(
+                $name,
+                Value::Builtin(glyph::BuiltinFn {
+                    name: $name,
+                    func: $func,
+                }),
+            );
+        };
+    }
+
+    reg!("help", builtin_help);
+    reg!("quit-terminal", builtin_quit_terminal);
+    reg!("quit!", builtin_quit_bang);
+    reg!("do-attack", builtin_do_attack);
+    reg!("bind-key", builtin_bind_key);
+    reg!("move!", builtin_move);
+    reg!("wait!", builtin_wait);
+    reg!("block!", builtin_block);
+    reg!("toggle-inspector!", builtin_toggle_inspector);
+    reg!("toggle-console!", builtin_toggle_console);
+    reg!("toggle-keybindings!", builtin_toggle_keybindings);
+    reg!("descend!", builtin_descend);
+    reg!("ascend!", builtin_ascend);
     ai_builtins::register_all(&env);
     env
 }
@@ -863,6 +840,135 @@ fn builtin_quit_terminal(
     _world: &mut World,
 ) -> glyph::EvalResult<Value> {
     Ok(glyph::kw("quit-terminal"))
+}
+
+fn builtin_quit_bang(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    world.running = false;
+    Ok(Value::Nil)
+}
+
+fn builtin_move(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let dir = parse_attack_direction(args.first().ok_or(glyph::EvalError::WrongArgCount {
+        expected: 1,
+        got: 0,
+    })?)
+    .ok_or_else(|| glyph::EvalError::TypeError {
+        expected: "direction keyword (:north/:south/:east/:west)",
+        got: args.first().map(|v| v.to_string()).unwrap_or_default(),
+    })?;
+    world.player_facing = dir;
+    world.apply_player_move(dir);
+    world.finish_tick();
+    Ok(Value::Nil)
+}
+
+fn builtin_wait(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    world.finish_tick();
+    Ok(Value::Nil)
+}
+
+fn builtin_block(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    world.blocking = true;
+    world.event_log.push("You raise your guard.");
+    world.finish_tick();
+    Ok(Value::Nil)
+}
+
+fn builtin_toggle_inspector(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    world.mode = if world.mode == Mode::Inspector {
+        Mode::Normal
+    } else {
+        Mode::Inspector
+    };
+    Ok(Value::Nil)
+}
+
+fn builtin_toggle_console(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    world.mode = if world.mode == Mode::Console {
+        Mode::Normal
+    } else {
+        Mode::Console
+    };
+    Ok(Value::Nil)
+}
+
+fn builtin_toggle_keybindings(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    world.mode = if world.mode == Mode::Keybindings {
+        Mode::Normal
+    } else {
+        Mode::Keybindings
+    };
+    Ok(Value::Nil)
+}
+
+fn builtin_descend(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let pos = world.player_pos();
+    if world.map.tile(pos) != crate::map::TileType::StairsDown {
+        world.event_log.push("There are no stairs going down here.");
+        return Ok(Value::Nil);
+    }
+    let has_attack_binding = world.bindings.values().any(|cmd| cmd.contains("do-attack"));
+    if world.depth >= 3 && (!world.wizard_taught || !has_attack_binding) {
+        world.event_log.push("A shimmering barrier blocks the stairs. The wizard's voice echoes: \"Bind your attack to a key first! Open the console (`) and try (bind-key :z (do-attack)).\"");
+        return Ok(Value::Nil);
+    }
+    world.descend();
+    Ok(Value::Nil)
+}
+
+fn builtin_ascend(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let pos = world.player_pos();
+    if world.map.tile(pos) != crate::map::TileType::StairsUp {
+        world.event_log.push("There are no stairs going up here.");
+        return Ok(Value::Nil);
+    }
+    world.ascend();
+    Ok(Value::Nil)
 }
 
 fn parse_attack_direction(value: &Value) -> Option<Direction> {
@@ -1072,7 +1178,7 @@ mod tests {
     fn inspector_toggle_is_free() {
         let mut world = world_with_single_enemy(Position::new(20, 5));
 
-        let cost = world.apply_intent(Intent::ToggleInspector);
+        let cost = world.apply_intent(Intent::ExecuteBinding("i".into()));
 
         assert_eq!(cost, ActionCost::Free);
         assert_eq!(world.turn, 0);
@@ -1083,7 +1189,10 @@ mod tests {
     fn console_toggle_and_typing_are_free() {
         let mut world = world_with_single_enemy(Position::new(20, 5));
 
-        assert_eq!(world.apply_intent(Intent::ToggleConsole), ActionCost::Free);
+        assert_eq!(
+            world.apply_intent(Intent::ExecuteBinding("`".into())),
+            ActionCost::Free
+        );
         assert_eq!(
             world.apply_intent(Intent::ConsoleInput('x')),
             ActionCost::Free
@@ -1243,11 +1352,12 @@ mod tests {
     fn helpless_attack_key_flails() {
         let mut world = world_with_single_enemy(Position::new(20, 5));
         world.player_can_attack = false;
+        world.bindings.insert("a".into(), "(do-attack)".into());
 
-        world.apply_intent(Intent::Attack);
+        world.apply_intent(Intent::ExecuteBinding("a".into()));
 
         assert_eq!(world.turn, 1);
-        assert!(world.event_log.contains("flail"));
+        assert!(world.event_log.contains("don't know how to attack"));
     }
 
     #[test]
@@ -1255,8 +1365,9 @@ mod tests {
         let mut world = world_with_single_enemy(Position::new(6, 5));
         world.player_can_attack = true;
         world.player_facing = Direction::East;
+        world.bindings.insert("a".into(), "(do-attack)".into());
 
-        world.apply_intent(Intent::Attack);
+        world.apply_intent(Intent::ExecuteBinding("a".into()));
 
         assert_eq!(world.turn, 1);
         assert_eq!(world.player_pos(), Position::new(5, 5)); // didn't move
@@ -1269,8 +1380,9 @@ mod tests {
         let mut world = world_with_single_enemy(Position::new(20, 5));
         world.player_can_attack = true;
         world.player_facing = Direction::North;
+        world.bindings.insert("a".into(), "(do-attack)".into());
 
-        world.apply_intent(Intent::Attack);
+        world.apply_intent(Intent::ExecuteBinding("a".into()));
 
         assert_eq!(world.turn, 1);
         assert!(world.event_log.contains("empty air"));
@@ -1471,7 +1583,7 @@ mod tests {
         world.clear_all_enemies();
         world.map.set_tile(world.player_pos(), TileType::StairsDown);
 
-        let cost = world.apply_intent(Intent::Descend);
+        let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
 
         assert_eq!(cost, ActionCost::Free);
         assert_eq!(world.depth, 3);
@@ -1489,7 +1601,7 @@ mod tests {
         world.clear_all_enemies();
         world.map.set_tile(world.player_pos(), TileType::StairsDown);
 
-        let cost = world.apply_intent(Intent::Descend);
+        let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
 
         assert_eq!(cost, ActionCost::Tick);
         assert_eq!(world.depth, 4);
@@ -1503,7 +1615,7 @@ mod tests {
         world.clear_all_enemies();
         world.map.set_tile(world.player_pos(), TileType::StairsDown);
 
-        let cost = world.apply_intent(Intent::Descend);
+        let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
 
         assert_eq!(cost, ActionCost::Free);
         assert_eq!(world.depth, 3);

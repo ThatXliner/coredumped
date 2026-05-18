@@ -287,6 +287,7 @@ pub(crate) fn register_all(env: &Env) {
         "adjacent?",
         Value::Builtin(glyph::BuiltinFn {
             name: "adjacent?",
+            doc: "check if two entities are adjacent",
             func: builtin_adjacentq,
         }),
     );
@@ -294,6 +295,7 @@ pub(crate) fn register_all(env: &Env) {
         "attack!",
         Value::Builtin(glyph::BuiltinFn {
             name: "attack!",
+            doc: "attack a target entity: (attack! target-id)",
             func: builtin_ai_attack,
         }),
     );
@@ -301,6 +303,7 @@ pub(crate) fn register_all(env: &Env) {
         "step-toward!",
         Value::Builtin(glyph::BuiltinFn {
             name: "step-toward!",
+            doc: "move one step toward a target entity",
             func: builtin_step_toward,
         }),
     );
@@ -308,6 +311,7 @@ pub(crate) fn register_all(env: &Env) {
         "random-step!",
         Value::Builtin(glyph::BuiltinFn {
             name: "random-step!",
+            doc: "take a random step to an adjacent walkable tile",
             func: builtin_random_step,
         }),
     );
@@ -315,6 +319,7 @@ pub(crate) fn register_all(env: &Env) {
         "flee-step!",
         Value::Builtin(glyph::BuiltinFn {
             name: "flee-step!",
+            doc: "move one step away from a target entity",
             func: builtin_flee_step,
         }),
     );
@@ -322,6 +327,7 @@ pub(crate) fn register_all(env: &Env) {
         "roll-odds?",
         Value::Builtin(glyph::BuiltinFn {
             name: "roll-odds?",
+            doc: "roll a chance: (roll-odds? numerator denominator)",
             func: builtin_roll_oddsq,
         }),
     );
@@ -329,6 +335,7 @@ pub(crate) fn register_all(env: &Env) {
         "hp",
         Value::Builtin(glyph::BuiltinFn {
             name: "hp",
+            doc: "get the HP of an entity: (hp entity-id)",
             func: builtin_ai_hp,
         }),
     );

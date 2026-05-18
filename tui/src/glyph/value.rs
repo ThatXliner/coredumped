@@ -222,12 +222,28 @@ pub struct Keyword {
 #[derive(Clone)]
 pub struct BuiltinFn {
     pub name: &'static str,
+    pub doc: &'static str,
     pub func: fn(
         &[Value],
         &super::env::Env,
         &SandboxOptions,
         &mut crate::world::World,
     ) -> EvalResult<Value>,
+}
+
+impl BuiltinFn {
+    pub fn new(
+        name: &'static str,
+        doc: &'static str,
+        func: fn(
+            &[Value],
+            &super::env::Env,
+            &SandboxOptions,
+            &mut crate::world::World,
+        ) -> EvalResult<Value>,
+    ) -> Self {
+        BuiltinFn { name, doc, func }
+    }
 }
 
 impl fmt::Debug for BuiltinFn {

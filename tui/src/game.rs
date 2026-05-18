@@ -788,30 +788,55 @@ fn setup_glyph_env() -> Env {
     let env = Env::extend(&glyph::default_env());
 
     macro_rules! reg {
-        ($name:expr, $func:ident) => {
+        ($name:expr, $doc:expr, $func:ident) => {
             env.bind(
                 $name,
                 Value::Builtin(glyph::BuiltinFn {
                     name: $name,
+                    doc: $doc,
                     func: $func,
                 }),
             );
         };
     }
 
-    reg!("help", builtin_help);
-    reg!("quit-terminal", builtin_quit_terminal);
-    reg!("quit!", builtin_quit_bang);
-    reg!("move!", builtin_move);
-    reg!("wait!", builtin_wait);
-    reg!("block!", builtin_block);
-    reg!("toggle-inspector!", builtin_toggle_inspector);
-    reg!("toggle-console!", builtin_toggle_console);
-    reg!("toggle-keybindings!", builtin_toggle_keybindings);
-    reg!("descend!", builtin_descend);
-    reg!("ascend!", builtin_ascend);
-    reg!("heal", builtin_heal);
-    reg!("set-level", builtin_set_level);
+    reg!("help", "show help: (help) or (help <name>)", builtin_help);
+    reg!(
+        "quit-terminal",
+        "close the console overlay",
+        builtin_quit_terminal
+    );
+    reg!("quit!", "exit the game entirely", builtin_quit_bang);
+    reg!("move!", "move the player: (move! :north)", builtin_move);
+    reg!("wait!", "skip a turn", builtin_wait);
+    reg!("block!", "raise your guard (reduces damage)", builtin_block);
+    reg!(
+        "toggle-inspector!",
+        "open or close the inspector",
+        builtin_toggle_inspector
+    );
+    reg!(
+        "toggle-console!",
+        "open or close the console",
+        builtin_toggle_console
+    );
+    reg!(
+        "toggle-keybindings!",
+        "open or close the keybindings view",
+        builtin_toggle_keybindings
+    );
+    reg!(
+        "descend!",
+        "go down the stairs if available",
+        builtin_descend
+    );
+    reg!("ascend!", "go up the stairs if available", builtin_ascend);
+    reg!("heal", "restore HP: (heal N) or (heal :all)", builtin_heal);
+    reg!(
+        "set-level",
+        "warp to a dungeon level: (set-level N)",
+        builtin_set_level
+    );
     ai_builtins::register_all(&env);
 
     #[cfg(feature = "prelude")]
@@ -836,6 +861,7 @@ fn setup_binding_env(base: &Env) -> Env {
         "do-attack",
         Value::Builtin(glyph::BuiltinFn {
             name: "do-attack",
+            doc: "strike in a direction: (do-attack :north)",
             func: builtin_do_attack,
         }),
     );
@@ -1025,12 +1051,78 @@ fn builtin_do_attack(
     Ok(Value::Nil)
 }
 
+fn format_value_help(value: &Value) -> String {
+    match value {
+        Value::Builtin(b) => {
+            let mut s = format!("#<builtin {}>", b.name);
+            if !b.doc.is_empty() {
+                s.push_str(&format!("\n  {}", b.doc));
+            }
+            s
+        }
+        Value::Closure(c) => {
+            let mut s = String::from("User-defined function");
+            for (i, arity) in c.arities.iter().enumerate() {
+                let label = if c.arities.len() > 1 {
+                    format!("\nArity {}:", i + 1)
+                } else {
+                    String::new()
+                };
+                let params = if arity.params.is_empty() {
+                    String::new()
+                } else {
+                    format!(" [{}]", arity.params.join(" "))
+                };
+                s.push_str(&format!("{}(fn{})", label, params));
+            }
+            s
+        }
+        Value::Macro(m) => {
+            let params = if m.params.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}]", m.params.join(" "))
+            };
+            format!("#<macro>(defmacro{})", params)
+        }
+        other => format!("Not a function: {}", other),
+    }
+}
+
 fn builtin_help(
-    _args: &[Value],
-    _env: &Env,
+    args: &[Value],
+    env: &Env,
     _opts: &glyph::SandboxOptions,
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
+    if !args.is_empty() {
+        // Args are already evaluated — handle the value directly
+        let result = match &args[0] {
+            Value::Symbol(s) => {
+                // Quoted symbol: look up in env
+                match env.lookup(&s.name) {
+                    Some(value) => format_value_help(&value),
+                    None => format!("No help found for '{}'", s.name),
+                }
+            }
+            Value::String(s) => {
+                // String name: look up in env
+                match env.lookup(s) {
+                    Some(value) => format_value_help(&value),
+                    None => format!("No help found for '{}'", s),
+                }
+            }
+            Value::Builtin(_) | Value::Closure(_) | Value::Macro(_) => format_value_help(&args[0]),
+            other => {
+                format!(
+                    "(help <name>): expected a function or symbol, got {}",
+                    other
+                )
+            }
+        };
+        return Ok(Value::String(result));
+    }
+
     let mut help = String::from(
         "\
 Available special forms:
@@ -1073,6 +1165,7 @@ Syntax:
 
 Console commands (game-specific):\n\
   (help)        — show this help text\n\
+  (help <name>) — show help for a specific function\n\
   (quit-terminal) — close the console overlay",
     );
 

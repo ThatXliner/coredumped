@@ -1457,83 +1457,214 @@ fn builtin_range(
 
 fn builtin_fn(
     name: &'static str,
+    doc: &'static str,
     func: fn(&[Value], &Env, &SandboxOptions, &mut World) -> EvalResult<Value>,
 ) -> Value {
-    Value::Builtin(BuiltinFn { name, func })
+    Value::Builtin(BuiltinFn { name, doc, func })
 }
 
 /// Create the default global environment with all built-ins.
 pub fn default_env() -> Env {
     let env = Env::new();
 
-    env.bind("+", builtin_fn("+", builtin_add));
-    env.bind("-", builtin_fn("-", builtin_sub));
-    env.bind("*", builtin_fn("*", builtin_mul));
-    env.bind("/", builtin_fn("/", builtin_div));
+    env.bind(
+        "+",
+        builtin_fn("+", "sum of numbers (variadic)", builtin_add),
+    );
+    env.bind(
+        "-",
+        builtin_fn("-", "subtract numbers (variadic)", builtin_sub),
+    );
+    env.bind(
+        "*",
+        builtin_fn("*", "product of numbers (variadic)", builtin_mul),
+    );
+    env.bind(
+        "/",
+        builtin_fn("/", "divide numbers (variadic)", builtin_div),
+    );
     env.bind(
         "%",
-        builtin_fn("%", |args, _env, _opts, _world| {
-            if args.len() != 2 {
-                return Err(EvalError::WrongArgCount {
-                    expected: 2,
-                    got: args.len(),
-                });
-            }
-            let a = match &args[0] {
-                Value::I64(n) => *n,
-                other => {
-                    return Err(EvalError::TypeError {
-                        expected: "integer",
-                        got: other.to_string(),
-                    })
+        builtin_fn(
+            "%",
+            "integer remainder: (% a b)",
+            |args, _env, _opts, _world| {
+                if args.len() != 2 {
+                    return Err(EvalError::WrongArgCount {
+                        expected: 2,
+                        got: args.len(),
+                    });
                 }
-            };
-            let b = match &args[1] {
-                Value::I64(n) => *n,
-                other => {
-                    return Err(EvalError::TypeError {
-                        expected: "integer",
-                        got: other.to_string(),
-                    })
+                let a = match &args[0] {
+                    Value::I64(n) => *n,
+                    other => {
+                        return Err(EvalError::TypeError {
+                            expected: "integer",
+                            got: other.to_string(),
+                        })
+                    }
+                };
+                let b = match &args[1] {
+                    Value::I64(n) => *n,
+                    other => {
+                        return Err(EvalError::TypeError {
+                            expected: "integer",
+                            got: other.to_string(),
+                        })
+                    }
+                };
+                if b == 0 {
+                    return Err(EvalError::DivisionByZero);
                 }
-            };
-            if b == 0 {
-                return Err(EvalError::DivisionByZero);
-            }
-            Ok(Value::I64(a % b))
-        }),
+                Ok(Value::I64(a % b))
+            },
+        ),
     );
 
-    env.bind("=", builtin_fn("=", builtin_eq));
-    env.bind("!=", builtin_fn("!=", builtin_neq));
-    env.bind("<", builtin_fn("<", builtin_lt));
-    env.bind(">", builtin_fn(">", builtin_gt));
-    env.bind("<=", builtin_fn("<=", builtin_lte));
-    env.bind(">=", builtin_fn(">=", builtin_gte));
+    env.bind(
+        "=",
+        builtin_fn("=", "equality comparison (variadic)", builtin_eq),
+    );
+    env.bind(
+        "!=",
+        builtin_fn("!=", "inequality comparison (variadic)", builtin_neq),
+    );
+    env.bind("<", builtin_fn("<", "less than (variadic)", builtin_lt));
+    env.bind(">", builtin_fn(">", "greater than (variadic)", builtin_gt));
+    env.bind(
+        "<=",
+        builtin_fn("<=", "less than or equal (variadic)", builtin_lte),
+    );
+    env.bind(
+        ">=",
+        builtin_fn(">=", "greater than or equal (variadic)", builtin_gte),
+    );
 
-    env.bind(".", builtin_fn(".", builtin_dot));
+    env.bind(
+        ".",
+        builtin_fn(".", "access map entry: (. map :key)", builtin_dot),
+    );
 
-    env.bind("list", builtin_fn("list", builtin_list));
-    env.bind("vector", builtin_fn("vector", builtin_vector));
-    env.bind("cons", builtin_fn("cons", builtin_cons));
-    env.bind("first", builtin_fn("first", builtin_first));
-    env.bind("rest", builtin_fn("rest", builtin_rest));
-    env.bind("empty?", builtin_fn("empty?", builtin_emptyq));
-    env.bind("map", builtin_fn("map", builtin_map_fn));
+    env.bind(
+        "list",
+        builtin_fn("list", "create a list from arguments", builtin_list),
+    );
+    env.bind(
+        "vector",
+        builtin_fn("vector", "create a vector from arguments", builtin_vector),
+    );
+    env.bind(
+        "cons",
+        builtin_fn("cons", "prepend item to a list: (cons x xs)", builtin_cons),
+    );
+    env.bind(
+        "first",
+        builtin_fn(
+            "first",
+            "return the first element of a list or vector",
+            builtin_first,
+        ),
+    );
+    env.bind(
+        "rest",
+        builtin_fn(
+            "rest",
+            "return list without the first element",
+            builtin_rest,
+        ),
+    );
+    env.bind(
+        "empty?",
+        builtin_fn(
+            "empty?",
+            "check if a list, vector, or string is empty",
+            builtin_emptyq,
+        ),
+    );
+    env.bind(
+        "map",
+        builtin_fn(
+            "map",
+            "apply a function over a list: (map fn [a b c])",
+            builtin_map_fn,
+        ),
+    );
     #[cfg(not(feature = "prelude"))]
-    env.bind("range", builtin_fn("range", builtin_range));
+    env.bind(
+        "range",
+        builtin_fn(
+            "range",
+            "generate a numeric range: (range start end)",
+            builtin_range,
+        ),
+    );
 
-    env.bind("print", builtin_fn("print", builtin_print));
-    env.bind("println", builtin_fn("println", builtin_println));
-    env.bind("print!", builtin_fn("print!", builtin_print));
-    env.bind("println!", builtin_fn("println!", builtin_println));
-    env.bind("slurp", builtin_fn("slurp", builtin_slurp));
+    env.bind(
+        "print",
+        builtin_fn(
+            "print",
+            "print a value to stdout (no newline)",
+            builtin_print,
+        ),
+    );
+    env.bind(
+        "println",
+        builtin_fn(
+            "println",
+            "print a value to stdout with newline",
+            builtin_println,
+        ),
+    );
+    env.bind(
+        "print!",
+        builtin_fn(
+            "print!",
+            "print a value to stdout (no newline)",
+            builtin_print,
+        ),
+    );
+    env.bind(
+        "println!",
+        builtin_fn(
+            "println!",
+            "print a value to stdout with newline",
+            builtin_println,
+        ),
+    );
+    env.bind(
+        "slurp",
+        builtin_fn(
+            "slurp",
+            "read a file from disk: (slurp \"path\")",
+            builtin_slurp,
+        ),
+    );
 
-    env.bind("type", builtin_fn("type", builtin_type_of));
-    env.bind("str", builtin_fn("str", builtin_str));
+    env.bind(
+        "type",
+        builtin_fn("type", "return type keyword of a value", builtin_type_of),
+    );
+    env.bind(
+        "str",
+        builtin_fn(
+            "str",
+            "concatenate string representation of all args",
+            builtin_str,
+        ),
+    );
 
-    env.bind("eval", builtin_fn("eval", builtin_eval));
-    env.bind("apply", builtin_fn("apply", builtin_apply));
+    env.bind(
+        "eval",
+        builtin_fn("eval", "evaluate a quoted form", builtin_eval),
+    );
+    env.bind(
+        "apply",
+        builtin_fn(
+            "apply",
+            "call a function with a list of arguments",
+            builtin_apply,
+        ),
+    );
 
     env
 }

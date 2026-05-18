@@ -842,6 +842,11 @@ fn setup_glyph_env() -> Env {
         builtin_descend
     );
     reg!("ascend!", "go up the stairs if available", builtin_ascend);
+    reg!(
+        "player-facing",
+        "get the direction the player is facing: (player-facing)",
+        builtin_player_facing
+    );
     reg!("heal", "restore HP: (heal N) or (heal :all)", builtin_heal);
     reg!(
         "set-level",
@@ -1301,6 +1306,21 @@ fn builtin_set_level(
         .event_log
         .push(format!("Cheat: warped to depth {depth}."));
     Ok(Value::Nil)
+}
+
+fn builtin_player_facing(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let name = match world.player_facing {
+        Direction::North => "north",
+        Direction::South => "south",
+        Direction::East => "east",
+        Direction::West => "west",
+    };
+    Ok(glyph::kw(name))
 }
 
 impl Default for World {

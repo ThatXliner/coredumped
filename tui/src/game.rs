@@ -667,12 +667,13 @@ impl World {
     }
 
     fn submit_console(&mut self) {
-        let command = self.console_buffer.trim().to_string();
-        if command.is_empty() {
+        let trimmed = self.console_buffer.trim();
+        if trimmed.is_empty() {
             self.event_log.push("Console waits. No query submitted.");
             self.console_buffer.clear();
             return;
         }
+        let command = auto_close(trimmed);
         self.event_log.push(format!("> {}", command));
         self.console_output.clear();
         self.console_output_color = None;
@@ -772,6 +773,53 @@ fn console_value_text(value: &Value) -> String {
         Value::String(text) => text.clone(),
         other => other.to_string(),
     }
+}
+
+/// Auto-close unmatched opening brackets/parens/braces in source code.
+///
+/// Skips contents of string literals and line comments so that parens
+/// inside those don't confuse the balancing.
+fn auto_close(s: &str) -> String {
+    let mut stack: Vec<char> = Vec::new();
+    let mut in_string = false;
+    let mut chars = s.chars();
+
+    while let Some(ch) = chars.next() {
+        if in_string {
+            if ch == '"' {
+                in_string = false;
+            } else if ch == '\\' {
+                // Skip escaped char
+                chars.next();
+            }
+        } else {
+            match ch {
+                '(' => stack.push(')'),
+                '[' => stack.push(']'),
+                '{' => stack.push('}'),
+                ')' | ']' | '}' => {
+                    stack.pop();
+                }
+                '"' => in_string = true,
+                ';' => {
+                    // Skip to end of line
+                    loop {
+                        match chars.next() {
+                            Some('\n') | None => break,
+                            _ => {}
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    let mut result = s.to_string();
+    while let Some(closer) = stack.pop() {
+        result.push(closer);
+    }
+    result
 }
 
 fn default_bindings() -> HashMap<String, String> {
@@ -1450,13 +1498,49 @@ mod tests {
     fn console_syntax_errors_are_tui_colored_without_ansi_codes() {
         let mut world = world_with_single_enemy(Position::new(20, 5));
         world.mode = Mode::Console;
-        world.console_buffer = "(bin".to_string();
+        world.console_buffer = "\"unclosed".to_string();
 
         world.apply_intent(Intent::ConsoleSubmit);
 
         assert!(world.console_output.contains("syntax error"));
         assert!(!world.console_output.contains('\u{1b}'));
         assert_eq!(world.console_output_color, Some(RGB::named(RED)));
+        assert!(world.console_buffer.is_empty());
+    }
+
+    #[test]
+    fn console_auto_closes_parentheses() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "(+ 1 2".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert_eq!(world.console_output, "=> 3");
+        assert!(world.console_buffer.is_empty());
+    }
+
+    #[test]
+    fn console_auto_closes_nested_parens() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "(+ (* 2 3".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert_eq!(world.console_output, "=> 6");
+        assert!(world.console_buffer.is_empty());
+    }
+
+    #[test]
+    fn console_auto_close_handles_mixed_brackets() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "(first (list 1 2 3".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert_eq!(world.console_output, "=> 1");
         assert!(world.console_buffer.is_empty());
     }
 

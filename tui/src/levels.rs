@@ -51,39 +51,121 @@ fn build_procedural_level(world: &mut World, depth: u32) {
 // ---------------------------------------------------------------------------
 
 fn build_wizard_chamber(world: &mut World) {
-    let gen = Map::generate_wizard_box();
+    let gen = generate_wizard_box();
     apply_map(world, &gen);
     spawn_wizard_near_player(world);
+}
+
+/// Build the map for the wizard's tutorial chamber: a 12×9 room in the center.
+pub fn generate_wizard_box() -> MapGenOutput {
+    let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Wall);
+
+    // A single 12x9 room in the center of the map
+    let room_x = 14;
+    let room_y = 8;
+    let room_w = 12;
+    let room_h = 9;
+
+    for y in room_y..room_y + room_h {
+        for x in room_x..room_x + room_w {
+            map.set_tile(Position::new(x, y), TileType::Floor);
+        }
+    }
+
+    let player_start = Position::new(room_x + 1, room_y + room_h / 2);
+    let stairs_down = Position::new(room_x + room_w - 2, room_y + room_h / 2);
+
+    map.set_tile(player_start, TileType::StairsUp);
+    map.set_tile(stairs_down, TileType::StairsDown);
+
+    MapGenOutput {
+        map,
+        player_start,
+        stairs_up: player_start,
+        stairs_down,
+        combat_spawns: vec![],
+        boss_spawns: vec![],
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Depth 4 — Barrel Depths
 // ---------------------------------------------------------------------------
 
+/// Build the map for the barrel depths: a solid rectangle of floor with walls
+/// around the border. The entire level is then filled with 1-HP barrels.
+pub fn generate_barrel_depths() -> MapGenOutput {
+    let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Floor);
+
+    // Walls around the entire border
+    for x in 0..MAP_WIDTH {
+        map.set_tile(Position::new(x, 0), TileType::Wall);
+        map.set_tile(Position::new(x, MAP_HEIGHT - 1), TileType::Wall);
+    }
+    for y in 0..MAP_HEIGHT {
+        map.set_tile(Position::new(0, y), TileType::Wall);
+        map.set_tile(Position::new(MAP_WIDTH - 1, y), TileType::Wall);
+    }
+
+    let player_start = Position::new(2, 2);
+    let stairs_down = Position::new(MAP_WIDTH - 3, MAP_HEIGHT - 3);
+
+    map.set_tile(player_start, TileType::StairsUp);
+    map.set_tile(stairs_down, TileType::StairsDown);
+
+    MapGenOutput {
+        map,
+        player_start,
+        stairs_up: player_start,
+        stairs_down,
+        combat_spawns: vec![],
+        boss_spawns: vec![],
+    }
+}
+
 fn build_barrel_depths(world: &mut World) {
-    let gen = Map::generate_cave(4);
-
-    // Mix of barrels (2/3) and enemies (1/3)
-    for pos in &gen.combat_spawns {
-        let hash = (pos.x.wrapping_mul(31).wrapping_add(pos.y.wrapping_mul(17))) as u32;
-        if hash % 3 == 0 {
-            world.spawn_enemy_at(*pos, 4);
-        } else {
-            world.ecs.spawn_barrel(*pos);
-        }
-    }
-    for pos in &gen.boss_spawns {
-        world.spawn_boss_at(*pos);
-    }
-
+    let gen = generate_barrel_depths();
     apply_map(world, &gen);
 
-    // One barrel hides the exit stairs
     let stairs = find_stairs_down(&world.map);
-    world.ecs.spawn_barrel(stairs);
 
-    spawn_sign_near_player(world);
-    spawn_wizard_near_player(world);
+    // A 4×3 clear zone at the top-left — no barrels here
+    let clear_zone: [Position; 12] = [
+        Position::new(2, 2),
+        Position::new(3, 2),
+        Position::new(4, 2),
+        Position::new(5, 2),
+        Position::new(2, 3),
+        Position::new(3, 3),
+        Position::new(4, 3),
+        Position::new(5, 3),
+        Position::new(2, 4),
+        Position::new(3, 4),
+        Position::new(4, 4),
+        Position::new(5, 4),
+    ];
+
+    // Sign at the right edge of the clear zone
+    let sign_pos = Position::new(5, 3);
+    world.ecs.spawn_sign(sign_pos);
+
+    // Wizard in the clear zone
+    let wizard_pos = Position::new(3, 3);
+    world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+
+    // Fill every walkable tile with 1-HP barrels, except the clear zone and sign
+    for y in 1..MAP_HEIGHT - 1 {
+        for x in 1..MAP_WIDTH - 1 {
+            let pos = Position::new(x, y);
+            if clear_zone.contains(&pos) || pos == sign_pos || pos == stairs {
+                continue;
+            }
+            world.ecs.spawn_barrel(pos);
+        }
+    }
+
+    // One barrel on top of the exit stairs, hiding it
+    world.ecs.spawn_barrel(stairs);
 }
 
 // ---------------------------------------------------------------------------
@@ -113,26 +195,6 @@ fn spawn_wizard_near_player(world: &mut World) {
         .find(|&p| world.map.is_walkable(p) && world.ecs.entity_at(p).is_none())
         .unwrap_or(player_pos.offset(2, 0));
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
-}
-
-fn spawn_sign_near_player(world: &mut World) {
-    let player_pos = world.player_pos();
-    let candidates = [
-        player_pos.offset(3, 0),
-        player_pos.offset(-3, 0),
-        player_pos.offset(0, 3),
-        player_pos.offset(0, -3),
-        player_pos.offset(4, 0),
-        player_pos.offset(-4, 0),
-        player_pos.offset(0, 4),
-        player_pos.offset(0, -4),
-    ];
-    if let Some(&pos) = candidates
-        .iter()
-        .find(|&&p| world.map.is_walkable(p) && world.ecs.entity_at(p).is_none())
-    {
-        world.ecs.spawn_sign(pos);
-    }
 }
 
 pub fn find_stairs_down(map: &Map) -> Position {

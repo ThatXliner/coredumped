@@ -1587,7 +1587,7 @@ mod tests {
 
     #[test]
     fn wizard_box_has_no_enemies() {
-        let output = Map::generate_wizard_box();
+        let output = crate::levels::generate_wizard_box();
         assert!(output.combat_spawns.is_empty());
         assert!(output.boss_spawns.is_empty());
     }

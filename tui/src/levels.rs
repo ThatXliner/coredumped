@@ -148,6 +148,14 @@ fn build_barrel_depths(world: &mut World) {
         "This is a lot of barrels...\nThink about rebinding your keys.\nOne key can (do) what many cannot.",
     );
 
+    // Movement macro hint sign buried in the barrels — teaches the player about
+    // (move! :dir) and (do ...) chaining
+    let macro_sign_pos = Position::new(15, 20);
+    world.ecs.spawn_sign(
+        macro_sign_pos,
+        "Program your character with Glyph commands:\n  (move! :east)  (move! :south)  (move! :north)\nChain moves and attacks in (do ...):\n  (do (move! :east) (do-attack :east) (move! :east) (do-attack :east))\nBind to one key and your character does the work!",
+    );
+
     // Obvious hint sign buried somewhere in the barrels
     let obvious_sign_pos = Position::new(MAP_WIDTH - 5, MAP_HEIGHT / 2);
     world.ecs.spawn_sign(
@@ -169,6 +177,7 @@ Now clear these barrels and find the exit!",
             let pos = Position::new(x, y);
             if clear_zone.contains(&pos)
                 || pos == subtle_sign_pos
+                || pos == macro_sign_pos
                 || pos == obvious_sign_pos
                 || pos == stairs
             {

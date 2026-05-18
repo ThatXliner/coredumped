@@ -13,6 +13,7 @@ pub mod event_log;
 pub mod game;
 pub mod glyph;
 pub mod input;
+pub(crate) mod levels;
 pub mod map;
 pub mod no_hit;
 pub mod render;

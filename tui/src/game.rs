@@ -17,7 +17,7 @@ use crate::{
     entity::{Direction, EntityId, EntityKind, EntityView, Hp, Position},
     event_log::EventLog,
     glyph::{self, Env, Value},
-    map::{Map, MapGenOutput, TileType, MAP_HEIGHT, MAP_WIDTH},
+    map::{Map, TileType},
     rules::RuleRegistry,
 };
 
@@ -106,11 +106,6 @@ impl World {
     /// Create a world with a procedurally generated dungeon starting at depth 1.
     pub fn new_game() -> Self {
         let depth = 1;
-        let gen = Self::generate_level(depth);
-        let map = gen.map;
-        let player_start = gen.player_start;
-        let combat_spawns = gen.combat_spawns.clone();
-        let boss_spawns = gen.boss_spawns.clone();
 
         let mut event_log = EventLog::new();
         event_log.push("Xlyph runtime booted.");
@@ -121,12 +116,13 @@ impl World {
 
         let registry = RuleRegistry::core();
         let mut ecs = Ecs::new();
-        let player_id = ecs.spawn_player(player_start);
+        // Temporary position — build_level will move the player to the correct start
+        let player_id = ecs.spawn_player(Position::new(0, 0));
 
         let glyph_env = setup_glyph_env();
 
         let mut world = Self {
-            map,
+            map: Map::new_static(),
             ecs,
             registry,
             player_id,
@@ -148,7 +144,7 @@ impl World {
             bindings: HashMap::new(),
         };
 
-        world.spawn_level_enemies_from(&combat_spawns, &boss_spawns);
+        crate::levels::build_level(&mut world, depth);
         world
     }
 
@@ -318,104 +314,8 @@ impl World {
         )
     }
 
-    /// Generate a level appropriate for the given depth.
-    /// Depth 1, 3, 5... = rooms-and-corridors; depth 2, 4, 6... = caves.
-    /// Depth 3 is the wizard's tutorial chamber.
-    fn generate_level(depth: u32) -> MapGenOutput {
-        if depth == 3 {
-            Map::generate_wizard_box()
-        } else if depth % 2 == 0 {
-            Map::generate_cave(depth)
-        } else {
-            Map::generate(MAP_WIDTH, MAP_HEIGHT, depth)
-        }
-    }
-
-    /// Spawn enemies on a freshly generated level.
-    fn spawn_level_enemies_from(&mut self, combat_spawns: &[Position], boss_spawns: &[Position]) {
-        if self.depth == 3 {
-            // Depth 3 is the wizard's chamber: no enemies, just the wizard
-            self.spawn_wizard_near_player();
-            return;
-        }
-
-        if self.depth == 4 {
-            // Depth 4 is the Barrel Depths: mix of barrels and enemies
-            for pos in combat_spawns {
-                let hash = (pos.x.wrapping_mul(31).wrapping_add(pos.y.wrapping_mul(17))) as u32;
-                if hash % 3 == 0 {
-                    self.spawn_enemy_at(*pos, self.depth);
-                } else {
-                    self.ecs.spawn_barrel(*pos);
-                }
-            }
-            for pos in boss_spawns {
-                self.spawn_boss_at(*pos);
-            }
-            // Place a barrel on the stairs
-            let stairs = find_stairs_down(&self.map);
-            self.ecs.spawn_barrel(stairs);
-            // Spawn sign near player
-            self.spawn_sign_near_player();
-            self.spawn_wizard_near_player();
-            return;
-        }
-
-        for pos in combat_spawns {
-            self.spawn_enemy_at(*pos, self.depth);
-        }
-        for pos in boss_spawns {
-            self.spawn_boss_at(*pos);
-        }
-
-        // Spawn wizard on depth 4+
-        if self.depth >= 4 {
-            self.spawn_wizard_near_player();
-        }
-    }
-
-    fn spawn_wizard_near_player(&mut self) {
-        let player_pos = self.player_pos();
-        let candidates = [
-            player_pos.offset(2, 0),
-            player_pos.offset(-2, 0),
-            player_pos.offset(0, 2),
-            player_pos.offset(0, -2),
-            player_pos.offset(3, 0),
-            player_pos.offset(-3, 0),
-            player_pos.offset(0, 3),
-            player_pos.offset(0, -3),
-        ];
-        let wizard_pos = candidates
-            .iter()
-            .copied()
-            .find(|&p| self.map.is_walkable(p) && self.ecs.entity_at(p).is_none())
-            .unwrap_or(player_pos.offset(2, 0));
-        self.wizard_id = Some(self.ecs.spawn_wizard(wizard_pos));
-    }
-
-    fn spawn_sign_near_player(&mut self) {
-        let player_pos = self.player_pos();
-        let candidates = [
-            player_pos.offset(3, 0),
-            player_pos.offset(-3, 0),
-            player_pos.offset(0, 3),
-            player_pos.offset(0, -3),
-            player_pos.offset(4, 0),
-            player_pos.offset(-4, 0),
-            player_pos.offset(0, 4),
-            player_pos.offset(0, -4),
-        ];
-        if let Some(&pos) = candidates
-            .iter()
-            .find(|&&p| self.map.is_walkable(p) && self.ecs.entity_at(p).is_none())
-        {
-            self.ecs.spawn_sign(pos);
-        }
-    }
-
     /// Spawn a depth-appropriate enemy at the given position.
-    fn spawn_enemy_at(&mut self, pos: Position, depth: u32) {
+    pub(crate) fn spawn_enemy_at(&mut self, pos: Position, depth: u32) {
         let hash = (pos.x.wrapping_mul(31).wrapping_add(pos.y.wrapping_mul(17))) as u32;
         let roll = (hash % 100) as i32;
         match depth {
@@ -437,20 +337,14 @@ impl World {
         }
     }
 
-    fn spawn_boss_at(&mut self, pos: Position) {
+    pub(crate) fn spawn_boss_at(&mut self, pos: Position) {
         self.ecs.spawn_ogre(pos);
     }
 
     fn descend(&mut self) {
         self.depth += 1;
-        let gen = Self::generate_level(self.depth);
-        let player_start = gen.player_start;
-        let combat_spawns = gen.combat_spawns;
-        let boss_spawns = gen.boss_spawns;
         self.clear_all_enemies();
-        self.ecs.set_position(self.player_id, player_start);
-        self.map = gen.map;
-        self.spawn_level_enemies_from(&combat_spawns, &boss_spawns);
+        crate::levels::build_level(self, self.depth);
         self.event_log
             .push(format!("You descend to depth {}.", self.depth));
         self.turn += 1;
@@ -462,14 +356,8 @@ impl World {
             return;
         }
         self.depth -= 1;
-        let gen = Self::generate_level(self.depth);
-        let player_start = gen.player_start;
-        let combat_spawns = gen.combat_spawns;
-        let boss_spawns = gen.boss_spawns;
         self.clear_all_enemies();
-        self.ecs.set_position(self.player_id, player_start);
-        self.map = gen.map;
-        self.spawn_level_enemies_from(&combat_spawns, &boss_spawns);
+        crate::levels::build_level(self, self.depth);
         self.event_log
             .push(format!("You ascend to depth {}.", self.depth));
         self.turn += 1;
@@ -486,13 +374,10 @@ impl World {
     }
 
     fn respawn(&mut self) {
-        let gen = Self::generate_level(self.depth);
-        self.map = gen.map;
-        self.ecs.set_position(self.player_id, gen.player_start);
         self.clear_all_enemies();
         self.ecs
             .set_hp(self.player_id, Hp::new(self.player_hp().max));
-        self.spawn_level_enemies_from(&gen.combat_spawns, &gen.boss_spawns);
+        crate::levels::build_level(self, self.depth);
         self.mode = Mode::Normal;
         self.player_facing = Direction::East;
         self.event_log.push("You gasp back into existence!");
@@ -832,11 +717,11 @@ impl World {
                             }
                         }
 
-                        if last == glyph::kw("quit") {
-                            self.console_output = "Quitting. Goodbye.".to_string();
-                            self.event_log.push("Quitting. Goodbye.");
+                        if last == glyph::kw("quit-terminal") {
+                            self.console_output = "Terminal closed.".to_string();
+                            self.event_log.push("Terminal closed.");
                             self.console_buffer.clear();
-                            self.running = false;
+                            self.mode = Mode::Normal;
                             return;
                         }
                         let msg = console_response(&self.console_output, &last);
@@ -937,18 +822,6 @@ fn console_value_text(value: &Value) -> String {
     }
 }
 
-fn find_stairs_down(map: &Map) -> Position {
-    for y in 0..map.height {
-        for x in 0..map.width {
-            let pos = Position::new(x, y);
-            if map.tile(pos) == TileType::StairsDown {
-                return pos;
-            }
-        }
-    }
-    Position::new(2, 2)
-}
-
 fn setup_glyph_env() -> Env {
     let env = Env::extend(&glyph::default_env());
     env.bind(
@@ -959,10 +832,10 @@ fn setup_glyph_env() -> Env {
         }),
     );
     env.bind(
-        "quit",
+        "quit-terminal",
         Value::Builtin(glyph::BuiltinFn {
-            name: "quit",
-            func: builtin_quit,
+            name: "quit-terminal",
+            func: builtin_quit_terminal,
         }),
     );
     env.bind(
@@ -983,13 +856,13 @@ fn setup_glyph_env() -> Env {
     env
 }
 
-fn builtin_quit(
+fn builtin_quit_terminal(
     _args: &[Value],
     _env: &Env,
     _opts: &glyph::SandboxOptions,
     _world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    Ok(glyph::kw("quit"))
+    Ok(glyph::kw("quit-terminal"))
 }
 
 fn parse_attack_direction(value: &Value) -> Option<Direction> {
@@ -1121,7 +994,7 @@ Syntax:
 
 Console commands (game-specific):
   (help)        — show this help text
-  (quit)        — exit the game
+  (quit-terminal) — close the console overlay
   (do-attack :dir) — strike in direction (:north/:south/:east/:west/:facing)
   (bind-key :k (expr)) — bind a key to a Glyph expression"
             .into(),
@@ -1260,6 +1133,34 @@ mod tests {
         assert!(!world.console_output.contains('\u{1b}'));
         assert_eq!(world.console_output_color, Some(RGB::named(RED)));
         assert!(world.console_buffer.is_empty());
+    }
+
+    #[test]
+    fn quit_terminal_closes_console_without_killing_game() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "(quit-terminal)".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert!(world.running);
+        assert_eq!(world.mode, Mode::Normal);
+        assert_eq!(world.console_output, "Terminal closed.");
+        assert!(world.console_buffer.is_empty());
+    }
+
+    #[test]
+    fn quit_is_not_a_console_builtin() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "(quit)".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert!(world.running);
+        assert_eq!(world.mode, Mode::Console);
+        assert!(world.console_output.contains("unbound symbol: quit"));
+        assert_eq!(world.console_output_color, Some(RGB::named(RED)));
     }
 
     #[test]
@@ -1607,13 +1508,5 @@ mod tests {
         assert_eq!(cost, ActionCost::Free);
         assert_eq!(world.depth, 3);
         assert!(world.event_log.contains("barrier"));
-    }
-
-    #[test]
-    fn depth_3_level_generates_wizard_box() {
-        // generate_level(3) should return a wizard box with no enemies
-        let output = World::generate_level(3);
-        assert!(output.combat_spawns.is_empty());
-        assert!(output.boss_spawns.is_empty());
     }
 }

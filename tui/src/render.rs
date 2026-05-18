@@ -404,7 +404,7 @@ fn render_console(ctx: &mut BTerm, world: &World) {
         x + 2,
         y + 2,
         width - 4,
-        "Glyph REPL. Try (help). Enter (quit) to exit.",
+        "Glyph REPL. Try (help). Enter (quit-terminal) to close.",
     );
 
     let output_y = y + 4;

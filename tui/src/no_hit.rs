@@ -219,6 +219,7 @@ mod tests {
             console_output: String::new(),
             console_output_color: None,
             glyph_env: crate::glyph::Env::extend(&crate::glyph::default_env()),
+            binding_env: crate::glyph::Env::extend(&crate::glyph::default_env()),
             inspector_selection: 0,
             blocking: false,
             running: true,

@@ -77,6 +77,7 @@ impl World {
         ecs.spawn_slime(Position::new(47, 18));
 
         let glyph_env = setup_glyph_env();
+        let binding_env = setup_binding_env(&glyph_env);
 
         Self {
             map: Map::new_static(),
@@ -92,6 +93,7 @@ impl World {
             console_output: String::new(),
             console_output_color: None,
             glyph_env,
+            binding_env,
             inspector_selection: 0,
             blocking: false,
             running: true,
@@ -121,6 +123,7 @@ impl World {
         let player_id = ecs.spawn_player(Position::new(0, 0));
 
         let glyph_env = setup_glyph_env();
+        let binding_env = setup_binding_env(&glyph_env);
 
         let mut world = Self {
             map: Map::new_static(),
@@ -136,6 +139,7 @@ impl World {
             console_output: String::new(),
             console_output_color: None,
             glyph_env,
+            binding_env,
             inspector_selection: 0,
             blocking: false,
             running: true,
@@ -705,7 +709,7 @@ impl World {
             }
         };
 
-        let env = self.glyph_env.clone();
+        let env = self.binding_env.clone();
         for form in &forms {
             if let Err(e) =
                 glyph::eval_with_opts(form, &env, glyph::SandboxOptions::default(), self)
@@ -780,7 +784,6 @@ fn setup_glyph_env() -> Env {
     reg!("help", builtin_help);
     reg!("quit-terminal", builtin_quit_terminal);
     reg!("quit!", builtin_quit_bang);
-    reg!("do-attack", builtin_do_attack);
     reg!("move!", builtin_move);
     reg!("wait!", builtin_wait);
     reg!("block!", builtin_block);
@@ -792,6 +795,21 @@ fn setup_glyph_env() -> Env {
     reg!("heal", builtin_heal);
     reg!("set-level", builtin_set_level);
     ai_builtins::register_all(&env);
+    env
+}
+
+/// Create the environment used for evaluating keybindings.
+/// Includes `do-attack` which is intentionally excluded from the console
+/// environment — the player must use keybindings to attack.
+fn setup_binding_env(base: &Env) -> Env {
+    let env = Env::extend(base);
+    env.bind(
+        "do-attack",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "do-attack",
+            func: builtin_do_attack,
+        }),
+    );
     env
 }
 
@@ -1031,7 +1049,8 @@ Console commands (game-specific):\n\
 
     if world.player_can_attack {
         help.push_str(
-            "\n  (do-attack :dir) — strike in direction (:north/:south/:east/:west/:facing)\n\
+            "\n  (do-attack :dir) — strike in direction (keybindings only; \n  \
+             use (bind-key :k (do-attack :dir)) to bind it)\n\
              \n  (bind-key :k (expr)) — bind a key to a Glyph expression",
         );
     }
@@ -1492,7 +1511,7 @@ mod tests {
         let mut world = world_with_single_enemy(Position::new(6, 5));
         world.player_can_attack = true;
         world.player_facing = Direction::East;
-        let env = setup_glyph_env();
+        let env = setup_binding_env(&setup_glyph_env());
         let forms = crate::glyph::read_string("(do-attack :east)").unwrap();
         let result = crate::glyph::eval_with_opts(
             &forms[0],
@@ -1511,7 +1530,7 @@ mod tests {
         let mut world = world_with_single_enemy(Position::new(6, 5));
         world.player_can_attack = true;
         world.player_facing = Direction::East;
-        let env = setup_glyph_env();
+        let env = setup_binding_env(&setup_glyph_env());
         let forms = crate::glyph::read_string("(do-attack)").unwrap();
         let result = crate::glyph::eval_with_opts(
             &forms[0],
@@ -1528,7 +1547,7 @@ mod tests {
     #[test]
     fn do_attack_rejects_non_direction() {
         let mut world = World::minimal();
-        let env = setup_glyph_env();
+        let env = setup_binding_env(&setup_glyph_env());
         let forms = crate::glyph::read_string("(do-attack :up)").unwrap();
         let result = crate::glyph::eval_with_opts(
             &forms[0],

@@ -48,6 +48,7 @@ pub fn run() -> BError {
     let context = BTermBuilder::simple(90, 50)?
         .with_title("Xlyph - bracket-lib prototype")
         .with_fitscreen(true)
+        .with_tile_dimensions(12u32, 12u32)
         .build()?;
     main_loop(context, State::new())
 }

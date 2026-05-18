@@ -205,8 +205,10 @@ impl World {
             }
             Intent::Descend => {
                 if self.map.tile(self.player_pos()) == TileType::StairsDown {
-                    if !self.wizard_taught && self.depth >= 3 {
-                        self.event_log.push("A shimmering barrier blocks the stairs. A voice echoes: \"Not yet, traveler. Seek the wizard's wisdom first.\"");
+                    let has_attack_binding =
+                        self.bindings.values().any(|cmd| cmd.contains("do-attack"));
+                    if self.depth >= 3 && (!self.wizard_taught || !has_attack_binding) {
+                        self.event_log.push("A shimmering barrier blocks the stairs. The wizard's voice echoes: \"Bind your attack to a key first! Open the console (`) and try (bind-key :z (do-attack :facing)).\"");
                         ActionCost::Free
                     } else {
                         self.descend();
@@ -577,8 +579,10 @@ impl World {
             "  (bind-key :x (do-attack :east))   (bind-key :c (do-attack :west))",
             RGB::named(GREEN),
         );
-        self.event_log
-            .push_colored("\"Strike with purpose, traveler.\"", RGB::named(CYAN));
+        self.event_log.push_colored(
+            "\"Strike with purpose, traveler — once you bind it, the way down will open.\"",
+            RGB::named(CYAN),
+        );
     }
 
     fn finish_tick(&mut self) {
@@ -1432,7 +1436,24 @@ mod tests {
     }
 
     #[test]
-    fn descend_allowed_at_depth_3_with_wizard() {
+    fn descend_allowed_at_depth_3_with_wizard_and_binding() {
+        let mut world = World::new();
+        world.depth = 3;
+        world.wizard_taught = true;
+        world
+            .bindings
+            .insert("z".into(), "(do-attack :facing)".into());
+        world.clear_all_enemies();
+        world.map.set_tile(world.player_pos(), TileType::StairsDown);
+
+        let cost = world.apply_intent(Intent::Descend);
+
+        assert_eq!(cost, ActionCost::Tick);
+        assert_eq!(world.depth, 4);
+    }
+
+    #[test]
+    fn descend_blocked_when_taught_but_not_bound() {
         let mut world = World::new();
         world.depth = 3;
         world.wizard_taught = true;
@@ -1441,8 +1462,9 @@ mod tests {
 
         let cost = world.apply_intent(Intent::Descend);
 
-        assert_eq!(cost, ActionCost::Tick);
-        assert_eq!(world.depth, 4);
+        assert_eq!(cost, ActionCost::Free);
+        assert_eq!(world.depth, 3);
+        assert!(world.event_log.contains("barrier"));
     }
 
     #[test]

@@ -11,6 +11,7 @@ use bracket_lib::prelude::*;
 
 use crate::{
     entity::{EntityKind, EntityView, Position},
+    event_log::LogEntry,
     game::Mode,
     glyph::highlight::{self, Span},
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
@@ -342,17 +343,17 @@ fn render_event_log(ctx: &mut BTerm, world: &World) {
     );
 
     let visible_lines = (LOG_HEIGHT - 2) as usize;
-    let entries = world.event_log.entries();
-    let start = entries.len().saturating_sub(visible_lines);
+    let lines = wrapped_log_lines(world.event_log.entries(), (LOG_WIDTH - 4) as usize);
+    let start = lines.len().saturating_sub(visible_lines);
 
-    for (line_index, entry) in entries[start..].iter().enumerate() {
-        if let Some(color) = entry.color {
+    for (line_index, line) in lines[start..].iter().enumerate() {
+        if let Some(color) = line.color {
             print_clipped_color(
                 ctx,
                 LOG_X + 1,
                 LOG_Y + line_index as i32,
                 LOG_WIDTH - 4,
-                &entry.text,
+                &line.text,
                 color,
             );
         } else {
@@ -361,10 +362,24 @@ fn render_event_log(ctx: &mut BTerm, world: &World) {
                 LOG_X + 1,
                 LOG_Y + line_index as i32,
                 LOG_WIDTH - 4,
-                &entry.text,
+                &line.text,
             );
         }
     }
+}
+
+fn wrapped_log_lines(entries: &[LogEntry], max_width: usize) -> Vec<LogEntry> {
+    entries
+        .iter()
+        .flat_map(|entry| {
+            wrap_text(&entry.text, max_width)
+                .into_iter()
+                .map(|text| LogEntry {
+                    text,
+                    color: entry.color,
+                })
+        })
+        .collect()
 }
 
 fn render_console(ctx: &mut BTerm, world: &World) {
@@ -388,7 +403,7 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     let output_height = prompt_y - output_y - 1;
 
     if !world.console_output.is_empty() {
-        let lines = wrap_console_text(&world.console_output, (width - 4) as usize);
+        let lines = wrap_text(&world.console_output, (width - 4) as usize);
         for (i, line) in lines.iter().take(output_height as usize).enumerate() {
             print_clipped(ctx, x + 2, output_y + i as i32, width - 4, line);
         }
@@ -399,7 +414,7 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     print_highlighted(ctx, x + 4, prompt_y, width - 6, &spans);
 }
 
-fn wrap_console_text(text: &str, max_width: usize) -> Vec<String> {
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     if max_width == 0 {
         return Vec::new();
     }
@@ -550,4 +565,30 @@ fn print_clipped_color(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &s
 
     let clipped: String = text.chars().take(max_width as usize).collect();
     ctx.print_color(x, y, color, RGB::named(BLACK), &clipped);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_entries_wrap_into_visible_rows() {
+        let color = RGB::named(CYAN);
+        let entries = vec![LogEntry {
+            text: "Open the console (`) and bind attack to a key".to_string(),
+            color: Some(color),
+        }];
+
+        let lines = wrapped_log_lines(&entries, 18);
+        let text = lines
+            .iter()
+            .map(|line| line.text.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            text,
+            vec!["Open the console", "(`) and bind", "attack to a key"]
+        );
+        assert!(lines.iter().all(|line| line.color == Some(color)));
+    }
 }

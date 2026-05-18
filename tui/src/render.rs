@@ -42,6 +42,12 @@ pub fn render(ctx: &mut BTerm, world: &World) {
         render_entity_tooltip(ctx, world);
     }
 
+    if world.mode == Mode::Dead {
+        render_overlay_backdrop(ctx);
+        render_death_screen(ctx, world);
+        return;
+    }
+
     if world.mode == Mode::Inspector || world.mode == Mode::Console {
         render_overlay_backdrop(ctx);
     }
@@ -378,6 +384,56 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     ctx.print_color(x + 2, y + 6, RGB::named(WHITE), RGB::named(BLACK), "> ");
     let spans = highlight::highlight(&world.console_buffer);
     print_highlighted(ctx, x + 4, y + 6, width - 6, &spans);
+}
+
+fn render_death_screen(ctx: &mut BTerm, world: &World) {
+    let x = 10;
+    let y = 10;
+    let width = 46;
+    let height = 16;
+
+    fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
+    draw_box(ctx, x, y, width, height, " death ");
+
+    let inner_x = x + 2;
+    let inner_w = width - 4;
+    let mut line_y = y + 2;
+
+    ctx.print_color(
+        inner_x,
+        line_y,
+        RGB::named(RED),
+        RGB::named(BLACK),
+        "YOU HAVE PERISHED",
+    );
+    line_y += 2;
+
+    print_clipped(
+        ctx,
+        inner_x,
+        line_y,
+        inner_w,
+        &format!("Depth: {}  |  Turn: {}", world.depth, world.turn),
+    );
+    line_y += 2;
+
+    print_clipped(
+        ctx,
+        inner_x,
+        line_y,
+        inner_w,
+        "[r]       Respawn at this depth",
+    );
+    line_y += 1;
+    print_clipped(
+        ctx,
+        inner_x,
+        line_y,
+        inner_w,
+        "[shift+r] Restart from depth 1",
+    );
+    line_y += 1;
+    print_clipped(ctx, inner_x, line_y, inner_w, "[esc/q]   Quit");
 }
 
 fn draw_box(ctx: &mut BTerm, x: i32, y: i32, width: i32, height: i32, title: &str) {

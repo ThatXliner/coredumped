@@ -17,6 +17,7 @@ pub fn key_to_intent(key: VirtualKeyCode, shift: bool, world: &World) -> Intent 
         Mode::Normal => normal_key_to_intent(key, shift),
         Mode::Inspector => inspector_key_to_intent(key),
         Mode::Console => console_key_to_intent(key, shift),
+        Mode::Dead => dead_key_to_intent(key, shift),
     }
 }
 
@@ -57,6 +58,15 @@ fn console_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
         _ => key_to_console_char(key, shift)
             .map(Intent::ConsoleInput)
             .unwrap_or(Intent::Noop),
+    }
+}
+
+fn dead_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
+    match (key, shift) {
+        (VirtualKeyCode::R, false) => Intent::Respawn,
+        (VirtualKeyCode::R, true) => Intent::Restart,
+        (VirtualKeyCode::Escape, _) | (VirtualKeyCode::Q, _) => Intent::Quit,
+        _ => Intent::Noop,
     }
 }
 

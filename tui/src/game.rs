@@ -39,6 +39,8 @@ pub enum Intent {
     Ascend,
     Block,
     Attack,
+    Respawn,
+    Restart,
     Quit,
     Noop,
 }
@@ -50,6 +52,7 @@ pub enum Mode {
     Normal,
     Inspector,
     Console,
+    Dead,
 }
 
 impl World {
@@ -197,8 +200,13 @@ impl World {
             }
             Intent::Descend => {
                 if self.map.tile(self.player_pos()) == TileType::StairsDown {
-                    self.descend();
-                    ActionCost::Tick
+                    if !self.wizard_taught && self.depth >= 3 {
+                        self.event_log.push("A shimmering barrier blocks the stairs. A voice echoes: \"Not yet, traveler. Seek the wizard's wisdom first.\"");
+                        ActionCost::Free
+                    } else {
+                        self.descend();
+                        ActionCost::Tick
+                    }
                 } else {
                     self.event_log.push("There are no stairs going down here.");
                     ActionCost::Free
@@ -228,6 +236,14 @@ impl World {
                 self.event_log.push("You raise your guard.");
                 self.finish_tick();
                 ActionCost::Tick
+            }
+            Intent::Respawn => {
+                self.respawn();
+                ActionCost::Free
+            }
+            Intent::Restart => {
+                self.restart();
+                ActionCost::Free
             }
             Intent::Quit => {
                 self.running = false;
@@ -279,8 +295,11 @@ impl World {
 
     /// Generate a level appropriate for the given depth.
     /// Depth 1, 3, 5... = rooms-and-corridors; depth 2, 4, 6... = caves.
+    /// Depth 3 is the wizard's tutorial chamber.
     fn generate_level(depth: u32) -> MapGenOutput {
-        if depth % 2 == 0 {
+        if depth == 3 {
+            Map::generate_wizard_box()
+        } else if depth % 2 == 0 {
             Map::generate_cave(depth)
         } else {
             Map::generate(MAP_WIDTH, MAP_HEIGHT, depth)
@@ -289,6 +308,12 @@ impl World {
 
     /// Spawn enemies on a freshly generated level.
     fn spawn_level_enemies_from(&mut self, combat_spawns: &[Position], boss_spawns: &[Position]) {
+        if self.depth == 3 {
+            // Depth 3 is the wizard's chamber: no enemies, just the wizard
+            self.spawn_wizard_near_player();
+            return;
+        }
+
         for pos in combat_spawns {
             self.spawn_enemy_at(*pos, self.depth);
         }
@@ -298,24 +323,28 @@ impl World {
 
         // Spawn wizard on depth 4+
         if self.depth >= 4 {
-            let player_pos = self.player_pos();
-            let candidates = [
-                player_pos.offset(2, 0),
-                player_pos.offset(-2, 0),
-                player_pos.offset(0, 2),
-                player_pos.offset(0, -2),
-                player_pos.offset(3, 0),
-                player_pos.offset(-3, 0),
-                player_pos.offset(0, 3),
-                player_pos.offset(0, -3),
-            ];
-            let wizard_pos = candidates
-                .iter()
-                .copied()
-                .find(|&p| self.map.is_walkable(p) && self.ecs.entity_at(p).is_none())
-                .unwrap_or(player_pos.offset(2, 0));
-            self.wizard_id = Some(self.ecs.spawn_wizard(wizard_pos));
+            self.spawn_wizard_near_player();
         }
+    }
+
+    fn spawn_wizard_near_player(&mut self) {
+        let player_pos = self.player_pos();
+        let candidates = [
+            player_pos.offset(2, 0),
+            player_pos.offset(-2, 0),
+            player_pos.offset(0, 2),
+            player_pos.offset(0, -2),
+            player_pos.offset(3, 0),
+            player_pos.offset(-3, 0),
+            player_pos.offset(0, 3),
+            player_pos.offset(0, -3),
+        ];
+        let wizard_pos = candidates
+            .iter()
+            .copied()
+            .find(|&p| self.map.is_walkable(p) && self.ecs.entity_at(p).is_none())
+            .unwrap_or(player_pos.offset(2, 0));
+        self.wizard_id = Some(self.ecs.spawn_wizard(wizard_pos));
     }
 
     /// Spawn a depth-appropriate enemy at the given position.
@@ -387,6 +416,23 @@ impl World {
         if let Some(wizard_id) = self.wizard_id.take() {
             self.ecs.remove(wizard_id);
         }
+    }
+
+    fn respawn(&mut self) {
+        let gen = Self::generate_level(self.depth);
+        self.map = gen.map;
+        self.ecs.set_position(self.player_id, gen.player_start);
+        self.clear_all_enemies();
+        self.ecs
+            .set_hp(self.player_id, Hp::new(self.player_hp().max));
+        self.spawn_level_enemies_from(&gen.combat_spawns, &gen.boss_spawns);
+        self.mode = Mode::Normal;
+        self.player_facing = Direction::East;
+        self.event_log.push("You gasp back into existence!");
+    }
+
+    fn restart(&mut self) {
+        *self = World::new_game();
     }
 
     fn apply_player_move(&mut self, direction: Direction) {
@@ -501,6 +547,11 @@ impl World {
         self.turn += 1;
         self.advance_enemies();
         self.blocking = false;
+
+        if self.player_hp().current <= 0 {
+            self.mode = Mode::Dead;
+            self.event_log.push("You have perished!");
+        }
     }
 
     fn advance_enemies(&mut self) {
@@ -1095,5 +1146,123 @@ mod tests {
             &mut world,
         );
         assert!(result.is_err());
+    }
+
+    // --- Death & respawn tests ---
+
+    #[test]
+    fn player_dies_when_hp_reaches_zero() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.ecs.set_hp(
+            world.player_id,
+            Hp {
+                current: 1,
+                max: 12,
+            },
+        );
+
+        world.apply_intent(Intent::Wait);
+
+        assert_eq!(world.mode, Mode::Dead);
+        assert!(world.event_log.contains("perished"));
+    }
+
+    #[test]
+    fn death_mode_does_not_kill_on_nonfatal_damage() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.ecs.set_hp(
+            world.player_id,
+            Hp {
+                current: 12,
+                max: 12,
+            },
+        );
+
+        world.apply_intent(Intent::Wait);
+
+        assert_eq!(world.mode, Mode::Normal);
+        assert_eq!(world.player_hp().current, 11);
+    }
+
+    #[test]
+    fn respawn_restores_hp_and_regenerates_level() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.ecs.set_hp(
+            world.player_id,
+            Hp {
+                current: 1,
+                max: 12,
+            },
+        );
+
+        // Kill the player
+        world.apply_intent(Intent::Wait);
+        assert_eq!(world.mode, Mode::Dead);
+
+        // Respawn
+        world.apply_intent(Intent::Respawn);
+
+        assert_eq!(world.mode, Mode::Normal);
+        assert_eq!(world.player_hp().current, 12);
+        assert!(world.event_log.contains("gasp back"));
+    }
+
+    #[test]
+    fn restart_creates_fresh_game() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.depth = 5;
+
+        world.apply_intent(Intent::Restart);
+
+        assert_eq!(world.mode, Mode::Normal);
+        assert_eq!(world.depth, 1);
+        assert_eq!(world.player_hp().current, 12);
+        assert!(!world.player_can_attack);
+    }
+
+    // --- Depth 3 / wizard gating tests ---
+
+    #[test]
+    fn wizard_box_has_no_enemies() {
+        let output = Map::generate_wizard_box();
+        assert!(output.combat_spawns.is_empty());
+        assert!(output.boss_spawns.is_empty());
+    }
+
+    #[test]
+    fn descend_blocked_at_depth_3_without_wizard() {
+        let mut world = World::new();
+        world.depth = 3;
+        world.wizard_taught = false;
+        world.clear_all_enemies();
+        world.map.set_tile(world.player_pos(), TileType::StairsDown);
+
+        let cost = world.apply_intent(Intent::Descend);
+
+        assert_eq!(cost, ActionCost::Free);
+        assert_eq!(world.depth, 3);
+        assert!(world.event_log.contains("barrier"));
+    }
+
+    #[test]
+    fn descend_allowed_at_depth_3_with_wizard() {
+        let mut world = World::new();
+        world.depth = 3;
+        world.wizard_taught = true;
+        world.clear_all_enemies();
+        world.map.set_tile(world.player_pos(), TileType::StairsDown);
+
+        let cost = world.apply_intent(Intent::Descend);
+
+        assert_eq!(cost, ActionCost::Tick);
+        assert_eq!(world.depth, 4);
+    }
+
+    #[test]
+    fn depth_3_level_generates_wizard_box() {
+        // generate_level(3) should return a wizard box with no enemies
+        let output = World::generate_level(3);
+        assert!(output.combat_spawns.is_empty());
+        assert!(output.boss_spawns.is_empty());
     }
 }

@@ -71,6 +71,42 @@ impl Map {
         map
     }
 
+    /// Generate the wizard's tutorial chamber: a small box room with no enemies.
+    pub fn generate_wizard_box() -> MapGenOutput {
+        let mut map = Self {
+            width: MAP_WIDTH,
+            height: MAP_HEIGHT,
+            tiles: vec![TileType::Wall; (MAP_WIDTH * MAP_HEIGHT) as usize],
+        };
+
+        // A single 12x9 room in the center of the map
+        let room_x = 14;
+        let room_y = 8;
+        let room_w = 12;
+        let room_h = 9;
+
+        for y in room_y..room_y + room_h {
+            for x in room_x..room_x + room_w {
+                map.set_tile(Position::new(x, y), TileType::Floor);
+            }
+        }
+
+        let player_start = Position::new(room_x + 1, room_y + room_h / 2);
+        let stairs_down = Position::new(room_x + room_w - 2, room_y + room_h / 2);
+
+        map.set_tile(player_start, TileType::StairsUp);
+        map.set_tile(stairs_down, TileType::StairsDown);
+
+        MapGenOutput {
+            map,
+            player_start,
+            stairs_up: player_start,
+            stairs_down,
+            combat_spawns: vec![],
+            boss_spawns: vec![],
+        }
+    }
+
     /// Generate a random room-based dungeon with depth-scaled difficulty.
     /// Uses region-based placement, Kruskal MST corridors, and room typing.
     pub fn generate(width: i32, height: i32, depth: u32) -> MapGenOutput {
@@ -507,7 +543,7 @@ impl Map {
         lit
     }
 
-    fn set_tile(&mut self, pos: Position, tile: TileType) {
+    pub(crate) fn set_tile(&mut self, pos: Position, tile: TileType) {
         if self.contains(pos) {
             let idx = self.idx(pos);
             self.tiles[idx] = tile;

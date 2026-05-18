@@ -947,7 +947,10 @@ fn builtin_descend(
         world.event_log.push("There are no stairs going down here.");
         return Ok(Value::Nil);
     }
-    let has_attack_binding = world.bindings.values().any(|cmd| cmd.contains("do-attack"));
+    let has_attack_binding = world
+        .bindings
+        .values()
+        .any(|cmd| cmd.strip_prefix(':').is_some_and(|rest| ATTACK_SENTINEL_NAMES.contains(&rest)));
     if world.depth >= 3 && (!world.wizard_taught || !has_attack_binding) {
         world.event_log.push("A shimmering barrier blocks the stairs. The wizard's voice echoes: \"Bind your attack to a key first! Open the console (`) and try (bind-key :z (do-attack)).\"");
         return Ok(Value::Nil);
@@ -971,6 +974,28 @@ fn builtin_ascend(
     Ok(Value::Nil)
 }
 
+/// Keyword names returned by (do-attack) used as sentinel values that signal
+/// "this binding produces an attack action" to both the binding executor and
+/// the descend gate.
+const ATTACK_SENTINEL_NAMES: &[&str] = &[
+    "player-attack-facing",
+    "player-attack-north",
+    "player-attack-south",
+    "player-attack-east",
+    "player-attack-west",
+];
+
+/// Look up the sentinel keyword name for an optional direction (None = facing).
+fn attack_sentinel_name(dir: Option<Direction>) -> &'static str {
+    match dir {
+        None => "player-attack-facing",
+        Some(Direction::North) => "player-attack-north",
+        Some(Direction::South) => "player-attack-south",
+        Some(Direction::East) => "player-attack-east",
+        Some(Direction::West) => "player-attack-west",
+    }
+}
+
 fn parse_attack_direction(value: &Value) -> Option<Direction> {
     match value {
         Value::Keyword(kw) => match kw.name.as_str() {
@@ -991,7 +1016,7 @@ fn builtin_do_attack(
     _world: &mut World,
 ) -> glyph::EvalResult<Value> {
     if args.is_empty() {
-        return Ok(glyph::kw("player-attack-facing"));
+        return Ok(glyph::kw(attack_sentinel_name(None)));
     }
     if args.len() != 1 {
         return Err(glyph::EvalError::WrongArgCount {
@@ -1000,15 +1025,7 @@ fn builtin_do_attack(
         });
     }
     match parse_attack_direction(&args[0]) {
-        Some(dir) => {
-            let sentinel = match dir {
-                Direction::North => "player-attack-north",
-                Direction::South => "player-attack-south",
-                Direction::East => "player-attack-east",
-                Direction::West => "player-attack-west",
-            };
-            Ok(glyph::kw(sentinel))
-        }
+        Some(dir) => Ok(glyph::kw(attack_sentinel_name(Some(dir)))),
         None => Err(glyph::EvalError::TypeError {
             expected: "direction keyword (:north, :south, :east, :west)",
             got: format!("{}", args[0]),
@@ -1597,7 +1614,7 @@ mod tests {
         world.wizard_taught = true;
         world
             .bindings
-            .insert("z".into(), "(do-attack :facing)".into());
+            .insert("z".into(), ":player-attack-facing".into());
         world.clear_all_enemies();
         world.map.set_tile(world.player_pos(), TileType::StairsDown);
 
@@ -1620,5 +1637,32 @@ mod tests {
         assert_eq!(cost, ActionCost::Free);
         assert_eq!(world.depth, 3);
         assert!(world.event_log.contains("barrier"));
+    }
+
+    #[test]
+    fn console_bind_attack_allows_descend_at_depth_3() {
+        let mut world = World::new();
+        world.depth = 3;
+        world.wizard_taught = true;
+        world.clear_all_enemies();
+        world.map.set_tile(world.player_pos(), TileType::StairsDown);
+
+        // Bind (do-attack) to `z` via the console — the real code path
+        // that evaluates the form before storing the keyword sentinel.
+        world.mode = Mode::Console;
+        world.console_buffer = "(bind-key :z (do-attack))".to_string();
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        // Confirm the binding was stored as the evaluated sentinel
+        assert_eq!(
+            world.bindings.get("z").map(|s| s.as_str()),
+            Some(":player-attack-facing")
+        );
+
+        // Now descend should work
+        let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
+
+        assert_eq!(cost, ActionCost::Tick);
+        assert_eq!(world.depth, 4);
     }
 }

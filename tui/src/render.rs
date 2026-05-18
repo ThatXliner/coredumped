@@ -11,9 +11,10 @@ use bracket_lib::prelude::*;
 
 use crate::{
     entity::{EntityKind, EntityView, Position},
-    game::{Mode, World},
+    game::Mode,
     glyph::highlight::{self, Span},
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
+    world::World,
 };
 
 const SCREEN_HEIGHT: i32 = 41;

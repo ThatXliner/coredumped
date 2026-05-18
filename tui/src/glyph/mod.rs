@@ -41,9 +41,10 @@ mod tests {
 
     fn eval_str(s: &str, env: &Env) -> EvalResult<Value> {
         let forms = read_string(s).unwrap();
+        let mut world = crate::world::World::minimal();
         let mut result = Value::Nil;
         for form in forms {
-            result = eval(&form, env)?;
+            result = eval(&form, env, &mut world)?;
         }
         Ok(result)
     }

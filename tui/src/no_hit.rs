@@ -9,7 +9,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
     entity::{Direction, Position},
-    game::{Intent, World},
+    game::Intent,
+    world::World,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

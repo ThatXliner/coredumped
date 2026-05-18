@@ -2,21 +2,32 @@
 
 use super::env::Env;
 use super::value::*;
+use crate::world::World;
 
 /// Evaluate a form with default sandbox options.
-pub fn eval(form: &Value, env: &Env) -> EvalResult<Value> {
-    eval_with_opts(form, env, SandboxOptions::default())
+pub fn eval(form: &Value, env: &Env, world: &mut World) -> EvalResult<Value> {
+    eval_with_opts(form, env, SandboxOptions::default(), world)
 }
 
 /// Evaluate a form with custom sandbox options.
-pub fn eval_with_opts(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+pub fn eval_with_opts(
+    form: &Value,
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     match opts.descend() {
-        Some(next) => eval_inner(form, env, next),
+        Some(next) => eval_inner(form, env, next, world),
         None => Err(EvalError::RecursionLimit),
     }
 }
 
-fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_inner(
+    form: &Value,
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     match form {
         Value::Nil
         | Value::Bool(_)
@@ -39,13 +50,17 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
             if items.is_empty() {
                 return Err(EvalError::Custom("empty list".into()));
             }
-            if let Some(expanded) =
-                try_macroexpand_inner(form, env, opts.descend().ok_or(EvalError::RecursionLimit)?)?
-            {
+            if let Some(expanded) = try_macroexpand_inner(
+                form,
+                env,
+                opts.descend().ok_or(EvalError::RecursionLimit)?,
+                world,
+            )? {
                 return eval_inner(
                     &expanded,
                     env,
                     opts.descend().ok_or(EvalError::RecursionLimit)?,
+                    world,
                 );
             }
             if let Value::Symbol(s) = &items[0] {
@@ -56,6 +71,7 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
                         )
                     }
                     "do" => {
@@ -63,6 +79,7 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
                         )
                     }
                     "let" => {
@@ -70,6 +87,7 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
                         )
                     }
                     "fn" => return eval_fn(&items[1..], env),
@@ -78,6 +96,7 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
                         )
                     }
                     "defmacro" => return eval_defmacro(&items[1..], env),
@@ -86,6 +105,7 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
                         )
                     }
                     "try" => {
@@ -93,6 +113,7 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
                         )
                     }
                     "and" => {
@@ -100,6 +121,7 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
                         )
                     }
                     "or" => {
@@ -107,6 +129,7 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
                         )
                     }
                     "match" => {
@@ -114,12 +137,18 @@ fn eval_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value
                             &items[1..],
                             env,
                             opts.descend().ok_or(EvalError::RecursionLimit)?,
+                            world,
                         )
                     }
                     _ => {}
                 }
             }
-            eval_call_inner(form, env, opts.descend().ok_or(EvalError::RecursionLimit)?)
+            eval_call_inner(
+                form,
+                env,
+                opts.descend().ok_or(EvalError::RecursionLimit)?,
+                world,
+            )
         }
     }
 }
@@ -130,6 +159,7 @@ fn try_macroexpand_inner(
     form: &Value,
     env: &Env,
     opts: SandboxOptions,
+    world: &mut World,
 ) -> EvalResult<Option<Value>> {
     let items = match form {
         Value::List(items) => items,
@@ -153,12 +183,14 @@ fn try_macroexpand_inner(
                     expr,
                     &macro_env,
                     opts.descend().ok_or(EvalError::RecursionLimit)?,
+                    world,
                 )?;
             }
             match try_macroexpand_inner(
                 &expanded,
                 env,
                 opts.descend().ok_or(EvalError::RecursionLimit)?,
+                world,
             )? {
                 Some(further) => Ok(Some(further)),
                 None => Ok(Some(expanded)),
@@ -169,13 +201,20 @@ fn try_macroexpand_inner(
 }
 
 /// Expand all macros in a form (public helper).
-pub fn macroexpand_all(form: &Value, env: &Env) -> EvalResult<Value> {
+pub fn macroexpand_all(form: &Value, env: &Env, world: &mut World) -> EvalResult<Value> {
     let opts = SandboxOptions::default();
-    match try_macroexpand_inner(form, env, opts.descend().ok_or(EvalError::RecursionLimit)?)? {
+    match try_macroexpand_inner(
+        form,
+        env,
+        opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
+    )? {
         Some(expanded) => match &expanded {
             Value::List(items) => {
-                let new: EvalResult<Vec<Value>> =
-                    items.iter().map(|x| macroexpand_all(x, env)).collect();
+                let new: EvalResult<Vec<Value>> = items
+                    .iter()
+                    .map(|x| macroexpand_all(x, env, world))
+                    .collect();
                 Ok(Value::List(new?))
             }
             _ => Ok(expanded),
@@ -186,7 +225,12 @@ pub fn macroexpand_all(form: &Value, env: &Env) -> EvalResult<Value> {
 
 // --- Function application ---
 
-fn eval_call_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_call_inner(
+    form: &Value,
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     let items = match form {
         Value::List(items) => items,
         _ => unreachable!(),
@@ -197,6 +241,7 @@ fn eval_call_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<
             item,
             env,
             opts.descend().ok_or(EvalError::RecursionLimit)?,
+            world,
         )?);
     }
     let callee = evaled.remove(0);
@@ -205,6 +250,7 @@ fn eval_call_inner(form: &Value, env: &Env, opts: SandboxOptions) -> EvalResult<
         &evaled,
         env,
         opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
     )
 }
 
@@ -213,9 +259,10 @@ fn apply_inner(
     args: &[Value],
     env: &Env,
     opts: SandboxOptions,
+    world: &mut World,
 ) -> EvalResult<Value> {
     match callee {
-        Value::Builtin(b) => (b.func)(args, env, &opts),
+        Value::Builtin(b) => (b.func)(args, env, &opts, world),
         Value::Closure(c) => {
             let closure_env = Env::extend(&c.env);
             bind_params(&c.params, args, &closure_env)?;
@@ -225,6 +272,7 @@ fn apply_inner(
                     expr,
                     &closure_env,
                     opts.descend().ok_or(EvalError::RecursionLimit)?,
+                    world,
                 )?;
             }
             Ok(result)
@@ -274,7 +322,12 @@ fn eval_quote(args: &[Value], _env: &Env) -> EvalResult<Value> {
     Ok(args[0].clone())
 }
 
-fn eval_if_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_if_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     if args.len() < 2 || args.len() > 3 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -285,6 +338,7 @@ fn eval_if_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<
         &args[0],
         env,
         opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
     )?;
     let truthy = !matches!(test, Value::Nil | Value::Bool(false));
     if truthy {
@@ -292,27 +346,44 @@ fn eval_if_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<
             &args[1],
             env,
             opts.descend().ok_or(EvalError::RecursionLimit)?,
+            world,
         )
     } else if args.len() == 3 {
         eval_inner(
             &args[2],
             env,
             opts.descend().ok_or(EvalError::RecursionLimit)?,
+            world,
         )
     } else {
         Ok(Value::Nil)
     }
 }
 
-fn eval_do_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_do_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     let mut result = Value::Nil;
     for arg in args {
-        result = eval_inner(arg, env, opts.descend().ok_or(EvalError::RecursionLimit)?)?;
+        result = eval_inner(
+            arg,
+            env,
+            opts.descend().ok_or(EvalError::RecursionLimit)?,
+            world,
+        )?;
     }
     Ok(result)
 }
 
-fn eval_let_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_let_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     if args.len() < 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -332,6 +403,7 @@ fn eval_let_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult
         &args[1],
         env,
         opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
     )?;
     let let_env = Env::extend(env);
     let_env.bind(&name, value);
@@ -341,6 +413,7 @@ fn eval_let_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult
             expr,
             &let_env,
             opts.descend().ok_or(EvalError::RecursionLimit)?,
+            world,
         )?;
     }
     Ok(result)
@@ -362,7 +435,12 @@ fn eval_fn(args: &[Value], env: &Env) -> EvalResult<Value> {
     }))
 }
 
-fn eval_const_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_const_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -385,6 +463,7 @@ fn eval_const_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResu
         &args[1],
         env,
         opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
     )?;
     env.bind(&name, value);
     Ok(Value::Symbol(Symbol::new(&name)))
@@ -463,7 +542,12 @@ fn parse_param_vec(v: &Value) -> EvalResult<Vec<String>> {
     Ok(params)
 }
 
-fn eval_set_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_set_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -474,6 +558,7 @@ fn eval_set_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult
         &args[1],
         env,
         opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
     )?;
     match &args[0] {
         Value::Symbol(s) => {
@@ -514,6 +599,7 @@ fn eval_set_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult
                 &items[1],
                 env,
                 opts.descend().ok_or(EvalError::RecursionLimit)?,
+                world,
             )?;
             match obj {
                 Value::Map(mut map) => {
@@ -530,7 +616,12 @@ fn eval_set_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult
     }
 }
 
-fn eval_try_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_try_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     if args.is_empty() {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -548,7 +639,12 @@ fn eval_try_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult
     }
     let body = &args[..catch_start];
     let catches = &args[catch_start..];
-    match eval_do_inner(body, env, opts.descend().ok_or(EvalError::RecursionLimit)?) {
+    match eval_do_inner(
+        body,
+        env,
+        opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
+    ) {
         Ok(val) => Ok(val),
         Err(err) => {
             for clause in catches {
@@ -566,6 +662,7 @@ fn eval_try_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult
                                 &items[2..],
                                 &catch_env,
                                 opts.descend().ok_or(EvalError::RecursionLimit)?,
+                                world,
                             );
                         }
                     }
@@ -589,9 +686,19 @@ fn pattern_matches(pattern: &Value, expr: &Value) -> bool {
     }
 }
 
-fn eval_and_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_and_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     for arg in args {
-        let val = eval_inner(arg, env, opts.descend().ok_or(EvalError::RecursionLimit)?)?;
+        let val = eval_inner(
+            arg,
+            env,
+            opts.descend().ok_or(EvalError::RecursionLimit)?,
+            world,
+        )?;
         if matches!(val, Value::Nil | Value::Bool(false)) {
             return Ok(val);
         }
@@ -603,12 +710,23 @@ fn eval_and_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult
         &args[args.len() - 1],
         env,
         opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
     )
 }
 
-fn eval_or_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_or_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     for arg in args {
-        let val = eval_inner(arg, env, opts.descend().ok_or(EvalError::RecursionLimit)?)?;
+        let val = eval_inner(
+            arg,
+            env,
+            opts.descend().ok_or(EvalError::RecursionLimit)?,
+            world,
+        )?;
         if !matches!(val, Value::Nil | Value::Bool(false)) {
             return Ok(val);
         }
@@ -616,7 +734,12 @@ fn eval_or_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<
     Ok(Value::Nil)
 }
 
-fn eval_match_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResult<Value> {
+fn eval_match_inner(
+    args: &[Value],
+    env: &Env,
+    opts: SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     if args.len() < 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -627,6 +750,7 @@ fn eval_match_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResu
         &args[0],
         env,
         opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
     )?;
     for clause in &args[1..] {
         let (pattern, body) = match clause {
@@ -648,6 +772,7 @@ fn eval_match_inner(args: &[Value], env: &Env, opts: SandboxOptions) -> EvalResu
                 body,
                 &match_env,
                 opts.descend().ok_or(EvalError::RecursionLimit)?,
+                world,
             );
         }
     }
@@ -686,7 +811,12 @@ fn as_float(v: &Value) -> EvalResult<f64> {
 
 macro_rules! arith_binop {
     ($name:ident, $op:tt) => {
-        fn $name(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+        fn $name(
+            args: &[Value],
+            _env: &Env,
+            _opts: &SandboxOptions,
+            _world: &mut World,
+        ) -> EvalResult<Value> {
             if args.is_empty() { return Ok(Value::I64(0)); }
             let mut acc = args[0].clone();
             for arg in &args[1..] {
@@ -702,7 +832,12 @@ arith_binop!(builtin_add, +);
 arith_binop!(builtin_sub, -);
 arith_binop!(builtin_mul, *);
 
-fn builtin_div(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_div(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     if args.is_empty() {
         return Ok(Value::I64(0));
     }
@@ -723,17 +858,32 @@ fn builtin_div(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult
     Ok(acc)
 }
 
-fn builtin_eq(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_eq(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     Ok(Value::Bool(args.windows(2).all(|w| w[0] == w[1])))
 }
 
-fn builtin_neq(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_neq(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     Ok(Value::Bool(args.len() == 2 && args[0] != args[1]))
 }
 
 macro_rules! cmp_binop {
     ($name:ident, $op:tt) => {
-        fn $name(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+        fn $name(
+            args: &[Value],
+            _env: &Env,
+            _opts: &SandboxOptions,
+            _world: &mut World,
+        ) -> EvalResult<Value> {
             let vals: Vec<f64> = args
                 .iter()
                 .map(|a| as_float(a))
@@ -748,7 +898,12 @@ cmp_binop!(builtin_gt, >);
 cmp_binop!(builtin_lte, <=);
 cmp_binop!(builtin_gte, >=);
 
-fn builtin_dot(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_dot(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -776,22 +931,42 @@ fn builtin_dot(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult
     }
 }
 
-fn builtin_list(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_list(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     Ok(Value::List(args.to_vec()))
 }
 
-fn builtin_vector(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_vector(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     Ok(Value::Vector(args.to_vec()))
 }
 
-fn builtin_print(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_print(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     for arg in args {
         print!("{}", arg);
     }
     Ok(Value::Nil)
 }
 
-fn builtin_println(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_println(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     for arg in args {
         print!("{}", arg);
     }
@@ -799,7 +974,12 @@ fn builtin_println(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalRe
     Ok(Value::Nil)
 }
 
-fn builtin_type_of(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_type_of(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -824,7 +1004,12 @@ fn builtin_type_of(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalRe
     }))
 }
 
-fn builtin_cons(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_cons(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -844,7 +1029,12 @@ fn builtin_cons(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResul
     }
 }
 
-fn builtin_first(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_first(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -863,7 +1053,12 @@ fn builtin_first(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResu
     }
 }
 
-fn builtin_rest(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_rest(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -879,7 +1074,12 @@ fn builtin_rest(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResul
     }
 }
 
-fn builtin_emptyq(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_emptyq(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -897,7 +1097,12 @@ fn builtin_emptyq(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalRes
     }
 }
 
-fn builtin_str(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_str(
+    args: &[Value],
+    _env: &Env,
+    _opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     let mut out = String::new();
     for arg in args {
         out.push_str(&arg.to_string());
@@ -905,7 +1110,12 @@ fn builtin_str(args: &[Value], _env: &Env, _opts: &SandboxOptions) -> EvalResult
     Ok(Value::String(out))
 }
 
-fn builtin_slurp(args: &[Value], _env: &Env, opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_slurp(
+    args: &[Value],
+    _env: &Env,
+    opts: &SandboxOptions,
+    _world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
@@ -933,17 +1143,27 @@ fn builtin_slurp(args: &[Value], _env: &Env, opts: &SandboxOptions) -> EvalResul
     }
 }
 
-fn builtin_eval(args: &[Value], env: &Env, opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_eval(
+    args: &[Value],
+    env: &Env,
+    opts: &SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 1 {
         return Err(EvalError::WrongArgCount {
             expected: 1,
             got: args.len(),
         });
     }
-    eval_with_opts(&args[0], env, opts.clone())
+    eval_with_opts(&args[0], env, opts.clone(), world)
 }
 
-fn builtin_apply(args: &[Value], env: &Env, opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_apply(
+    args: &[Value],
+    env: &Env,
+    opts: &SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     if args.len() < 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -966,10 +1186,16 @@ fn builtin_apply(args: &[Value], env: &Env, opts: &SandboxOptions) -> EvalResult
         &call_args,
         env,
         opts.descend().ok_or(EvalError::RecursionLimit)?,
+        world,
     )
 }
 
-fn builtin_map_fn(args: &[Value], env: &Env, opts: &SandboxOptions) -> EvalResult<Value> {
+fn builtin_map_fn(
+    args: &[Value],
+    env: &Env,
+    opts: &SandboxOptions,
+    world: &mut World,
+) -> EvalResult<Value> {
     if args.len() != 2 {
         return Err(EvalError::WrongArgCount {
             expected: 2,
@@ -993,6 +1219,7 @@ fn builtin_map_fn(args: &[Value], env: &Env, opts: &SandboxOptions) -> EvalResul
             &[item.clone()],
             env,
             inner_opts.clone(),
+            world,
         )?);
     }
     Ok(Value::List(result))
@@ -1002,7 +1229,7 @@ fn builtin_map_fn(args: &[Value], env: &Env, opts: &SandboxOptions) -> EvalResul
 
 fn builtin_fn(
     name: &'static str,
-    func: fn(&[Value], &Env, &SandboxOptions) -> EvalResult<Value>,
+    func: fn(&[Value], &Env, &SandboxOptions, &mut World) -> EvalResult<Value>,
 ) -> Value {
     Value::Builtin(BuiltinFn { name, func })
 }
@@ -1017,7 +1244,7 @@ pub fn default_env() -> Env {
     env.bind("/", builtin_fn("/", builtin_div));
     env.bind(
         "%",
-        builtin_fn("%", |args, _env, _opts| {
+        builtin_fn("%", |args, _env, _opts, _world| {
             if args.len() != 2 {
                 return Err(EvalError::WrongArgCount {
                     expected: 2,

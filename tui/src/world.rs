@@ -1,0 +1,64 @@
+//! The `World` struct — the central game state.
+//!
+//! Defined here so the glyph module can reference it in `BuiltinFn`'s
+//! signature without creating circular `use` confusion.
+
+use crate::{
+    ecs::Ecs,
+    entity::{Direction, EntityId},
+    event_log::EventLog,
+    game::Mode,
+    glyph::Env,
+    map::Map,
+    rules::RuleRegistry,
+};
+
+#[derive(Clone, Debug)]
+pub struct World {
+    pub map: Map,
+    pub ecs: Ecs,
+    pub registry: RuleRegistry,
+    pub player_id: EntityId,
+    pub player_facing: Direction,
+    pub depth: u32,
+    pub turn: u64,
+    pub mode: Mode,
+    pub event_log: EventLog,
+    pub console_buffer: String,
+    pub console_output: String,
+    pub glyph_env: Env,
+    pub inspector_selection: usize,
+    pub blocking: bool,
+    pub running: bool,
+    pub player_can_attack: bool,
+    pub wizard_taught: bool,
+    pub wizard_id: Option<EntityId>,
+}
+
+impl World {
+    /// Minimal World for tests and contexts where no real game state is needed.
+    pub fn minimal() -> Self {
+        World {
+            map: Map::new_static(),
+            ecs: Ecs::new(),
+            registry: RuleRegistry::core(),
+            player_id: EntityId::new(0),
+            player_facing: Direction::East,
+            depth: 0,
+            turn: 0,
+            mode: Mode::Normal,
+            event_log: EventLog::new(),
+            console_buffer: String::new(),
+            console_output: String::new(),
+            glyph_env: Env::extend(&crate::glyph::default_env()),
+            inspector_selection: 0,
+            blocking: false,
+            running: true,
+            player_can_attack: false,
+            wizard_taught: false,
+            wizard_id: None,
+        }
+    }
+}
+
+// `impl Default for World` lives in game.rs next to the other World methods.

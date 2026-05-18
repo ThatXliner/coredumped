@@ -6,7 +6,7 @@
 
 use bracket_lib::prelude::*;
 
-use crate::{game::World, input::key_to_intent, render::render};
+use crate::{input::key_to_intent, render::render, world::World};
 
 pub struct State {
     world: World,

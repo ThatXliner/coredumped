@@ -190,10 +190,19 @@ pub struct Keyword {
 }
 
 /// A built-in function implemented in Rust.
+///
+/// The `world` parameter gives safe mutable access to the game state
+/// (see [`crate::world::World`]). Builtins that don't need it simply
+/// ignore the parameter.
 #[derive(Clone)]
 pub struct BuiltinFn {
     pub name: &'static str,
-    pub func: fn(&[Value], &super::env::Env, &SandboxOptions) -> EvalResult<Value>,
+    pub func: fn(
+        &[Value],
+        &super::env::Env,
+        &SandboxOptions,
+        &mut crate::world::World,
+    ) -> EvalResult<Value>,
 }
 
 impl fmt::Debug for BuiltinFn {

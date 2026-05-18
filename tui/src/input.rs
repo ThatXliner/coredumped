@@ -8,7 +8,8 @@ use bracket_lib::prelude::VirtualKeyCode;
 
 use crate::{
     entity::Direction,
-    game::{Intent, Mode, World},
+    game::{Intent, Mode},
+    world::World,
 };
 
 pub fn key_to_intent(key: VirtualKeyCode, shift: bool, world: &World) -> Intent {

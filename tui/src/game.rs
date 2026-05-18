@@ -43,33 +43,13 @@ pub enum Intent {
     Noop,
 }
 
+use crate::world::World;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     Normal,
     Inspector,
     Console,
-}
-
-#[derive(Clone, Debug)]
-pub struct World {
-    pub map: Map,
-    pub ecs: Ecs,
-    pub registry: RuleRegistry,
-    pub player_id: EntityId,
-    pub player_facing: Direction,
-    pub depth: u32,
-    pub turn: u64,
-    pub mode: Mode,
-    pub event_log: EventLog,
-    pub console_buffer: String,
-    pub console_output: String,
-    pub glyph_env: Env,
-    pub inspector_selection: usize,
-    pub blocking: bool,
-    pub running: bool,
-    pub player_can_attack: bool,
-    pub wizard_taught: bool,
-    pub wizard_id: Option<EntityId>,
 }
 
 impl World {
@@ -526,10 +506,6 @@ impl World {
     fn advance_enemies(&mut self) {
         let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
 
-        ai_builtins::ACTIVE_WORLD.with(|cell| {
-            *cell.borrow_mut() = self as *mut World;
-        });
-
         let sandbox = glyph::SandboxOptions::default();
 
         for enemy_id in enemy_ids {
@@ -555,7 +531,7 @@ impl World {
             enemy_env.bind("*self*", Value::I64(enemy_id.raw() as i64));
             enemy_env.bind("*player*", Value::I64(self.player_id.raw() as i64));
 
-            match glyph::eval_with_opts(&body_form, &enemy_env, sandbox.clone()) {
+            match glyph::eval_with_opts(&body_form, &enemy_env, sandbox.clone(), self) {
                 Ok(_) => {}
                 Err(err) => {
                     self.event_log.push(format!(
@@ -567,10 +543,6 @@ impl World {
                 }
             }
         }
-
-        ai_builtins::ACTIVE_WORLD.with(|cell| {
-            *cell.borrow_mut() = std::ptr::null_mut();
-        });
     }
 
     #[cfg(test)]
@@ -606,12 +578,10 @@ impl World {
             Ok(forms) => {
                 let mut last = Value::Nil;
                 let mut err = None;
+                let env = self.glyph_env.clone();
                 for form in &forms {
-                    match glyph::eval_with_opts(
-                        form,
-                        &self.glyph_env,
-                        glyph::SandboxOptions::default(),
-                    ) {
+                    match glyph::eval_with_opts(form, &env, glyph::SandboxOptions::default(), self)
+                    {
                         Ok(val) => last = val,
                         Err(e) => {
                             err = Some(e);
@@ -709,6 +679,7 @@ fn builtin_quit(
     _args: &[Value],
     _env: &Env,
     _opts: &glyph::SandboxOptions,
+    _world: &mut World,
 ) -> glyph::EvalResult<Value> {
     Ok(glyph::kw("quit"))
 }
@@ -730,6 +701,7 @@ fn builtin_do_attack(
     args: &[Value],
     _env: &Env,
     _opts: &glyph::SandboxOptions,
+    _world: &mut World,
 ) -> glyph::EvalResult<Value> {
     if args.is_empty() {
         return Ok(glyph::kw("player-attack-facing"));
@@ -761,6 +733,7 @@ fn builtin_help(
     _args: &[Value],
     _env: &Env,
     _opts: &glyph::SandboxOptions,
+    _world: &mut World,
 ) -> glyph::EvalResult<Value> {
     Ok(Value::String(
         "\
@@ -1082,30 +1055,45 @@ mod tests {
 
     #[test]
     fn do_attack_builtin_returns_direction_sentinel() {
+        let mut world = World::minimal();
         let env = setup_glyph_env();
         let forms = crate::glyph::read_string("(do-attack :east)").unwrap();
-        let result =
-            crate::glyph::eval_with_opts(&forms[0], &env, crate::glyph::SandboxOptions::default())
-                .unwrap();
+        let result = crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
         assert_eq!(result, crate::glyph::kw("player-attack-east"));
     }
 
     #[test]
     fn do_attack_builtin_no_args_returns_facing_sentinel() {
+        let mut world = World::minimal();
         let env = setup_glyph_env();
         let forms = crate::glyph::read_string("(do-attack)").unwrap();
-        let result =
-            crate::glyph::eval_with_opts(&forms[0], &env, crate::glyph::SandboxOptions::default())
-                .unwrap();
+        let result = crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
         assert_eq!(result, crate::glyph::kw("player-attack-facing"));
     }
 
     #[test]
     fn do_attack_rejects_non_direction() {
+        let mut world = World::minimal();
         let env = setup_glyph_env();
         let forms = crate::glyph::read_string("(do-attack :up)").unwrap();
-        let result =
-            crate::glyph::eval_with_opts(&forms[0], &env, crate::glyph::SandboxOptions::default());
+        let result = crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        );
         assert!(result.is_err());
     }
 }

@@ -281,6 +281,28 @@ fn builtin_ai_hp(
     Ok(Value::I64(hp as i64))
 }
 
+fn builtin_manhattan(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 2 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    let a = entity_id_from_value(&args[0])?;
+    let b = entity_id_from_value(&args[1])?;
+    let pa = world.ecs.position(a);
+    let pb = world.ecs.position(b);
+    match (pa, pb) {
+        (Some(pa), Some(pb)) => Ok(Value::I64(pa.manhattan_distance(pb) as i64)),
+        _ => Ok(Value::I64(999)),
+    }
+}
+
 /// Register all AI builtins into the given Glyph environment.
 pub(crate) fn register_all(env: &Env) {
     env.bind(
@@ -329,6 +351,14 @@ pub(crate) fn register_all(env: &Env) {
             name: "roll-odds?",
             doc: "roll a chance: (roll-odds? numerator denominator)",
             func: builtin_roll_oddsq,
+        }),
+    );
+    env.bind(
+        "manhattan",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "manhattan",
+            doc: "Manhattan distance between two entities",
+            func: builtin_manhattan,
         }),
     );
     env.bind(

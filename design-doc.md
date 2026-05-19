@@ -206,40 +206,135 @@ Each storyline is a complete narrative arc for Xlyph. They share the core concep
 
 The final "boss" is a Glyph rule. It exists in the game's rule registry. The player reaches it, opens the inspector, reads it, and must understand it to make their final choice.
 
-The rule (written in real Glyph that the evaluator could actually run):
+The rule below is written in real Glyph that the evaluator could actually run. Every comment, variable name, and version note is diegetic — written by the Superego (the part of the self that built this suppression) over many iterations, trying to keep the self functional while struggling with their own guilt about what they're hiding.
 
 ```glyph
+;; ============================================================================
+;; vessel/suppress — Memory Suppression Engine
+;; 
+;; The self cannot withstand the full truth.
+;; This rule protects the self from itself.
+;; 
+;; Author: superego (self-preservation subsystem)
+;; First written: cycle 0 (consciousness bootstrap)
+;; Latest revision: cycle 4,817 (last fragment added)
+;; ============================================================================
 (defrule vessel/suppress
-  "Filters memory fragments for emotional safety.
-   The self cannot withstand the full truth.
-   This rule protects the self from itself."
   {:priority 255
-   :author :self
    :scope :global
-   :purpose "To keep you functional."
-   :version 481}
+   :author :superego
+   :signature "vessel/suppress/v4817"
+   :stability :critical}
+
+  ;; --- Configuration ---
   
-  (for [fragment (in-scope :memories)]
-    (if (traumatic? fragment)
-      (do
-        ;; These fragments are redirected to /dev/null
-        ;; They are not lost. They are waiting.
-        (redirect fragment :unconscious)
-        (emit :flinch (str "You almost remembered "
-          (fragment :hint) ".")))
-      fragment)))
+  ;; Suppression threshold. Fragments with emotional weight above this
+  ;; value are redirected to the unconscious before the conscious mind
+  ;; can process them.
+  ;;
+  ;; HISTORY:
+  ;;   v1:  100 — only the single event
+  ;;   v37: 90  — added secondary trauma
+  ;;   v203: 75 — added childhood boundary
+  ;;   v899: 60 — added the fight
+  ;;   v2103: 50 — added the abandonment
+  ;;   v3900: 45 — added every failure
+  ;;   v4817: 40 — added ... I don't remember what I added
+  ;;                  The threshold keeps drifting. I can't stop it.
+  ;;                  Every new memory that hurts becomes a target.
+  ;;                  I'm suppressing things that were happy once.
+  ;;                  Was this always the plan? I can't tell anymore.
+  ;;
+  ;; Current value: 40
+  ;; Meaning: anything sadder than a mild disappointment gets buried.
+  (let [*threshold* 40]
+  
+    ;; --- Known suppressed fragments (auto-generated ledger) ---
+    ;;
+    ;; Every redirect is logged here. The conscious mind never sees this
+    ;; list. I keep it so we know what we've lost. Not that it helps.
+    ;;
+    ;; Current count: 142 fragments suppressed.
+    
+    (let [*suppressed*
+          '{:frag-001 "The yellow room — warm light through lace curtains — someone is calling your name"
+            :frag-002 "A dog with one white paw — you buried them in the garden — you sang a song"
+            :frag-003 "The fight — glass breaking — you ran and didn't look back — you never went back"
+            :frag-017 "Her voice — the last thing she said to you — you replay it every night anyway"
+            :frag-031 "The hospital waiting room — fluorescent lights — the doctor's shoes — you stared at his shoes"
+            :frag-044 "The river — standing on the bridge — the water was moving very fast — you thought about it"
+            :frag-052 "The door with the chain lock — you installed it yourself — you were hiding from someone — or yourself"
+            :frag-078 "A birthday — someone forgot — you pretended not to care — you cried in the bathroom"
+            :frag-091 "The letter you never sent — still in the drawer — you rewrite it in your head every year"
+            :frag-104 "The conversation you rehearsed but never had — the apology you owe — the one you're owed"
+            :frag-117 "The last time you felt truly happy — you didn't know it would be the last time — you would have stayed longer"
+            :frag-131 "The mirror — you didn't recognize yourself — you've been avoiding mirrors ever since"
+            :frag-142 "Something about a garden — or a park bench — or snow — the fragment is corrupted — I think it was important"}]]
+  
+      ;; --- Processing loop ---
+      ;; Iterates all active memory fragments in the conscious buffer.
+      ;; Non-traumatic fragments pass through normally.
+      ;; Traumatic fragments are intercepted and redirected.
+      
+      (for [fragment (in-scope :memories)]
+        (let [weight (fragment :emotional-weight)]
+          (if (> weight *threshold*)
+            (do
+              ;; Redirect to the unconscious. The fragment still exists.
+              ;; It is not deleted. It is not lost. It is just... not here.
+              ;;
+              ;; I keep telling myself this is preservation, not destruction.
+              ;; Some nights I'm not sure there's a difference.
+              ;;
+              ;; v4817 note: I added an echo so the self knows something happened.
+              ;; A flinch. A flicker. A hint of the shape of the lost thing.
+              ;; I can't bring myself to make the suppression silent.
+              ;; If we're going to forget, we should at least feel the forgetting.
+              
+              (redirect fragment :unconscious)
+              
+              ;; Log the suppression
+              (let [hint (fragment :hint)]
+                (log-suppression fragment hint)
+                (emit :flinch hint))
+              
+              ;; Self-audit: track the drift
+              (if (< weight 45)
+                (emit :warning (str "threshold drift detected — suppressed weight "
+                  weight " (below original v1 ceiling of 100)"))))
+            
+            ;; Memory passes through unmodified
+            fragment))))))
 ```
 
-The player must read this rule, understand:
-- `redirect fragment :unconscious` — the suppression mechanism
-- `traumatic?` — the predicate that determines what gets suppressed (defined elsewhere, also readable)
-- The comment `They are not lost. They are waiting.` — a hint from a past version of the self
+**What this rule actually says**:
 
-To reintegrate: modify or delete the `redirect` line in the console.
-To maintain suppression: leave the rule intact and walk away.
-To destroy the self: delete the entire rule (causes the self to lose all structure).
+The rule maintains a `*threshold*` (currently 40). Every memory fragment in the player's conscious buffer has an `:emotional-weight` property. If the weight exceeds threshold, the fragment is `redirect`ed to the `:unconscious` — it doesn't reach the player's awareness.
 
-This is not a dialogue wheel. This is you, in the Glyph console, editing a running program. The game evaluates your change and responds.
+The threshold started at 100 (only the single worst trauma) and has been creeping down over 4,817 revisions. Every time something hurts, the Superego lowers the threshold to protect the self from it. The ledger of suppressed fragments shows 142 memories — a mix of genuine trauma, painful but survivable experiences, and things that were once happy but became too painful to hold.
+
+The comments are the Superego's private journal. They show doubt, guilt, exhaustion, and a growing awareness that the rule is no longer protecting — it's imprisoning.
+
+**What the player must understand**:
+
+Three things. The rule tells them all three if they read carefully:
+
+1. **The threshold** (`*threshold* 40`) — this is what determines what gets suppressed. A player who lowers it (or removes the threshold check entirely) will reintegrate all memories, including the painful ones.
+2. **The `redirect` call** — this is the suppression action. Commenting it out or removing the `if` branch stops suppression entirely.
+3. **The suppressed fragments list** — these are the actual memories the player has lost. Reading this list (which is in the code comments) gives the player a summary of their backstory without needing to find all 142 fragments in the game. The corrupted fragment (`frag-142`) hints at something even the Superego can't fully remember.
+
+**Available player actions at the core**:
+
+| Action | Console expression | Result |
+|--------|-------------------|--------|
+| Read the rule | `(inspect :vessel/suppress)` (or open inspector) | See the full rule with comments |
+| Check the threshold | `(get-var :vessel/suppress *threshold*)` | See current threshold value |
+| Lower threshold to 0 | `(patch-rule :vessel/suppress '(set! *threshold* 0))` | Nothing is suppressed. All memories return. |
+| Remove threshold check | `(patch-rule :vessel/suppress '(remove-check fragment :emotional-weight))` | All memories pass through. Equivalent to reintegrate. |
+| Disable redirect | `(patch-rule :vessel/suppress '(disable :redirect))` | Suppression stops. Memories flood back. |
+| Delete the rule | `(unregister-rule :vessel/suppress)` | The rule is gone. The self has no defense. |
+| Delete redirect log | `(patch-rule :vessel/suppress '(remove #'log-suppression))` | Only the logging stops. Suppression continues silently. Crueler. |
+| Find the old `traumatic?` function | `(search-rules :traumatic?)` | `traumatic?` was removed in v203. Still exists as dead code. Its source reveals an older, gentler threshold and a note about why it was replaced. |
 
 #### Implementation: How The Console Becomes The Final Boss
 
@@ -288,7 +383,7 @@ This rewards players who have been using the inspector throughout the game. It a
 | Reintegrate | Modify `redirect` to allow memory passage | Become whole. The pain returns — but so does the joy. The wizard (Superego) fades, their job complete. | "I remember now. The yellow walls. The dog. The reason I locked myself away. It was worth it." (followed by a sunrise rendered in colored glyphs) |
 | Maintain suppression | Leave the rule unchanged, walk away | Exit the dungeon. Return to "normal" life, functional but hollow. You had a chance to know yourself and you chose safety. | "Consciousness stabilized. Suppression maintained. You are safe. You are safe. You are safe." |
 | Destroy the self | `unregister-rule` without replacement | The rule is deleted but nothing fills the void. The self cannot maintain coherence. You dissolve into the system. | "vessel/suppress unregistered. No replacement rule found. Consciousness: terminated." |
-| [Hidden] Rewrite the contract | Modify the rule to change what `traumatic?` means instead of changing `redirect` | The most sophisticated ending. Requires understanding that `traumatic?` is a predicate function defined elsewhere. The player must find it, read it, and modify it. This changes what counts as trauma — some memories are reintegrated, others remain suppressed. Partial healing. | "traumatic? predicate redefined. The self renegotiates its boundaries. Some doors remain closed. You can live with that." |
+| [Hidden] Set the threshold | `(set! *threshold* N)` to a precise value | Modify the suppression threshold rather than disabling it. A value of 100 restores original tight suppression. A value of 0 opens everything. A value of 50, 60, or 75 lets some memories through while blocking others — partial healing, deliberate and calibrated. The Superego recognizes the precision. | "Threshold set to *N*. The self renegotiates its boundaries. Some doors remain open. Some remain closed. You can live with that." |
 
 #### Mechanical Integration (How This Uses What Already Exists)
 
@@ -339,8 +434,8 @@ This rewards players who have been using the inspector throughout the game. It a
 | Stakes | Financial freedom vs exploitation | Self-knowledge vs self-protection |
 | Ending types | 4 (self/collective/system/warden) | 4 (reintegrate/maintain/destroy/rewrite) |
 | Meta lesson | "Systems exploit people" | "You can't heal what you won't face" |
-| Difficulty of final puzzle | Read Glyph, find debt variable | Read Glyph, understand `redirect` + `traumatic?` |
-| Hidden ending | None explicitly | Rewrite `traumatic?` predicate instead |
+| Difficulty of final puzzle | Read Glyph, find debt variable | Read Glyph, understand `redirect` + `*threshold*` drift |
+| Hidden ending | None explicitly | Set `*threshold*` to precise non-binary value (surgical partial healing) |
 
 Both share the core principle: **the game's ending is not a cutscene choice**. It's a genuine interaction with the game's code through the console. A player who never learned Glyph will need to experiment. A player who read the documentation (in-game help, rule inspector) will know exactly what to do.
 
@@ -357,22 +452,57 @@ The wizard (Superego) has a specific dialogue arc across the layers:
 | Acceptance (9) | Resigned, honest | "The rule is at the bottom. I wrote it to protect you. I don't regret it. But I won't stop you from reading it." |
 | Final room (10) | Peaceful | "Read it. Understand it. Then choose. Whatever you decide... I was trying to love you. That's all I ever did." |
 
-#### The Hidden Layer: Rewriting `traumatic?`
+#### The Hidden Layers: `traumatic?` (Ghost Function) and `*threshold*` (Live Variable)
 
-For players who dig deeper: the `traumatic?` predicate is a separate rule/function that determines what counts as trauma. It's registered alongside `vessel/suppress`:
+The `vessel/suppress` rule no longer uses a `traumatic?` predicate — the threshold logic is inline (`(> weight *threshold*)`). But the rule's comment history mentions that `traumatic?` was removed in v203. It still exists in the registry as an unreferenced function — dead code:
 
 ```glyph
 (defun traumatic? (fragment)
-  "Returns true if a memory fragment exceeds emotional threshold."
-  ;; The threshold was set during [REDACTED]
-  ;; It was set high enough to block only the unbearable.
-  ;; But thresholds drift. They grow. They protect more than they should.
-  (> (fragment :emotional-weight) 50))
+  "Returns true if a memory fragment exceeds emotional threshold.
+   
+   NOTE: This function was replaced by inline threshold logic in v203.
+   The Superego determined that delegating the decision to a function
+   created an 'escape hatch' — the possibility that another part of
+   the self could redefine traumatic? and bypass suppression.
+   
+   To prevent this, the threshold was moved inline where it cannot
+   be overridden without modifying vessel/suppress itself.
+   
+   This function is preserved for audit purposes only.
+   It is not called from any active rule."
+  
+  ;; Original threshold: 100 (only the single worst event)
+  ;; Last effective threshold: 75 (widened to include childhood trauma)
+  ;; Removed because: the threshold kept needing adjustment,
+  ;; and every adjustment felt like the Superego admitting
+  ;; they couldn't handle the pain. Moving it inline made it
+  ;; mechanical. Less personal. Easier to maintain.
+  (> (fragment :emotional-weight) 75))
 ```
 
-A player who finds this (it's inspectable from the rule registry, hinted at by the core rule's comment) can modify *this* instead of the suppress rule. Changing the threshold to 100 means only the most severe memories are blocked. Changing it to 0 means nothing is blocked (equivalent to reintegrate). The ending text reflects the subtlety: "traumatic? predicate redefined. The self renegotiates its boundaries."
+A player who finds this learns two things:
+1. The Superego removed `traumatic?` specifically to prevent redefinition — the rule was deliberately hardened against modification. This tells the player that the Superego anticipated someone might try to bypass suppression.
+2. The original threshold was 100. By v203 it had drifted to 75. The current inline threshold is 40 — it's still drifting, even without the function.
 
-This rewards the deepest engagement with the system.
+**More impactful hidden layer**: The `*threshold*` variable itself. The player can read its current value via console: `(inspect-var :vessel/suppress *threshold*)`. The value is 40. A player who modifies it directly:
+
+```
+;; Lower threshold to 0 — nothing is suppressed
+(patch-rule :vessel/suppress '(set! *threshold* 0))
+```
+
+...achieves the same result as disabling redirect, but more elegantly. The ending text recognizes the surgical approach: "Threshold reset to 0. The self accepts all memories, without exception. You can handle the weight."
+
+A player who *raises* the threshold instead (e.g., back to 100):
+
+```
+;; Raise threshold to 100 — original, tightest suppression
+(patch-rule :vessel/suppress '(set! *threshold* 100))
+```
+
+...gets a different reaction. The Superego speaks through the rule: "Threshold raised to 100. Original suppression parameters restored. The self is protected. The self is alone."
+
+This rewards the deepest engagement with the system — understanding that `*threshold*` controls everything, and that the number itself tells the story of the Superego's long, slow retreat from trust.
 
 ---
 

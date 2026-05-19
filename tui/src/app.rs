@@ -6,10 +6,18 @@
 
 use bracket_lib::prelude::*;
 
-use crate::{input::key_to_intent, render::render, world::World};
+use crate::{
+    game::Intent,
+    input::key_to_intent,
+    render::render,
+    world::World,
+};
+
+const COUNTDOWN_FRAMES: u32 = 30;
 
 pub struct State {
     world: World,
+    countdown_frame: u32,
 }
 
 impl State {
@@ -27,7 +35,10 @@ impl State {
         } else {
             World::new_game()
         };
-        Self { world }
+        Self {
+            world,
+            countdown_frame: 0,
+        }
     }
 }
 
@@ -40,6 +51,36 @@ impl Default for State {
 impl GameState for State {
     fn tick(&mut self, ctx: &mut BTerm) {
         ctx.cls();
+
+        // Countdown timer (post-wipe). Escape cancels.
+        if self.world.quit_countdown > 0 {
+            if let Some(key) = ctx.key {
+                let intent = key_to_intent(key, ctx.shift, ctx.control, &self.world);
+                if matches!(intent, Intent::CloseOverlay) {
+                    self.world.quit_countdown = 0;
+                    self.countdown_frame = 0;
+                    self.world.event_log.push("Countdown cancelled.");
+                }
+            }
+            if self.world.quit_countdown > 0 {
+                self.countdown_frame += 1;
+                if self.countdown_frame >= COUNTDOWN_FRAMES {
+                    self.countdown_frame = 0;
+                    self.world.event_log.push_colored(
+                        format!("Quitting in {}...", self.world.quit_countdown),
+                        RGB::named(RED),
+                    );
+                    self.world.quit_countdown -= 1;
+                }
+                if self.world.quit_countdown == 0 {
+                    self.world.running = false;
+                    ctx.quitting = true;
+                    return;
+                }
+                render(ctx, &self.world);
+                return;
+            }
+        }
 
         if let Some(key) = ctx.key {
             let intent = key_to_intent(key, ctx.shift, ctx.control, &self.world);

@@ -48,7 +48,7 @@ He never learned to ask for what he needed. He never learned to say "I'm scared"
 
 ### The Relationship
 
-Then he met **Clara**. He didn't know it at the time — thought it was just another conversation with another person at another event. But they clicked. The kind of click you only recognize in hindsight. They finished each other's sentences without trying. She laughed at things he said that no one else laughed at. He caught himself looking for her in rooms. It took him months to admit to himself what that meant.
+Then he met **Clara**. He didn't know it at the time — thought it was just a random conversation with a stranger somewhere neither of them planned to be. But they clicked. The kind of click you only recognize in hindsight. They finished each other's sentences without trying. She laughed at things he said that no one else laughed at. He caught himself looking for her in rooms. It took him months to admit to himself what that meant.
 
 The summer before they started dating, they spent a month together at the same camp — counselors, both of them, assigned to the same age group. Four weeks of shared sunburn and bug-bitten ankles and late-night conversations on a cabin porch. He learned what she looked like in the morning. She learned that he couldn't whistle. They taught kids how to tie knots and paddle straight. When the month ended, they hugged goodbye and said they should keep in touch, meaning it for once.
 
@@ -103,7 +103,7 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 #### Denial (Levels 1-3): Pre-relationship, early friendship
 
 **frag-001** — Level 2
-> The first time she laughed at something stupid I said. We were sitting on a bench outside a coffee shop — months after that summer at camp, after we'd promised to stay in touch and actually meant it. I don't remember what I said. I remember the sound she made — this surprised wheeze like I'd caught her off guard. I wanted to make her do that forever.
+> I don't remember the first conversation we ever had. Just some random place where two people started talking and neither of them knew yet. But I remember the first time she laughed at something stupid I said. We were sitting on a bench outside a coffee shop. We'd only known each other a few months — still in that phase where everything the other person said felt like a discovery. I don't remember what I said. I remember the sound she made — this surprised wheeze like I'd caught her off guard. I wanted to make her do that forever.
 
 **frag-002** — Level 2
 > She stayed late after a party to help me clean. Just the two of us, picking up plastic cups in the dark. She said "this is the best part of the night" and I pretended not to hear because if I heard it I'd have to admit I felt it too. I heard it. I felt it.

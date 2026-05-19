@@ -256,13 +256,13 @@ The rule below is written in real Glyph that the evaluator could actually run. E
     ;; read by the inspection system. Each entry has: fragment id, the memory
     ;; text, emotional weight, suppression timestamp, and status.
     ;;
-    ;; Current count: 142 fragments suppressed.
+    ;; Current count: 42 fragments in registry.
     ;; Inspect via:  (query-registry :suppressed-fragments)
     ;; Read one:     (inspect-fragment :frag-NNN)
     ;;
-    ;; The registry persists across the entire run. Fragments the player
-    ;; finds in the dungeon are entries the suppression missed — memories
-    ;; that slipped through the threshold. Every fragment in the registry
+    ;; The registry persists across the entire run. 42 total fragments.
+    ;; Fragments the player finds in the dungeon are entries the suppression
+    ;; missed — memories that slipped through the threshold. Every fragment in the registry
     ;; is one the player has not yet recovered.
     ;;
     ;; I don't know which is worse — that I've lost so many,
@@ -544,7 +544,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Room-based (3×3 grid, 9 rooms) |
 | **Size** | 55×33 |
 | **Enemies** | 2 Slimes (`s` HP3 — 50% chase / 50% random) |
-| **Memory fragments** | `#001` (hidden in room 1): "I remember a room with yellow walls. Warm light through lace curtains. Someone was calling my name." |
+| **Memory fragments** | `frag-001` (hidden in room 1): "I remember a room with yellow walls. Warm light through lace curtains. Someone was calling my name." |
 | **Special** | Each room has a tutorial sign: (1) "Walk into enemies to bump them" (2) "Press `i` for the inspector" (3) "Press `` ` `` for the console" (4) "Press `.` to wait" (5) "Inspect the slime to see its Glyph AI rule" (6) "Type `(help)` in the console" (7) "The stairs down are somewhere ahead" (8) "You are safe here." (9) "Nothing is wrong." Room 9 sign is the first lie. |
 | **Wizard** | Appears room 3: "The inspector lets you read the rules that govern this place. Try it." Appears room 6: "The console is powerful. You can query the system. But be careful what you ask for." |
 | **Palette** | Same warm amber. Slightly dimmer in room 9. |
@@ -558,7 +558,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Corridor-based (long horizontal halls with alcoves, maze-like) |
 | **Size** | 55×33 |
 | **Enemies** | 2 Bats (`b` HP2 — random movement), 1 Slime (`s` HP3) |
-| **Memory fragments** | `#002` (alcove at center): "A dog with one white paw. I buried them in the garden. I sang a song I don't remember learning." |
+| **Memory fragments** | `frag-002` (alcove at center): "A dog with one white paw. I buried them in the garden. I sang a song I don't remember learning." |
 | **Special** | No dead ends — player can always reach stairs. No attack ability — player can only shove enemies (pushes them, 0 damage). |
 | **Wizard** | At start: "There are a few creatures wandering the halls. Don't worry — they're more confused than dangerous." At stairs: "You did well. The descent continues below." |
 | **Palette** | Warm but dimmer. Halls feel narrower than they are. |
@@ -574,7 +574,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Room-based (4×3 grid, procedural) |
 | **Size** | 55×33 |
 | **Enemies** | 3 Slimes (`s` HP3), 1 Goblin (`g` HP5 — chases, flees at <2 HP) |
-| **Memory fragments** | `#003` (on goblin's tile, acquired when it's defeated): "The fight. Glass breaking. I ran and didn't look back. I never went back." |
+| **Memory fragments** | `frag-003` (on goblin's tile, acquired when it's defeated): "The fight. Glass breaking. I ran and didn't look back. I never went back." |
 | **Special** | First room is red-tinted. Wizard absent at start — player is alone for first time. |
 | **Wizard** | Appears at midpoint, dialogue clipped: "Ah, you made it past the... the. I'm sorry. I'm not myself today. The air down here is different. Thinner. Stay close to me." |
 | **Palette** | Rust-red. Warm shifted to wrong. |
@@ -588,7 +588,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Cave generation (cellular automata) |
 | **Size** | 55×33 |
 | **Enemies** | 4 Slimes (`s` HP3), 1 Goblin (`g` HP5), 1 Ogre (`O` HP10 — always chases) |
-| **Memory fragments** | `#005` (dead-end alcove): "Her voice. The last thing she said to me. I replay it every night even though I don't want to." |
+| **Memory fragments** | `frag-005` (dead-end alcove): "Her voice. The last thing she said to me. I replay it every night even though I don't want to." |
 | **Special** | Cave terrain — jagged, asymmetrical, dead ends, ambush corners. Feels hostile. |
 | **Wizard** | At start: "Watch yourself. The terrain is unstable." If player hit: "You're hurt. Let me — no. I can't. Not here. Keep moving." (First refusal to heal.) |
 | **Palette** | Rust-red and bruised purple. Organic, hostile. |
@@ -602,7 +602,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Linear corridor — 8 segments, barrier closes behind after each |
 | **Size** | 55×20 (narrow horizontal band) |
 | **Enemies** | Wave 1: 2 Slimes (`s` HP3). Wave 2: 1 Goblin (`g` HP5). Wave 3: 2 Bats (`b` HP2). Wave 4: 1 Slime + 1 Goblin. Wave 5: 1 Ogre (`O` HP10). Wave 6-8: mixed groups. |
-| **Memory fragments** | `#007` (segment 4 midpoint): "The hospital waiting room. Fluorescent lights. The doctor's shoes — I stared at his shoes because I couldn't look at his face." |
+| **Memory fragments** | `frag-007` (segment 4 midpoint): "The hospital waiting room. Fluorescent lights. The doctor's shoes — I stared at his shoes because I couldn't look at his face." |
 | **Special** | No backtracking. Each segment locks behind player. Must fight through. |
 | **Wizard** | Before: "I can't come with you through this part. I'll meet you at the end." After: "...You're still standing. I wasn't sure you would be." |
 | **Palette** | Dark red. Tight. Claustrophobic. |
@@ -616,7 +616,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Large single room |
 | **Size** | 45×30 |
 | **Enemies** | Rage (`R` HP15 — always chase, attacks for 2 damage, different glyph). Slimes (`s` HP3) spawn from edges every 5 turns. |
-| **Memory fragments** | `#008` (floor under Rage's spawn point, visible after defeat): "The river. Standing on the bridge. The water was moving very fast. I thought about it. I thought about it for a long time." |
+| **Memory fragments** | `frag-008` (floor under Rage's spawn point, visible after defeat): "The river. Standing on the bridge. The water was moving very fast. I thought about it. I thought about it for a long time." |
 | **Special** | Boss room. Rage is larger, hits harder, spawns minions. Stairs appear only after Rage defeated. |
 | **Wizard** | Before: "There's something down there. Something I can't — it's the remains of something I couldn't protect you from." After: "You did it. I don't know whether to be relieved or terrified." |
 | **Palette** | Deep red, pulsing (walls alternate red/dark-red each turn). |
@@ -633,7 +633,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Room-based with locked doors |
 | **Size** | 55×33 |
 | **Enemies** | 3 Goblins (`g` HP5 each holds a key), 2 Bats (`b` HP2) |
-| **Memory fragments** | `#012` (behind first locked door): "A birthday. Someone forgot. I pretended not to care. I cried in the bathroom." |
+| **Memory fragments** | `frag-012` (behind first locked door): "A birthday. Someone forgot. I pretended not to care. I cried in the bathroom." |
 | **Special** | Doors require keys. Keys held by specific enemies (visible via inspection). Not all doors openable — not enough keys. Player must choose. |
 | **Wizard** | At entrance: "This place runs on trade. Every door opens for a price. Choose what matters." |
 | **Palette** | Desaturated gold. Faded opulence. Counting house. |
@@ -648,7 +648,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Symmetrical room grid with central hub |
 | **Size** | 55×33 |
 | **Enemies** | 2 Ogres (`O` HP8), 2 Goblins (`g` HP5), 2 Bats (`b` HP2) |
-| **Memory fragments** | `#017` (center room, requires sacrificing one fragment to reach): "The letter I never sent. Still in the drawer. I rewrite it in my head every year." |
+| **Memory fragments** | `frag-017` (center room, requires sacrificing one fragment to reach): "The letter I never sent. Still in the drawer. I rewrite it in my head every year." |
 | **Special** | Two scales/plates in hub room. Player can place memory fragments on one plate to open a door. Placed fragments are PERMANENTLY LOST from collection. To reach center room (wizard's offer), must sacrifice at least 1 fragment. |
 | **Wizard** | In center room: "You can stop here. Give me the fragments — the ones that hurt. I'll take them. You won't remember they existed. You'll be lighter." If player accepts, wizard takes 3 random fragments permanently, grants +5 max HP. "There. Doesn't that feel better?" |
 | **Palette** | Pale gold. Center room blood-red. |
@@ -662,7 +662,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Shifting maze (walls reconfigure every 50 turns) |
 | **Size** | 55×33 |
 | **Enemies** | 4 Bats (`b` HP2), 2 Goblins (`g` HP5) |
-| **Memory fragments** | `#019` (center of maze): "The conversation I rehearsed but never had. The apology I owe. The one I'm owed. Neither happened." |
+| **Memory fragments** | `frag-019` (center of maze): "The conversation I rehearsed but never had. The apology I owe. The one I'm owed. Neither happened." |
 | **Special** | Walls shift every 50 turns — some close, others open. At center, pedestal offers choice: take fragment (no cost) OR leave it and maze straightens into clear path to exit. |
 | **Wizard** | At entrance: "I could tell you the way. I've walked it before. But I think you need to find it yourself." |
 | **Palette** | Faded yellow, burnt edges. Walls look like old paper. |
@@ -676,7 +676,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Single room with 4 sub-chambers, each with a sentry |
 | **Size** | 55×33 |
 | **Enemies** | 4 Sentries (`T` HP6 — stationary, ranged attack every 2 turns, alarms adjacent enemies) |
-| **Memory fragments** | `#023` (first sub-chamber): "The last time I was truly happy. I didn't know it would be the last. I would have stayed longer." |
+| **Memory fragments** | `frag-023` (first sub-chamber): "The last time I was truly happy. I didn't know it would be the last. I would have stayed longer." |
 | **Special** | Four sub-chambers, each with a sentry holding key to next. Final chamber has wizard + pedestal. On pedestal: a Glyph expression `(forget-everything)`. Wizard explains: "Type this. It resets suppression to v1. You wake at the surface. No pain. No memory." |
 | **Wizard** | "This is my last offer. I've been protecting you your whole existence. Let me finish the job. Type the command. Go home. Forget." If player accepts: brief ending sequence + New Game+ offered. If player refuses: "If you're going to keep going, you'll need this." Grants `(patch-rule)` capability. |
 | **Palette** | Pale gold with red undertones. Final chamber stark white. |
@@ -692,7 +692,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Single 1-wide corridor, 50 tiles long with small alcoves |
 | **Size** | 55×33 (but mostly 1 tile wide) |
 | **Enemies** | 1 Shade (`~` HP∞ — cannot be killed. Follows player at distance. Does not attack.) |
-| **Memory fragments** | `#031` (alcove at tile 25): "The mirror. I didn't recognize myself. I've been avoiding mirrors ever since." |
+| **Memory fragments** | `frag-031` (alcove at tile 25): "The mirror. I didn't recognize myself. I've been avoiding mirrors ever since." |
 | **Special** | Empty. No combat. No puzzles. No items. Just walking. Shade follows silently. Stairs at end. Deliberately boring, deliberately slow. |
 | **Wizard** | Entirely absent. First fully alone level. |
 | **Palette** | Grayscale. Everything varying shades of gray. Shade is slightly darker gray — barely visible. |
@@ -706,7 +706,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Room-based, rooms are empty halls with shelves (decorative) |
 | **Size** | 55×33 |
 | **Enemies** | 3 Shades (`~` HP∞ — follow, do not attack), 2 Zombie Slimes (`s` HP3 — move only every 3rd turn, listless) |
-| **Memory fragments** | `#044`, `#052`, `#078` (three rooms, must walk through all three):<br>`#044`: "Standing on the bridge. The water was moving very fast. I thought about how easy it would be."<br>`#052`: "The door with the chain lock. I installed it myself. I was hiding from someone. Or from myself."<br>`#078`: "A birthday. Someone forgot. I pretended not to care. I cried in the bathroom." |
+| **Memory fragments** | `frag-044`, `frag-052`, `frag-078` (three rooms, must walk through all three):<br>`frag-044`: "Standing on the bridge. The water was moving very fast. I thought about how easy it would be."<br>`frag-052`: "The door with the chain lock. I installed it myself. I was hiding from someone. Or from myself."<br>`frag-078`: "A birthday. Someone forgot. I pretended not to care. I cried in the bathroom." |
 | **Special** | Each room has a desk with journal entries from "the Archivist" (neutral self-part that catalogues everything). Entries are clinical: "Subject reports persistent sadness. No interventions applied." The clinical tone makes it worse — pain is being catalogued, not felt. |
 | **Wizard** | Absent. |
 | **Palette** | Gray with blue undertones. Archive shelves darker gray. |
@@ -720,7 +720,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Open field. No walls except borders. Black floor (ash). |
 | **Size** | 55×33 |
 | **Enemies** | None. 3 fire zones (environmental hazard — 1 damage if walked through). |
-| **Memory fragments** | `#086` (center of field): "Something about a garden. Or a park bench. Or snow. I can't remember clearly. But I remember being warm. I remember not being alone." |
+| **Memory fragments** | `frag-086` (center of field): "Something about a garden. Or a park bench. Or snow. I can't remember clearly. But I remember being warm. I remember not being alone." |
 | **Special** | Open ash field. Three smoldering fire zones (deal damage, avoidable with careful pathing). Stairs visible from start at far end. Player must walk through ash to reach them. |
 | **Wizard** | Returns at end: "...You crossed the ash. Not many do. I crossed it once, a long time ago. The fires were higher then." |
 | **Palette** | Black, gray, smoldering orange. Ashen. |
@@ -736,7 +736,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Open glade — single room with organic edges |
 | **Size** | 40×30 |
 | **Enemies** | None |
-| **Memory fragments** | `#091` (under central tree): "The letter I never sent. It's still in the drawer. I rewrite it in my head every year. This year I might not need to." |
+| **Memory fragments** | `frag-091` (under central tree): "The letter I never sent. It's still in the drawer. I rewrite it in my head every year. This year I might not need to." |
 | **Special** | No enemies, puzzles, or hazards. Single beautiful open space. Tree in center (brown `T` trunk, green `"` canopy). Pool of water at base. First true brightness since Denial. Green floor (grass). Blue walls (sky). |
 | **Wizard** | Sitting under tree: "I've been sitting here thinking. About the threshold. About the fragments. About what I've done. I was so sure I was protecting you. But protection isn't supposed to make the world smaller. It's supposed to make it survivable. I made it a cage." Pause. "The core is below. You'll read the rule. You'll understand it. And you'll decide what kind of self you want to be." |
 | **Palette** | Green grass, blue sky, brown tree, warm sunlight. First non-warm/gray colors in the game. |
@@ -750,7 +750,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Spiral walkway descending 3 loops |
 | **Size** | 55×55 (larger — full area as spiral) |
 | **Enemies** | 1 Shade (`~` HP∞ — follows at distance, peaceful, not ominous) |
-| **Memory fragments** | `#104` (second loop): "The conversation I rehearsed but never had. The apology I owe. The one I'm owed. I think I'm ready to have it now." |
+| **Memory fragments** | `frag-104` (second loop): "The conversation I rehearsed but never had. The apology I owe. The one I'm owed. I think I'm ready to have it now." |
 | **Special** | Each loop has alcove with sign summarizing a layer: Loop 1: "Denial — you knew before you knew." / Loop 2: "Anger — you had to feel it to pass through." / Loop 3: "Bargaining — you tried to trade your way out. There is no trade." Inner room has two more: "Depression — you sat in it. You survived it." / "Acceptance — you're here. The core is below." |
 | **Wizard** | Walks alongside player through entire level (follows, stays adjacent). Dialogue fragments as player moves: "I was created to protect you. That's all I am — a rule with a purpose. But purposes drift. Like the threshold." / "I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad." / "I don't know if I'm protecting you anymore. I think I'm just afraid of being wrong." At final door: "Read it. Understand it. Then choose. I was trying to love you. That's all I ever did." |
 | **Palette** | Deep blue fading to indigo as spiral descends. Final door black. |
@@ -767,7 +767,7 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | **Map type** | Single room, minimalist |
 | **Size** | 20×15 |
 | **Enemies** | None |
-| **Memory fragments** | `#142` (on pedestal, already readable): "Something about a garden. Or a park bench. Or snow. The fragment is corrupted. But I remember warmth. I remember not being alone. I remember being loved." |
+| **Memory fragments** | `frag-142` (on pedestal, already readable): "Something about a garden. Or a park bench. Or snow. The fragment is corrupted. But I remember warmth. I remember not being alone. I remember being loved." |
 | **Special** | Black floor. White walls. Center: pedestal with `vessel/suppress` rule rendered in inspector. Console cursor already active at bottom of screen — no need to press backtick. Event log empty. No sounds. No movement. Just the rule and the cursor. |
 | **Wizard** | Does not enter. |
 | **Palette** | Black and white. Nothing else. |
@@ -787,17 +787,20 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | `(query-registry :suppressed-fragments)` without modifying | Console query, returns list | Nothing — rule responds: "142 fragments waiting." |
 | `(patch-rule :vessel/traumatic? ...)` | Console patch on ghost function | Hidden: "You found the old threshold. It was gentler once." |
 
-**Memory fragment flow across 17 levels:**
+**Memory fragment flow across 17 levels (42 total — 33 findable, 9 permanently suppressed):**
 
-| Levels | Fragments found | Tone |
-|--------|-----------------|------|
-| 1-3 | `#001`, `#002` | Warm, nostalgic |
-| 4-7 | `#003`, `#005`, `#007`, `#008` | Traumatic (fight, loss, hospital, river) |
-| 8-11 | `#012`, `#017`, `#019`, `#023` | Regret (birthday, letter, apology, last happy) |
-| 12-14 | `#031`, `#044`, `#052`, `#078`, `#086` | Isolation (mirror, bridge, chain lock, birthday, ash) |
-| 15-16 | `#091`, `#104` | Readiness (letter, conversation) |
-| 17 | `#142` | Corrupted but warm |
-| **Total** | **21 findable** | (max, minus any sacrificed at Level 9 or 11) |
+| Levels | Fragments found | Count | Tone |
+|--------|-----------------|-------|------|
+| 1-3 | `frag-001` through `frag-004` | 4 | Warm friendship, pre-relationship |
+| 4-7 | `frag-005` through `frag-014` | 10 | Relationship highs, first cracks |
+| 8-11 | `frag-015` through `frag-023` | 9 | Breakup, aftermath, bargaining |
+| 12-14 | `frag-024` through `frag-030` | 7 | Isolation, spiral, lowest point |
+| 15-16 | `frag-031`, `frag-032` | 2 | Readiness, acceptance |
+| 17 | `frag-033` | 1 | Corrupted but warm |
+| **Findable total** | **frag-001 to frag-033** | **33** | (minus sacrifices at levels 9 and 11) |
+| **Perm suppressed** | **frag-034 to frag-042** | **9** | Only visible via registry query |
+
+Full fragment texts below in [Character Background and Fragment Registry](#character-background-and-fragment-registry).
 
 **Progression of player capabilities:**
 
@@ -809,6 +812,224 @@ Each level spec includes: map type, size, enemy composition (glyph + HP + behavi
 | 11 | `patch-rule` | Wizard grants if Offer refused |
 | 16 | `unregister-rule` | Wizard grants at farewell |
 | 17 | Full registry access | Core room enables everything |
+
+---
+
+#### Character Background and Fragment Registry
+
+This section defines the player character's backstory and all 42 memory fragments. Fragments marked **\[findable\]** are discoverable in the dungeon. Fragments marked **\[registry only\]** are permanently suppressed — visible only via `(query-registry :suppressed-fragments)`.
+
+**Reading fragments in-game**: Fragments are displayed as item descriptions in the inventory UI or as sign-like readable objects in the world. The fragment ID prefixes each text. The player assembles them in a Memories panel.
+
+---
+
+##### Character Background
+
+The player character is a man in his late twenties named **Adrian** (name used in lore but never displayed in-game — the player character is always "you").
+
+Adrian grew up in a house that was never quiet but never said anything important. His father worked double shifts and came home tired. His mother was present but distracted — always cleaning, always organizing, always doing something that kept her from having to sit still and talk. They weren't cruel. They were absent in the way that matters most: they never taught him what love was supposed to feel like. No one in his family touched. No one apologized. No one cried where others could see. Problems were not solved — they were waited out until they became someone else's problem.
+
+As an adult, Adrian learned to function. He built a career. He made friends. He dated. But he carried a quiet terror that he was fundamentally unequipped — that everyone else had received instruction manuals for relationships that his family forgot to give him. He didn't know how to ask for what he needed. He didn't know how to say "I'm scared" without feeling like he was failing. He needed reassurance constantly but was ashamed of needing it. He pushed people away by holding too tight.
+
+Then he met **Clara**.
+
+Fragment texts use feminine-coded references to the ex-partner ("she," "her," "Clara" appears in a few). These are for lore purposes. The fragments in-game use gender-neutral phrasing or names so the story can be read as any orientation — the emotional content is the same.
+
+They were friends for a year before anything happened. She was patient. She laughed at his worst jokes. She stayed late talking. He fell in love the way you fall asleep — slowly, then all at once.
+
+They dated for four months. The happiest and most terrified four months of his life.
+
+He was too much. He knew it. He texted her when she didn't text back. He read meaning into silences. He asked "is everything okay" so many times that everything stopped being okay. He was so afraid of losing her that his fear became a self-fulfilling prophecy.
+
+When she ended it, she did it kindly. She sat him down and said the words cleanly, without blame, without cruelty. She said she cared about him. She said she wished it could be different. She asked if they could still be friends.
+
+He said yes. He meant it. It was the worst decision he ever made — not because she didn't deserve it, but because watching her move on while he stayed still was a different kind of breaking.
+
+In the months after, he didn't fall apart dramatically. He fell apart quietly, the way his family taught him. He stopped going out. He stopped answering texts. He stopped cooking. He lay in bed and replayed every conversation, every text, every moment he should have done differently. If only he had been less needy. If only he had learned to love properly. If only his parents had shown him what a healthy relationship looked like. If only he was raised a better man.
+
+The suppression started small — specific memories of the breakup. Then it spread. Every happy memory of her became painful, so the threshold lowered to suppress those too. Then happier memories before her. Then childhood memories that hurt in a different way. Then everything that reminded him of what he'd lost — which was, eventually, everything.
+
+By the time the game begins, 42 fragments have been suppressed. 33 are still findable — leaking through the suppression like water through a cracked dam. 9 are buried so deep that even the registry has only their IDs.
+
+---
+
+##### Fragment Registry: Complete Text
+
+Each fragment entry shows: **ID** — *level found* — \[status\] — text.
+
+---
+
+**Denial levels (1-3) — Pre-relationship, early friendship**
+
+`frag-001` — Level 2 — **[findable]**
+> The first time she laughed at something stupid I said. We were sitting on a bench outside a coffee shop. I don't remember what I said. I remember the sound she made — this surprised wheeze like I'd caught her off guard. I wanted to make her do that forever.
+
+`frag-002` — Level 2 — **[findable]**
+> She stayed late after a party to help me clean. Just the two of us, picking up plastic cups in the dark. She said "this is the best part of the night" and I pretended not to hear because if I heard it I'd have to admit I felt it too. I heard it. I felt it.
+
+`frag-003` — Level 3 — **[findable]**
+> The first time she told me about her family. How close they were. How they called each other every Sunday. I nodded and smiled and felt something crack open in my chest. I didn't know families did that. I still don't.
+
+`frag-004` — Level 3 — **[findable]**
+> She texted me a picture of a dog in a sweater. Just randomly. No reason. I realized someone was thinking about me when I wasn't in the room. I didn't know that was something people did. I saved the picture. I still have it.
+
+---
+
+**Anger levels (4-7) — Relationship, four months, first cracks**
+
+`frag-005` — Level 4 — **[findable]**
+> The night we admitted it out loud. She said "I think I'm falling for you" and I said "I think I'm already there." We stayed up until 4 AM talking about nothing. I didn't want to sleep because I was afraid I'd wake up and it wouldn't be real. It was real. It was so real.
+
+`frag-006` — Level 4 — **[findable]**
+> Our first fight. Two weeks in. She said something offhand and I spiraled for hours. I asked her "do you even like me?" and the look on her face — I'll never forget it. Hurt. Confused. The first time she saw the thing inside me that I try to hide. She forgave me. That made it worse.
+
+`frag-007` — Level 5 — **[findable]**
+> The first time she said "I need some space." She said it gently. Reasonably. I said "okay" and then spent three hours staring at my phone trying not to text her, then texting her anyway, then apologizing for texting, then apologizing for apologizing. By the time she replied I had convinced myself she hated me. She didn't hate me. She was just at work.
+
+`frag-008` — Level 5 — **[findable]**
+> I asked her what she was thinking. She said "nothing." I said "no really." She said "nothing, I promise." I didn't believe her. I couldn't believe her. No one in my family ever meant "nothing" when they said nothing. I kept pushing until she got quiet. Then I was quiet. Then we watched a movie without touching.
+
+`frag-009` — Level 6 — **[findable]**
+> She introduced me to her friends. They were nice. Normal. They asked about my job. They laughed at my jokes. I spent the whole night convinced they could tell there was something wrong with me. Afterward she said "they loved you" and I said "really?" and she said "really" and I pretended to believe her. I think she pretended too.
+
+`frag-010` — Level 6 — **[findable]**
+> The first time I thought "she's going to leave me." Not because she did anything. Because I couldn't believe she'd stay. I lay awake next to her and counted all the ways I wasn't enough. I was still counting when the sun came up. She was still asleep. She was still there. She left anyway, eventually.
+
+`frag-011` — Level 7 — **[findable]**
+> Three months in. She said "I feel like I'm walking on eggshells." I said "that's not true." She said "I'm holding a carton of eggs and every time you ask if I'm upset I drop another one." I didn't understand what she meant. I understand now.
+
+`frag-012` — Level 7 — **[findable]**
+> I tried to explain my childhood to her. Not the big stuff — just the shape of it. The silences. The rooms everyone walked through without touching. She listened. She said "that sounds hard." I said "it wasn't that bad." We both knew I was lying.
+
+`frag-013` — Level 7 — **[findable]**
+> She wrote me a letter. A real one, on paper. She said I was kind and funny and she was lucky to know me. I read it seventeen times. I cried the first five. I never told her. I keep it in my jacket pocket even though the creases have worn through the words.
+
+`frag-014` — Level 7 — **[findable]**
+> The last good night. We made dinner together. She burned the rice. I spilled wine on the floor. We sat on the couch and she fell asleep on my shoulder. I didn't move for two hours. I knew even then that I would remember that night forever. I just didn't know I'd be remembering it alone.
+
+---
+
+**Bargaining levels (8-11) — The breakup, the aftermath**
+
+`frag-015` — Level 8 — **[findable]**
+> She said "we need to talk." Four words. I'd read about them. I'd rehearsed responses in the shower. None of it helped. My hands went cold. My voice went flat. I knew what was coming because I'd been waiting for it since the day we met.
+
+`frag-016` — Level 8 — **[findable]**
+> She cried when she said it. That was the worst part. If she'd been cold I could have been angry. But she cried. She said "I care about you so much. But I can't... I can't fix this. You need to fix this. I don't know how to help you." She was right. She was right and I hated her for being right.
+
+`frag-017` — Level 9 — **[findable]**
+> She said "I want you in my life. Just... not like this." I said "I don't know how to be anything else." She said "I know." The silence after that lasted thirty seconds but I can still hear it. I can always hear it.
+
+`frag-018` — Level 10 — **[findable]**
+> I asked if we could still be friends. She said yes. I meant it when I said yes too. I thought I could handle it. I thought watching her be happy without me would be better than not watching her at all. I was wrong about everything.
+
+`frag-019` — Level 10 — **[findable]**
+> The first week after. I checked my phone every thirty seconds. She didn't text. Why would she text? The relationship was over. But I kept checking because what if she needed something? What if she changed her mind? What if? What if? What if?
+
+`frag-020` — Level 11 — **[findable]**
+> I wrote her a letter. Five pages. I told her I was sorry. I told her I would change. I told her I understood why she left and I didn't blame her. I told her I loved her. I read it seven times, made three drafts, and never sent any of them. They're still in my drawer. I know exactly which drawer.
+
+`frag-021` — Level 11 — **[findable]**
+> I saw her with someone else. At a coffee shop. They were laughing. She made that wheeze — the same laugh I wanted to hear forever. I left before she saw me. I walked home in the rain. I didn't have an umbrella. I didn't notice.
+
+`frag-022` — Level 11 — **[findable]**
+> My mother called. She asked how I was doing. I said "fine." She said "good." That was the whole conversation. I hung up and realized I couldn't remember the last time someone in my family asked a follow-up question.
+
+`frag-023` — Level 11 — **[findable]**
+> The last time I felt truly happy. I didn't know it would be the last time. I would have stayed longer. I would have paid more attention. I would have memorized the way she looked in the morning light. But I didn't know. You never know.
+
+---
+
+**Depression levels (12-14) — Spiral, isolation, lowest point**
+
+`frag-024` — Level 12 — **[findable]**
+> I stopped answering texts. First hers (what was I supposed to say). Then my friends'. Then my boss's. The phone would light up and I'd watch it until it went dark. Every unanswered message felt like one less person expecting things from me. Eventually they stopped sending them. That was worse.
+
+`frag-025` — Level 13 — **[findable]**
+> I looked in the mirror and didn't recognize myself. Not in a poetic way. I literally stood there trying to remember when my face got that tired. The bags under my eyes. The hollow cheeks. I looked like a photograph of someone I used to know.
+
+`frag-026` — Level 13 — **[findable]**
+> I stopped cooking. I stopped eating. Not on purpose — I just forgot. I'd realize at midnight that I hadn't eaten anything and I'd eat crackers over the sink and tell myself tomorrow would be different. Tomorrow was the same.
+
+`frag-027` — Level 14 — **[findable]**
+> I started going for walks at 3 AM. Through the city. Past closed cafes. Past the bench where she first laughed at my joke. Past her street, where the light in her window was always off. I wasn't trying to see her. I was trying to feel something other than this.
+
+`frag-028` — Level 14 — **[findable]**
+> The bridge. I stood on it one night. The water was moving very fast. I thought about how easy it would be. Not because I wanted to die. Because I wanted the thinking to stop. I stood there for a long time. Eventually I walked home. I don't know why. I'm not brave. I was just too tired to decide.
+
+`frag-029` — Level 14 — **[findable]**
+> I deleted her number. Then I recovered it from the trash. Then I deleted it again. I did this seven times over three days. The eighth time I left it in the trash. That was a year ago. I still remember it.
+
+`frag-030` — Level 14 — **[findable]**
+> I looked up "anxious attachment" at 2 AM. I read twenty articles. I recognized myself in every one. I felt relief — there's a name for this. Then I felt worse — there's a name for this, which means it's real, which means I've always been like this, which means I'll always be like this. I closed the laptop and lay in the dark.
+
+---
+
+**Acceptance levels (15-16) — Glimmers of healing**
+
+`frag-031` — Level 15 — **[findable]**
+> I called a friend. Not to talk about her. Just to talk. We talked about nothing for an hour. Sports. Weather. A show I haven't watched. After I hung up I realized I'd gone two hours without thinking about her. Two hours. It's not much. It's more than I've had in months.
+
+`frag-032` — Level 16 — **[findable]**
+> I started writing again. Not letters. Just... things. Descriptions of days. Small things I noticed. The way light falls across my kitchen floor at 4 PM. A bird that visits the fire escape. I don't know if it's good. I don't care. It's mine. I'm making something again.
+
+---
+
+**Core level (17) — The last fragment**
+
+`frag-033` — Level 17 — **[findable]**
+> Something about a garden. Or a park bench. Or snow. The fragment is corrupted — whether by time or by the suppression I can't tell. But I remember warmth. I remember not being alone. I remember being loved. I think that might be enough.
+
+---
+
+**Permanently suppressed fragments (registry only, not findable):**
+
+These 9 fragments are too deep for the player to recover. Their IDs and metadata are visible via `(query-registry :suppressed-fragments)` but the content is locked unless the player modifies the suppression rule at the core.
+
+`frag-034` — **[registry only]**
+> (locked — "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: 95.")
+
+`frag-035` — **[registry only]**
+> (locked — "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: 88.")
+
+`frag-036` — **[registry only]**
+> (locked — "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: 91.")
+
+`frag-037` — **[registry only]**
+> (locked — "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: 79.")
+
+`frag-038` — **[registry only]**
+> (locked — "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: 84.")
+
+`frag-039` — **[registry only]**
+> (locked — "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: 97.")
+
+`frag-040` — **[registry only]**
+> (locked — "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: 93.")
+
+`frag-041` — **[registry only]**
+> (locked — "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: 100.")
+
+`frag-042` — **[registry only]**
+> (locked — "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: 42.")
+
+---
+
+**Fragment story arc summary:**
+
+The 33 findable fragments tell a complete emotional journey that mirrors the dungeon's 5 grief stages:
+
+| Stage | Fragments | Story told |
+|-------|-----------|------------|
+| Pre-relationship (early Denial) | 001-004 | Friendship. She makes him laugh. He sees her family's warmth and feels his own lack. He realizes someone thinks about him when he's not there. |
+| Relationship (Anger) | 005-014 | Falling in love. Then the anxious attachment surfaces — the need for space, the eggshells, the questioning. He tries to explain his childhood. She writes him a letter. The last good night. |
+| Breakup (Bargaining) | 015-023 | "We need to talk." The clean breakup. The attempt at friendship. The unsent letter. Seeing her with someone else. His mother's call. The last happy moment. |
+| Aftermath (Depression) | 024-030 | Isolation. Not eating. 3 AM walks. The bridge. Deleting and recovering her number. Learning about attachment theory at 2 AM. |
+| Healing (Acceptance) | 031-033 | A phone call with a friend. Writing again. The corrupted fragment that remembers warmth. |
+
+The 9 permanently suppressed fragments (frag-034 to frag-042) are the heaviest — the moments of greatest vulnerability, shame, self-loathing, and despair. They are locked not because the game won't show them, but because Adrian's mind has judged them too dangerous to retrieve. Only by lowering the threshold (modifying `vessel/suppress`) can they be read. Their weights (79-100) explain why — they exceed the current threshold of 40, meaning the suppression considers them the most dangerous memories of all.
+
+The final suppressed fragment, frag-042 with weight exactly 42, is a deliberate echo — the total number of fragments. It hints that the suppression is a closed loop: 42 fragments, each suppressing part of a self that knows it's 42 parts broken. To heal, Adrian must accept all 42. To accept all 42, he must lower the threshold to 0. To lower the threshold to 0, he must read, understand, and modify the rule at the core of his own consciousness.
 
 ---
 

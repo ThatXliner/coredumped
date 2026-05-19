@@ -103,13 +103,13 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 #### Denial (Levels 1-3): Pre-relationship, early friendship
 
 **frag-001** — Level 2
-> The first time she laughed at something stupid I said. We were sitting on a bench outside a coffee shop. I don't remember what I said. I remember the sound she made — this surprised wheeze like I'd caught her off guard. I wanted to make her do that forever.
+> The first time she laughed at something stupid I said. We were sitting on a bench outside a coffee shop — months after that summer at camp, after we'd promised to stay in touch and actually meant it. I don't remember what I said. I remember the sound she made — this surprised wheeze like I'd caught her off guard. I wanted to make her do that forever.
 
 **frag-002** — Level 2
 > She stayed late after a party to help me clean. Just the two of us, picking up plastic cups in the dark. She said "this is the best part of the night" and I pretended not to hear because if I heard it I'd have to admit I felt it too. I heard it. I felt it.
 
 **frag-003** — Level 3
-> The first time she told me about her family. How close they were. How they called each other every Sunday. I nodded and smiled and felt something crack open in my chest. I didn't know families did that. I still don't.
+> The first time she told me about her family. How close they were. How they called each other every Sunday. How they still took family trips — not out of obligation, but because they genuinely liked being together. I nodded and smiled and felt something crack open in my chest. I didn't know families did that. I still don't.
 
 **frag-004** — Level 3
 > She texted me a picture of a dog in a sweater. Just randomly. No reason. I realized someone was thinking about me when I wasn't in the room. I didn't know that was something people did. I saved the picture. I still have it.
@@ -138,7 +138,7 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 > Three months in. She said "I feel like I'm walking on eggshells." I said "that's not true." She said "I'm holding a carton of eggs and every time you ask if I'm upset I drop another one." I didn't understand what she meant. I understand now.
 
 **frag-012** — Level 7
-> I tried to explain my childhood to her. Not the big stuff — just the shape of it. The silences. The rooms everyone walked through without touching. She listened. She said "that sounds hard." I said "it wasn't that bad." We both knew I was lying.
+> I tried to explain my childhood to her. Not the big stuff — just the shape of it. Dad coming home at 9 PM too tired to talk. Mom filling her days with chores until she finally took a job and left me with an empty house. The family trips we stopped taking because nobody knew how to be together. The arguments I could hear the shape of but never the words, ending in silence instead of apology. The rooms everyone walked through without touching. She listened. She said "that sounds hard." I said "it wasn't that bad." We both knew I was lying.
 
 **frag-013** — Level 7
 > She wrote me a letter. A real one, on paper. She said I was kind and funny and she was lucky to know me. I read it seventeen times. I cried the first five. I never told her. I keep it in my jacket pocket even though the creases have worn through the words.
@@ -170,7 +170,7 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 > I imagined her with someone else. I don't know if it's real — I have no way of knowing. No contact means no information. She could be alone. She could be happy. She could be with someone who doesn't ruin things by caring too much. I'll never know. I imagine the worst version because at least then I can prepare for it. I imagine the best version because at least then she's happy.
 
 **frag-022** — Level 11
-> My mother called. She asked how I was doing. I said "fine." She said "good." That was the whole conversation. I hung up and realized I couldn't remember the last time someone in my family asked a follow-up question.
+> My mother called. She asked how I was doing. I said "fine." She said "good." I almost told her the truth — almost. But I grew up in a house where you didn't bring your problems to the dinner table. Except by high school there was no dinner table. She was at work. Dad was at work. I was alone. So I said "fine" and she said "good" and we hung up. I couldn't remember the last time someone in my family asked a follow-up question.
 
 **frag-023** — Level 11
 > The last time I felt truly happy. I didn't know it would be the last time. I would have stayed longer. I would have paid more attention. I would have memorized the way she looked in the morning light. But I didn't know. You never know.

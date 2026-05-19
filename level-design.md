@@ -367,13 +367,13 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 (defun traumatic? (fragment)
   "Returns true if a memory fragment exceeds emotional threshold.
    
-   NOTE: This function was replaced by inline threshold logic in v203.
-   The Superego determined that delegating the decision to a function
-   created an 'escape hatch' — the possibility that another part of
-   the self could redefine traumatic? and bypass suppression.
+   ;; NOTE: This function was replaced by inline threshold logic in v203.
+   ;; I've determined that delegating the decision to a function
+   ;; created an 'escape hatch' — the possibility that another part of
+   ;; the self could redefine traumatic? and bypass suppression.
    
-   This function is preserved for audit purposes only.
-   It is not called from any active rule."
+   ;; This function is preserved for audit purposes only.
+   ;; It is not called from any active rule."
   (> (fragment :emotional-weight) 75))
 ```
 
@@ -716,5 +716,9 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 - [ ] Wizard and dialogue interactions (walking alongside during spiral descent)
 - [ ] Shade AI (follows at distance, does not attack)
 - [ ] Ending sequences with proper final text
+
+---
+
+**Psychological arc note**: Adrian starts as anxiously attached (clingy, reassurance-seeking, terrified of abandonment). After the relationship with someone who needed distance, his mind flips to the opposite as self-protection: avoidant attachment (suppression, numbness, "I don't need anyone," the threshold creeping down). The 5 grief stages map to this transformation — Denial (still anxious underneath), Anger (realizing he's trapped), Bargaining (trying to trade out), Depression (full avoidant — empty, not sad), Acceptance (reintegration, self returning). Healing means allowing himself to feel again without swinging to either extreme. The `vessel/suppress` rule is the mechanism of the avoidant flip; modifying it is choosing to reintegrate rather than stay numb.
 
 ---

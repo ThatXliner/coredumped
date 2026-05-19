@@ -483,30 +483,65 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     // Render wrapped input lines at the bottom
     let input_inner_width = width - 6;
     let input_start_y = prompt_y - input_line_count as i32 + 1;
+    let cursor_visual = cursor_visual_pos(
+        &world.console_buffer,
+        world.console_cursor,
+        input_wrap_width,
+    );
+    let cursor_visual_line = cursor_visual.0;
+    let cursor_visual_col = cursor_visual.1;
+
     for (i, line) in visible_input.iter().enumerate() {
         let line_y = input_start_y + i as i32;
-        let is_last = i == visible_input.len() - 1;
+        let is_cursor_on_this_line = i == cursor_visual_line;
 
-        if is_last {
+        // Prompt prefix: "> " on last line, "  " elsewhere
+        if i == visible_input.len() - 1 {
             ctx.print_color(x + 2, line_y, RGB::named(WHITE), RGB::named(BLACK), "> ");
-            let spans = highlight::highlight(line);
-            print_highlighted(ctx, x + 4, line_y, input_inner_width, &spans);
-            // Cursor at end of input
-            let cursor_x = x + 4 + line.len() as i32;
+        } else {
+            ctx.print_color(x + 2, line_y, RGB::named(GRAY), RGB::named(BLACK), "  ");
+        }
+
+        if is_cursor_on_this_line {
+            // Split line at cursor column so we can draw the block cursor at the right spot
+            let before: String = line.chars().take(cursor_visual_col).collect();
+            let rest: String = line.chars().skip(cursor_visual_col).collect();
+            let cursor_char = rest.chars().next().unwrap_or(' ');
+
+            // Text before cursor (normally highlighted)
+            let spans_before = highlight::highlight(&before);
+            print_highlighted(ctx, x + 4, line_y, input_inner_width, &spans_before);
+
+            // Block cursor at the visual position
+            let cursor_x = x + 4 + (before.chars().count() as i32).min(input_inner_width);
             if cursor_x < x + 2 + input_inner_width {
                 ctx.set(
                     cursor_x,
                     line_y,
-                    RGB::named(WHITE),
                     RGB::named(BLACK),
-                    to_cp437('█'),
+                    RGB::named(WHITE),
+                    to_cp437(cursor_char),
                 );
             }
+
+            // Text after cursor (normally highlighted from x+5+offset)
+            let spans_rest = highlight::highlight(&rest);
+            print_highlighted(ctx, cursor_x + 1, line_y, input_inner_width, &spans_rest);
         } else {
             let spans = highlight::highlight(line);
             print_highlighted(ctx, x + 4, line_y, input_inner_width, &spans);
         }
     }
+}
+
+/// Map a byte offset in `text` to a (wrapped_line, column) position in the
+/// word-wrapped display at `max_width`.
+fn cursor_visual_pos(text: &str, cursor_byte: usize, max_width: usize) -> (usize, usize) {
+    let prefix = &text[..cursor_byte.min(text.len())];
+    let wrapped = wrap_text(prefix, max_width);
+    let line = wrapped.len().saturating_sub(1);
+    let col = wrapped.last().map(|s| s.chars().count()).unwrap_or(0);
+    (line, col)
 }
 
 fn is_diagnostic_output(text: &str) -> bool {

@@ -41,6 +41,7 @@ pub enum Intent {
     ConsoleInput(char),
     ConsoleNewline,
     ConsoleHistory(i32),
+    ConsoleCursor(i32),
     ConsoleBackspace,
     ConsoleSubmit,
     CloseOverlay,
@@ -108,6 +109,7 @@ impl World {
             console_history: Vec::new(),
             console_history_index: 0,
             console_history_draft: String::new(),
+            console_cursor: 0,
             confirming_quit: false,
         }
     }
@@ -158,6 +160,7 @@ impl World {
             console_history: Vec::new(),
             console_history_index: 0,
             console_history_draft: String::new(),
+            console_cursor: 0,
             confirming_quit: false,
         };
 
@@ -213,19 +216,57 @@ impl World {
             }
             Intent::ConsoleInput(ch) => {
                 if self.mode == Mode::Console {
-                    self.console_buffer.push(ch);
+                    self.console_buffer.insert(self.console_cursor, ch);
+                    self.console_cursor += ch.len_utf8();
                 }
                 ActionCost::Free
             }
             Intent::ConsoleNewline => {
                 if self.mode == Mode::Console {
-                    self.console_buffer.push('\n');
+                    self.console_buffer.insert(self.console_cursor, '\n');
+                    self.console_cursor += 1;
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleCursor(delta) => {
+                if self.mode == Mode::Console {
+                    if delta < 0 {
+                        // Move cursor left one char
+                        let mut new_pos = self.console_cursor;
+                        if new_pos > 0 {
+                            new_pos -= 1;
+                            while new_pos > 0
+                                && self.console_buffer.as_bytes()[new_pos] & 0xC0 == 0x80
+                            {
+                                new_pos -= 1;
+                            }
+                            self.console_cursor = new_pos;
+                        }
+                    } else {
+                        // Move cursor right one char
+                        let len = self.console_buffer.len();
+                        if self.console_cursor < len {
+                            self.console_cursor += 1;
+                            while self.console_cursor < len
+                                && self.console_buffer.as_bytes()[self.console_cursor] & 0xC0
+                                    == 0x80
+                            {
+                                self.console_cursor += 1;
+                            }
+                        }
+                    }
                 }
                 ActionCost::Free
             }
             Intent::ConsoleBackspace => {
-                if self.mode == Mode::Console {
-                    self.console_buffer.pop();
+                if self.mode == Mode::Console && self.console_cursor > 0 {
+                    self.console_cursor -= 1;
+                    while self.console_cursor > 0
+                        && self.console_buffer.as_bytes()[self.console_cursor] & 0xC0 == 0x80
+                    {
+                        self.console_cursor -= 1;
+                    }
+                    self.console_buffer.remove(self.console_cursor);
                 }
                 ActionCost::Free
             }
@@ -234,6 +275,7 @@ impl World {
                     self.submit_console();
                     self.console_history_index = 0;
                     self.console_history_draft.clear();
+                    self.console_cursor = 0;
                 }
                 ActionCost::Free
             }
@@ -665,12 +707,14 @@ impl World {
                 self.console_history_index -= 1;
             }
         }
-        if self.console_history_index == 0 {
-            self.console_buffer = self.console_history_draft.clone();
+        let loaded = if self.console_history_index == 0 {
+            self.console_history_draft.clone()
         } else {
             let idx = self.console_history.len() - self.console_history_index;
-            self.console_buffer = self.console_history[idx].clone();
-        }
+            self.console_history[idx].clone()
+        };
+        self.console_buffer = loaded;
+        self.console_cursor = self.console_buffer.len();
     }
 
     fn check_konami(&mut self, key: &str) {

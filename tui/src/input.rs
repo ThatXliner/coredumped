@@ -73,6 +73,8 @@ fn console_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
         (VirtualKeyCode::Return, true) => Intent::ConsoleNewline,
         (VirtualKeyCode::Up, _) => Intent::ConsoleHistory(-1),
         (VirtualKeyCode::Down, _) => Intent::ConsoleHistory(1),
+        (VirtualKeyCode::Left, _) => Intent::ConsoleCursor(-1),
+        (VirtualKeyCode::Right, _) => Intent::ConsoleCursor(1),
         _ => key_to_console_char(key, shift)
             .map(Intent::ConsoleInput)
             .unwrap_or(Intent::Noop),

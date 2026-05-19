@@ -498,8 +498,12 @@ fn eval_fn(args: &[Value], env: &Env) -> EvalResult<Value> {
     // every clause has ≥2 items and at least one has a list as its first
     // element (indicating a multi-element param spec within the clause).
     let is_multi = args.len() > 1
-        && args.iter().all(|a| matches!(a, Value::List(items) if items.len() >= 2))
-        && args.iter().any(|a| matches!(a, Value::List(items) if matches!(&items[0], Value::List(_))));
+        && args
+            .iter()
+            .all(|a| matches!(a, Value::List(items) if items.len() >= 2))
+        && args
+            .iter()
+            .any(|a| matches!(a, Value::List(items) if matches!(&items[0], Value::List(_))));
     if is_multi {
         let mut arities = Vec::new();
         for clause in args {

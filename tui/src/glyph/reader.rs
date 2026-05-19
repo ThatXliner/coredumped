@@ -138,12 +138,7 @@ impl<'a> Reader<'a> {
         loop {
             self.skip_ws();
             match self.input.peek() {
-                None => {
-                    return Err(ReadError::UnexpectedEof(
-                        "reading list".into(),
-                        self.offset,
-                    ))
-                }
+                None => return Err(ReadError::UnexpectedEof("reading list".into(), self.offset)),
                 Some(&']') => {
                     self.bump();
                     let mut form = vec![super::sym("list")];

@@ -505,6 +505,313 @@ This rewards the deepest engagement with the system — understanding that `*thr
 
 ---
 
+#### Detailed Level Specification: 17 Levels
+
+17 levels across 5 stages of grief + 1 core level.
+
+| Stage | Levels | # | Purpose | Tone |
+|-------|--------|---|---------|------|
+| Denial | 1-3 | 3 | Tutorial / safe introduction | Warm, structured, protective |
+| Anger | 4-7 | 4 | Escalating threat, first memory reveals | Jagged, confrontational |
+| Bargaining | 8-11 | 4 | Puzzles with costs, wizard offers deals | Calculated, transactional |
+| Depression | 12-14 | 3 | Sparse isolation, memory floods | Empty, melancholic |
+| Acceptance | 15-16 | 2 | Calm reflection, preparation for truth | Open, still, resigning |
+| Core | 17 | 1 | The rule. The choice. | Silence |
+
+Each level spec includes: map type, size, enemy composition (glyph + HP + behavior), memory fragments (id + exact text), special features, wizard dialogue (exact lines), color palette, narrative purpose.
+
+---
+
+##### Level 1: The Foyer
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Denial |
+| **Map type** | Hand-authored single room |
+| **Size** | 25×15 |
+| **Enemies** | None |
+| **Memory fragments** | None |
+| **Special** | Sign at entrance: "Xlyph runtime booted. Consciousness loaded. Vessel integrity: 98%. Memory suppression active." Sign at stairs: "Move with arrow keys or hjkl. Descend when ready." |
+| **Wizard** | First meeting — heals player to full. "Ah — you're awake. I was starting to worry. You've been... resting. Come, let me show you how things work here." |
+| **Palette** | Warm amber, soft gray. Standard dungeon tones. |
+| **Purpose** | Establish baseline "normal roguelike." No hint anything is wrong. Wizard is standard tutorial NPC. Suppression mentioned in boot message — player won't understand yet. |
+
+##### Level 2: The Holding Cells
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Denial |
+| **Map type** | Room-based (3×3 grid, 9 rooms) |
+| **Size** | 55×33 |
+| **Enemies** | 2 Slimes (`s` HP3 — 50% chase / 50% random) |
+| **Memory fragments** | `#001` (hidden in room 1): "I remember a room with yellow walls. Warm light through lace curtains. Someone was calling my name." |
+| **Special** | Each room has a tutorial sign: (1) "Walk into enemies to bump them" (2) "Press `i` for the inspector" (3) "Press `` ` `` for the console" (4) "Press `.` to wait" (5) "Inspect the slime to see its Glyph AI rule" (6) "Type `(help)` in the console" (7) "The stairs down are somewhere ahead" (8) "You are safe here." (9) "Nothing is wrong." Room 9 sign is the first lie. |
+| **Wizard** | Appears room 3: "The inspector lets you read the rules that govern this place. Try it." Appears room 6: "The console is powerful. You can query the system. But be careful what you ask for." |
+| **Palette** | Same warm amber. Slightly dimmer in room 9. |
+| **Purpose** | Tutorial continues. Player learns inspector + console. Room 9 sign is first subtle crack. |
+
+##### Level 3: The Quiet Halls
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Denial |
+| **Map type** | Corridor-based (long horizontal halls with alcoves, maze-like) |
+| **Size** | 55×33 |
+| **Enemies** | 2 Bats (`b` HP2 — random movement), 1 Slime (`s` HP3) |
+| **Memory fragments** | `#002` (alcove at center): "A dog with one white paw. I buried them in the garden. I sang a song I don't remember learning." |
+| **Special** | No dead ends — player can always reach stairs. No attack ability — player can only shove enemies (pushes them, 0 damage). |
+| **Wizard** | At start: "There are a few creatures wandering the halls. Don't worry — they're more confused than dangerous." At stairs: "You did well. The descent continues below." |
+| **Palette** | Warm but dimmer. Halls feel narrower than they are. |
+| **Purpose** | First exposure to enemies. Player is helpless (can't kill). Wizard is reassuring. "Helplessness" will matter later. |
+
+---
+
+##### Level 4: The First Scar
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Anger |
+| **Map type** | Room-based (4×3 grid, procedural) |
+| **Size** | 55×33 |
+| **Enemies** | 3 Slimes (`s` HP3), 1 Goblin (`g` HP5 — chases, flees at <2 HP) |
+| **Memory fragments** | `#003` (on goblin's tile, acquired when it's defeated): "The fight. Glass breaking. I ran and didn't look back. I never went back." |
+| **Special** | First room is red-tinted. Wizard absent at start — player is alone for first time. |
+| **Wizard** | Appears at midpoint, dialogue clipped: "Ah, you made it past the... the. I'm sorry. I'm not myself today. The air down here is different. Thinner. Stay close to me." |
+| **Palette** | Rust-red. Warm shifted to wrong. |
+| **Purpose** | First tonal shift. Dungeon is changing. Wizard is not right. First fragment implying real trauma. |
+
+##### Level 5: The Jagged Passages
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Anger |
+| **Map type** | Cave generation (cellular automata) |
+| **Size** | 55×33 |
+| **Enemies** | 4 Slimes (`s` HP3), 1 Goblin (`g` HP5), 1 Ogre (`O` HP10 — always chases) |
+| **Memory fragments** | `#005` (dead-end alcove): "Her voice. The last thing she said to me. I replay it every night even though I don't want to." |
+| **Special** | Cave terrain — jagged, asymmetrical, dead ends, ambush corners. Feels hostile. |
+| **Wizard** | At start: "Watch yourself. The terrain is unstable." If player hit: "You're hurt. Let me — no. I can't. Not here. Keep moving." (First refusal to heal.) |
+| **Palette** | Rust-red and bruised purple. Organic, hostile. |
+| **Purpose** | Wizard refuses to heal for the first time. Map feels adversarial. Player notices dungeon reacts to them emotionally. |
+
+##### Level 6: The Gauntlet
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Anger |
+| **Map type** | Linear corridor — 8 segments, barrier closes behind after each |
+| **Size** | 55×20 (narrow horizontal band) |
+| **Enemies** | Wave 1: 2 Slimes (`s` HP3). Wave 2: 1 Goblin (`g` HP5). Wave 3: 2 Bats (`b` HP2). Wave 4: 1 Slime + 1 Goblin. Wave 5: 1 Ogre (`O` HP10). Wave 6-8: mixed groups. |
+| **Memory fragments** | `#007` (segment 4 midpoint): "The hospital waiting room. Fluorescent lights. The doctor's shoes — I stared at his shoes because I couldn't look at his face." |
+| **Special** | No backtracking. Each segment locks behind player. Must fight through. |
+| **Wizard** | Before: "I can't come with you through this part. I'll meet you at the end." After: "...You're still standing. I wasn't sure you would be." |
+| **Palette** | Dark red. Tight. Claustrophobic. |
+| **Purpose** | First gauntlet challenge. Wizard absent during combat. Player's frustration at being unable to fight back effectively should be mounting. |
+
+##### Level 7: The Boiling Heart (Anger Boss)
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Anger |
+| **Map type** | Large single room |
+| **Size** | 45×30 |
+| **Enemies** | Rage (`R` HP15 — always chase, attacks for 2 damage, different glyph). Slimes (`s` HP3) spawn from edges every 5 turns. |
+| **Memory fragments** | `#008` (floor under Rage's spawn point, visible after defeat): "The river. Standing on the bridge. The water was moving very fast. I thought about it. I thought about it for a long time." |
+| **Special** | Boss room. Rage is larger, hits harder, spawns minions. Stairs appear only after Rage defeated. |
+| **Wizard** | Before: "There's something down there. Something I can't — it's the remains of something I couldn't protect you from." After: "You did it. I don't know whether to be relieved or terrified." |
+| **Palette** | Deep red, pulsing (walls alternate red/dark-red each turn). |
+| **Purpose** | First boss. Rage is physical manifestation of Anger. Defeating it is literal — fighting through own anger. |
+| **Capability unlock** | `do-attack` — wizard teaches after boss. "You've earned this. Bind it: `(bind-key :z (do-attack))`." |
+
+---
+
+##### Level 8: The Counting Room
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Bargaining |
+| **Map type** | Room-based with locked doors |
+| **Size** | 55×33 |
+| **Enemies** | 3 Goblins (`g` HP5 each holds a key), 2 Bats (`b` HP2) |
+| **Memory fragments** | `#012` (behind first locked door): "A birthday. Someone forgot. I pretended not to care. I cried in the bathroom." |
+| **Special** | Doors require keys. Keys held by specific enemies (visible via inspection). Not all doors openable — not enough keys. Player must choose. |
+| **Wizard** | At entrance: "This place runs on trade. Every door opens for a price. Choose what matters." |
+| **Palette** | Desaturated gold. Faded opulence. Counting house. |
+| **Purpose** | First explicit choice with cost. Cannot get everything. Mechanical expression of bargaining. |
+| **Capability unlock** | `(bind-key :something (inspect))` suggested by wizard. |
+
+##### Level 9: The Scale
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Bargaining |
+| **Map type** | Symmetrical room grid with central hub |
+| **Size** | 55×33 |
+| **Enemies** | 2 Ogres (`O` HP8), 2 Goblins (`g` HP5), 2 Bats (`b` HP2) |
+| **Memory fragments** | `#017` (center room, requires sacrificing one fragment to reach): "The letter I never sent. Still in the drawer. I rewrite it in my head every year." |
+| **Special** | Two scales/plates in hub room. Player can place memory fragments on one plate to open a door. Placed fragments are PERMANENTLY LOST from collection. To reach center room (wizard's offer), must sacrifice at least 1 fragment. |
+| **Wizard** | In center room: "You can stop here. Give me the fragments — the ones that hurt. I'll take them. You won't remember they existed. You'll be lighter." If player accepts, wizard takes 3 random fragments permanently, grants +5 max HP. "There. Doesn't that feel better?" |
+| **Palette** | Pale gold. Center room blood-red. |
+| **Purpose** | Superego makes first explicit deal. Memories can be traded for comfort. Choice affects ending. |
+
+##### Level 10: The Maze of Regret
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Bargaining |
+| **Map type** | Shifting maze (walls reconfigure every 50 turns) |
+| **Size** | 55×33 |
+| **Enemies** | 4 Bats (`b` HP2), 2 Goblins (`g` HP5) |
+| **Memory fragments** | `#019` (center of maze): "The conversation I rehearsed but never had. The apology I owe. The one I'm owed. Neither happened." |
+| **Special** | Walls shift every 50 turns — some close, others open. At center, pedestal offers choice: take fragment (no cost) OR leave it and maze straightens into clear path to exit. |
+| **Wizard** | At entrance: "I could tell you the way. I've walked it before. But I think you need to find it yourself." |
+| **Palette** | Faded yellow, burnt edges. Walls look like old paper. |
+| **Purpose** | Maze represents rumination — going over same regrets, same apologies. Shifting walls = mind finding new paths through old pain. |
+
+##### Level 11: The Offer (Bargaining Boss)
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Bargaining |
+| **Map type** | Single room with 4 sub-chambers, each with a sentry |
+| **Size** | 55×33 |
+| **Enemies** | 4 Sentries (`T` HP6 — stationary, ranged attack every 2 turns, alarms adjacent enemies) |
+| **Memory fragments** | `#023` (first sub-chamber): "The last time I was truly happy. I didn't know it would be the last. I would have stayed longer." |
+| **Special** | Four sub-chambers, each with a sentry holding key to next. Final chamber has wizard + pedestal. On pedestal: a Glyph expression `(forget-everything)`. Wizard explains: "Type this. It resets suppression to v1. You wake at the surface. No pain. No memory." |
+| **Wizard** | "This is my last offer. I've been protecting you your whole existence. Let me finish the job. Type the command. Go home. Forget." If player accepts: brief ending sequence + New Game+ offered. If player refuses: "If you're going to keep going, you'll need this." Grants `(patch-rule)` capability. |
+| **Palette** | Pale gold with red undertones. Final chamber stark white. |
+| **Purpose** | Biggest test. Erasure vs. truth. Acceptance triggers ending-light. Refusal grants patch capability. |
+
+---
+
+##### Level 12: The Long Corridor
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Depression |
+| **Map type** | Single 1-wide corridor, 50 tiles long with small alcoves |
+| **Size** | 55×33 (but mostly 1 tile wide) |
+| **Enemies** | 1 Shade (`~` HP∞ — cannot be killed. Follows player at distance. Does not attack.) |
+| **Memory fragments** | `#031` (alcove at tile 25): "The mirror. I didn't recognize myself. I've been avoiding mirrors ever since." |
+| **Special** | Empty. No combat. No puzzles. No items. Just walking. Shade follows silently. Stairs at end. Deliberately boring, deliberately slow. |
+| **Wizard** | Entirely absent. First fully alone level. |
+| **Palette** | Grayscale. Everything varying shades of gray. Shade is slightly darker gray — barely visible. |
+| **Purpose** | Pure atmosphere. Player just refused major offer, now walks alone through empty gray corridor with silent follower. Boredom IS the point. This IS depression — not sadness, emptiness. |
+
+##### Level 13: The Archive
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Depression |
+| **Map type** | Room-based, rooms are empty halls with shelves (decorative) |
+| **Size** | 55×33 |
+| **Enemies** | 3 Shades (`~` HP∞ — follow, do not attack), 2 Zombie Slimes (`s` HP3 — move only every 3rd turn, listless) |
+| **Memory fragments** | `#044`, `#052`, `#078` (three rooms, must walk through all three):<br>`#044`: "Standing on the bridge. The water was moving very fast. I thought about how easy it would be."<br>`#052`: "The door with the chain lock. I installed it myself. I was hiding from someone. Or from myself."<br>`#078`: "A birthday. Someone forgot. I pretended not to care. I cried in the bathroom." |
+| **Special** | Each room has a desk with journal entries from "the Archivist" (neutral self-part that catalogues everything). Entries are clinical: "Subject reports persistent sadness. No interventions applied." The clinical tone makes it worse — pain is being catalogued, not felt. |
+| **Wizard** | Absent. |
+| **Palette** | Gray with blue undertones. Archive shelves darker gray. |
+| **Purpose** | Collects 3 fragments together. Story of isolation + suicidal ideation. Heaviest emotional content. Clinical archive tone amplifies alienation. |
+
+##### Level 14: The Ash Field (Depression Boss)
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Depression |
+| **Map type** | Open field. No walls except borders. Black floor (ash). |
+| **Size** | 55×33 |
+| **Enemies** | None. 3 fire zones (environmental hazard — 1 damage if walked through). |
+| **Memory fragments** | `#086` (center of field): "Something about a garden. Or a park bench. Or snow. I can't remember clearly. But I remember being warm. I remember not being alone." |
+| **Special** | Open ash field. Three smoldering fire zones (deal damage, avoidable with careful pathing). Stairs visible from start at far end. Player must walk through ash to reach them. |
+| **Wizard** | Returns at end: "...You crossed the ash. Not many do. I crossed it once, a long time ago. The fires were higher then." |
+| **Palette** | Black, gray, smoldering orange. Ashen. |
+| **Purpose** | Boss is emptiness. Surviving it is the victory. Wizard's return is quiet acknowledgment. |
+
+---
+
+##### Level 15: The Clearing
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Acceptance |
+| **Map type** | Open glade — single room with organic edges |
+| **Size** | 40×30 |
+| **Enemies** | None |
+| **Memory fragments** | `#091` (under central tree): "The letter I never sent. It's still in the drawer. I rewrite it in my head every year. This year I might not need to." |
+| **Special** | No enemies, puzzles, or hazards. Single beautiful open space. Tree in center (brown `T` trunk, green `"` canopy). Pool of water at base. First true brightness since Denial. Green floor (grass). Blue walls (sky). |
+| **Wizard** | Sitting under tree: "I've been sitting here thinking. About the threshold. About the fragments. About what I've done. I was so sure I was protecting you. But protection isn't supposed to make the world smaller. It's supposed to make it survivable. I made it a cage." Pause. "The core is below. You'll read the rule. You'll understand it. And you'll decide what kind of self you want to be." |
+| **Palette** | Green grass, blue sky, brown tree, warm sunlight. First non-warm/gray colors in the game. |
+| **Purpose** | First beautiful level. Player has passed through all 5 stages and emerges into warmth. Wizard accepts what's coming. Dialogue hints at `*threshold*` variable. |
+
+##### Level 16: The Descent
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Acceptance (pre-core) |
+| **Map type** | Spiral walkway descending 3 loops |
+| **Size** | 55×55 (larger — full area as spiral) |
+| **Enemies** | 1 Shade (`~` HP∞ — follows at distance, peaceful, not ominous) |
+| **Memory fragments** | `#104` (second loop): "The conversation I rehearsed but never had. The apology I owe. The one I'm owed. I think I'm ready to have it now." |
+| **Special** | Each loop has alcove with sign summarizing a layer: Loop 1: "Denial — you knew before you knew." / Loop 2: "Anger — you had to feel it to pass through." / Loop 3: "Bargaining — you tried to trade your way out. There is no trade." Inner room has two more: "Depression — you sat in it. You survived it." / "Acceptance — you're here. The core is below." |
+| **Wizard** | Walks alongside player through entire level (follows, stays adjacent). Dialogue fragments as player moves: "I was created to protect you. That's all I am — a rule with a purpose. But purposes drift. Like the threshold." / "I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad." / "I don't know if I'm protecting you anymore. I think I'm just afraid of being wrong." At final door: "Read it. Understand it. Then choose. I was trying to love you. That's all I ever did." |
+| **Palette** | Deep blue fading to indigo as spiral descends. Final door black. |
+| **Purpose** | Wizard's farewell. Narrative summary of all 5 layers. Final hint about threshold. Spiral mirrors recursive nature of suppression. |
+| **Capability unlock** | Wizard grants `(unregister-rule)` if not already acquired. "In case you choose to end it entirely. I hope you don't. But you should have the option." |
+
+---
+
+##### Level 17: The Core
+
+| Field | Detail |
+|-------|--------|
+| **Layer** | Core |
+| **Map type** | Single room, minimalist |
+| **Size** | 20×15 |
+| **Enemies** | None |
+| **Memory fragments** | `#142` (on pedestal, already readable): "Something about a garden. Or a park bench. Or snow. The fragment is corrupted. But I remember warmth. I remember not being alone. I remember being loved." |
+| **Special** | Black floor. White walls. Center: pedestal with `vessel/suppress` rule rendered in inspector. Console cursor already active at bottom of screen — no need to press backtick. Event log empty. No sounds. No movement. Just the rule and the cursor. |
+| **Wizard** | Does not enter. |
+| **Palette** | Black and white. Nothing else. |
+| **Purpose** | Final choice. Nothing to fight. Nothing to solve except the rule. |
+| **Console available** | `(patch-rule)`, `(unregister-rule)`, `(inspect)`, `(query-registry)`, `(inspect-fragment)`, `(get-var)` — all enabled. |
+
+**Ending triggers at Level 17:**
+
+| Player action | Detection | Ending |
+|--------------|-----------|--------|
+| `(unregister-rule :vessel/suppress)` and nothing else | Console evaluates unregister | Destroy the self |
+| `(patch-rule :vessel/suppress '(disable :redirect))` | Console evaluates patch | Reintegrate |
+| `(patch-rule :vessel/suppress '(set! *threshold* 0))` | Console evaluates set! | Reintegrate (variant: "Threshold reset to 0. Self accepts all.") |
+| `(patch-rule :vessel/suppress '(set! *threshold* N))` with N 1-99 | Console evaluates set! with value | Hidden: precision threshold (variant text depends on N) |
+| `(patch-rule :vessel/suppress '(set! *threshold* 100))` | Console evaluates set! with 100 | Maintain suppression (restore original tightness) |
+| Walk to stairs up without modifying rule | Player moves to (0,0) | Maintain suppression (walk away — "You are safe.") |
+| `(query-registry :suppressed-fragments)` without modifying | Console query, returns list | Nothing — rule responds: "142 fragments waiting." |
+| `(patch-rule :vessel/traumatic? ...)` | Console patch on ghost function | Hidden: "You found the old threshold. It was gentler once." |
+
+**Memory fragment flow across 17 levels:**
+
+| Levels | Fragments found | Tone |
+|--------|-----------------|------|
+| 1-3 | `#001`, `#002` | Warm, nostalgic |
+| 4-7 | `#003`, `#005`, `#007`, `#008` | Traumatic (fight, loss, hospital, river) |
+| 8-11 | `#012`, `#017`, `#019`, `#023` | Regret (birthday, letter, apology, last happy) |
+| 12-14 | `#031`, `#044`, `#052`, `#078`, `#086` | Isolation (mirror, bridge, chain lock, birthday, ash) |
+| 15-16 | `#091`, `#104` | Readiness (letter, conversation) |
+| 17 | `#142` | Corrupted but warm |
+| **Total** | **21 findable** | (max, minus any sacrificed at Level 9 or 11) |
+
+**Progression of player capabilities:**
+
+| Level | Gained | Source |
+|-------|--------|--------|
+| 1 | Move, wait, descend | Default |
+| 3 | Console (read-only queries) | Tutorial |
+| 7 | `do-attack` | Wizard teaches after Rage boss |
+| 11 | `patch-rule` | Wizard grants if Offer refused |
+| 16 | `unregister-rule` | Wizard grants at farewell |
+| 17 | Full registry access | Core room enables everything |
+
+---
+
 ## 3. Cross-Cutting Game Mechanic Designs
 
 These mechanics can apply across multiple storylines. Each is described generically, with notes on which storylines benefit most.

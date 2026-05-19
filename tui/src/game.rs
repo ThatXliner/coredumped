@@ -125,9 +125,9 @@ impl World {
         world
     }
 
-    /// Create a world with a procedurally generated dungeon starting at depth 1.
+    /// Create a world with a procedurally generated dungeon starting at depth 0.
     pub fn new_game() -> Self {
-        let depth = 1;
+        let depth = 0;
 
         let mut event_log = EventLog::new();
         event_log.push("Xlyph runtime booted.");
@@ -404,8 +404,8 @@ impl World {
         let hash = (pos.x.wrapping_mul(31).wrapping_add(pos.y.wrapping_mul(17))) as u32;
         let roll = (hash % 100) as i32;
         match depth {
-            1..=3 => {
-                // Before checkpoint: only slimes — simple enemies for the helpless phase
+            0..=3 => {
+                // Tutorial depths: only slimes — simple enemies for early game
                 self.ecs.spawn_slime(pos);
             }
             _ => {
@@ -437,7 +437,7 @@ impl World {
     }
 
     fn ascend(&mut self) {
-        if self.depth <= 1 {
+        if self.depth <= 0 {
             self.event_log.push("You are already at the surface.");
             return;
         }
@@ -524,10 +524,25 @@ impl World {
             }
 
             if !self.player_can_attack {
-                self.event_log.push(format!(
-                    "You helplessly shove the {}. Find the wizard to learn how to fight!",
-                    self.ecs.name(target_id)
-                ));
+                let enemy_pos = self.ecs.position(target_id).unwrap();
+                let shove_target = enemy_pos.offset(dx, dy);
+                if self.map.is_walkable(shove_target)
+                    && self.ecs.entity_at(shove_target).is_none()
+                {
+                    self.ecs.set_position(target_id, shove_target);
+                    self.event_log.push_colored(
+                        format!(
+                            "You shove the {} backward!",
+                            self.ecs.name(target_id)
+                        ),
+                        RGB::named(YELLOW),
+                    );
+                } else {
+                    self.event_log.push(format!(
+                        "You helplessly shove the {}. Find the wizard to learn how to fight!",
+                        self.ecs.name(target_id)
+                    ));
+                }
                 return;
             }
 
@@ -1410,7 +1425,7 @@ fn builtin_descend(
         return Ok(Value::Nil);
     }
     let has_attack_binding = world.bindings.values().any(|cmd| cmd.contains("do-attack"));
-    if world.depth >= 3 && (!world.wizard_taught || !has_attack_binding) {
+    if world.depth >= 1 && (!world.wizard_taught || !has_attack_binding) {
         world.event_log.push("A shimmering barrier blocks the stairs. The wizard's voice echoes: \"Bind your attack to a key first! Open the console (`) and try (bind-key :z (do-attack)).\"");
         return Ok(Value::Nil);
     }
@@ -2085,6 +2100,38 @@ mod tests {
 
         let enemy_after = single_enemy(&world);
         assert_eq!(enemy_after.hp.current, initial_hp);
+        assert!(world.event_log.contains("shove the slime"));
+    }
+
+    #[test]
+    fn helpless_shove_moves_enemy_from_tile() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = false;
+
+        world.apply_intent(Intent::Move(Direction::East));
+
+        // Enemy pushed off original tile (AI may move it further after shove)
+        let enemy = single_enemy(&world);
+        assert_ne!(enemy.pos, Position::new(6, 5));
+        assert!(world.event_log.contains("shove the slime"));
+    }
+
+    #[test]
+    fn helpless_shove_blocked_by_wall() {
+        let mut world = world_with_single_enemy(Position::new(1, 5));
+        world.player_can_attack = false;
+        // Player at (5,5), enemy at (1,5) — not adjacent
+        // Move player to (2,5) first
+        world.set_player_pos(Position::new(2, 5));
+        // Enemy at (1,5), player at (2,5), move west to shove
+        let enemy_id = world.living_enemies().next().unwrap().id;
+        world.ecs.set_position(enemy_id, Position::new(1, 5));
+
+        world.apply_intent(Intent::Move(Direction::West));
+
+        // Enemy can't move further west (map border), shove blocked
+        let enemy = single_enemy(&world);
+        assert_eq!(enemy.pos, Position::new(1, 5));
         assert!(world.event_log.contains("helplessly shove"));
     }
 
@@ -2338,12 +2385,12 @@ mod tests {
         world.apply_intent(Intent::Restart);
 
         assert_eq!(world.mode, Mode::Normal);
-        assert_eq!(world.depth, 1);
+        assert_eq!(world.depth, 0);
         assert_eq!(world.player_hp().current, 12);
         assert!(!world.player_can_attack);
     }
 
-    // --- Depth 3 / wizard gating tests ---
+    // --- Depth 1 / wizard gating tests ---
 
     #[test]
     fn wizard_box_has_no_enemies() {
@@ -2353,9 +2400,9 @@ mod tests {
     }
 
     #[test]
-    fn descend_blocked_at_depth_3_without_wizard() {
+    fn descend_blocked_at_depth_1_without_wizard() {
         let mut world = World::new();
-        world.depth = 3;
+        world.depth = 1;
         world.wizard_taught = false;
         world.clear_all_enemies();
         world.map.set_tile(world.player_pos(), TileType::StairsDown);
@@ -2363,14 +2410,14 @@ mod tests {
         let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
 
         assert_eq!(cost, ActionCost::Free);
-        assert_eq!(world.depth, 3);
+        assert_eq!(world.depth, 1);
         assert!(world.event_log.contains("barrier"));
     }
 
     #[test]
-    fn descend_allowed_at_depth_3_with_wizard_and_binding() {
+    fn descend_allowed_at_depth_1_with_wizard_and_binding() {
         let mut world = World::new();
-        world.depth = 3;
+        world.depth = 1;
         world.wizard_taught = true;
         world.bindings.insert("z".into(), "(do-attack)".into());
         world.clear_all_enemies();
@@ -2379,13 +2426,13 @@ mod tests {
         let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
 
         assert_eq!(cost, ActionCost::Tick);
-        assert_eq!(world.depth, 4);
+        assert_eq!(world.depth, 2);
     }
 
     #[test]
     fn descend_blocked_when_taught_but_not_bound() {
         let mut world = World::new();
-        world.depth = 3;
+        world.depth = 1;
         world.wizard_taught = true;
         world.clear_all_enemies();
         world.map.set_tile(world.player_pos(), TileType::StairsDown);
@@ -2393,14 +2440,14 @@ mod tests {
         let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
 
         assert_eq!(cost, ActionCost::Free);
-        assert_eq!(world.depth, 3);
+        assert_eq!(world.depth, 1);
         assert!(world.event_log.contains("barrier"));
     }
 
     #[test]
-    fn console_bind_attack_allows_descend_at_depth_3() {
+    fn console_bind_attack_allows_descend_at_depth_1() {
         let mut world = World::new();
-        world.depth = 3;
+        world.depth = 1;
         world.wizard_taught = true;
         world.clear_all_enemies();
         world.map.set_tile(world.player_pos(), TileType::StairsDown);
@@ -2421,16 +2468,16 @@ mod tests {
         let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
 
         assert_eq!(cost, ActionCost::Tick);
-        assert_eq!(world.depth, 4);
+        assert_eq!(world.depth, 2);
     }
 
     #[test]
     fn descending_from_barrel_depth_clears_barrels_and_signs() {
         let mut world = World::new_game();
-        world.depth = 4;
+        world.depth = 3;
         world.wizard_taught = true;
         world.bindings.insert("z".into(), "(do-attack)".into());
-        crate::levels::build_level(&mut world, 4);
+        crate::levels::build_level(&mut world, 3);
 
         let barrel_depth_entities = world.renderable_entities().count();
         assert!(world
@@ -2449,7 +2496,7 @@ mod tests {
         let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
 
         assert_eq!(cost, ActionCost::Tick);
-        assert_eq!(world.depth, 5);
+        assert_eq!(world.depth, 4);
         assert!(world.renderable_entities().count() < barrel_depth_entities);
         assert!(!world
             .renderable_entities()

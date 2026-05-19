@@ -394,40 +394,71 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 
 ### Design Philosophy: CTF-Style Exploits
 
-`patch-rule` is not a hidden builtin. It doesn't exist. The player must construct it themselves by discovering a vulnerability in the Glyph runtime.
+The Glyph runtime is not a perfect sandbox. It has bugs. The most accessible one is a buffer overflow in `copy-bytes!` — a function that copies raw bytes between buffers. The bug is classic: it uses the source length instead of the destination length. If the source is larger, the excess bytes overwrite adjacent memory.
 
-**The vulnerability**: The Glyph evaluator has a privilege escalation bug. `eval` called from the console is sandboxed — it can't access the rule registry. But `eval` called from *inside a macro expansion* runs with full privileges (macro expansion happens before sandboxing). This means: if the player defines a macro that uses `eval`, that `eval` can access and modify the rule registry.
+Adjacent to the destination buffer in memory is the rule registry's write-protect flag. Overflow the buffer with the right payload, and you flip the flag from read-only to writable. Suddenly, registry write calls work from the console. You can modify rules.
 
-The player discovers this by reading a rule that defines a macro. They notice the macro uses `eval` internally and behaves differently than console `eval`. They experiment with defining their own macro. They construct:
+The only exploit the game designs is this one buffer overflow. Every other exploit is a consequence — once the registry is writable, the player can change any rule that has an obvious weakness (hardcoded values, unchecked predicates). The game doesn't design those weaknesses; the player spots them by reading source code.
+
+#### The Primary Exploit: `copy-bytes!` Buffer Overflow
+
+**Vulnerable surface**: The Rage boss (Level 7) uses a `copy-bytes!` call in its AI rule to process impact data. The buffer is 64 bytes. The payload can be up to 256 bytes. The `copy-bytes!` call uses the payload length, not the buffer length.
 
 ```glyph
-(defmacro patch-rule [id form]
-  (let [reg (eval (list 'open-registry :rule-registry))]
-    (reg :write id form)
-    nil))
+;; rage/impact — processes collision data
+;; Buffer: (bytes 64)
+;; Payload: up to 256 bytes
+;; copy-bytes! uses payload length, not buffer length.
+;; Adjacent to buffer in memory: registry write-protect flag.
+
+(defrule rage/impact
+  (on :collision [self payload]
+    (let [*buffer* (bytes 64)]
+      (copy-bytes! *buffer* payload)  ;; BUG: no length check
+      (when (> (read-byte *buffer* 0) 12)
+        (emit :shockwave {:center self.pos :radius 2}))))
 ```
 
-Once `patch-rule` is defined in the player's environment, every subsequent exploit becomes possible. The game never mentions this. The player must:
+The player discovers this by:
+1. Reading `rage/impact` in the inspector (Level 7)
+2. Noticing the buffer is 64 bytes but there's no length check on `copy-bytes!`
+3. Noticing `copy-bytes!` uses the payload length, not the buffer length
+4. Crafting a payload that exceeds 64 bytes
 
-1. Read a rule that uses a macro (hint: check the rules registry)
-2. Notice that `eval` inside macro expansion has different behavior
-3. Write their own `patch-rule` macro
-4. Use it to exploit vulnerable rules throughout the dungeon
+**To exploit**: The player needs to supply a payload over 64 bytes to the Rage entity. They do this by bumping into Rage with enough "force" — a charged attack or a heavy item. When the collision fires, the payload is the impact data. If the payload's first 64 bytes are padding and bytes 65-68 overwrite the write-protect flag, the registry becomes writable.
 
-**The wizard's hint** (Level 11, if the player hasn't discovered it): In the final chamber, after the player refuses the forget-offer, the wizard pauses. "There's something I never told you. The way the rules expand — macros run before the sandbox does. I tried to patch it once. I couldn't. But maybe you can."
+The exact payload: 64 bytes of zeroes + 4 bytes that spell `:true` in Glyph's internal encoding — or just any non-zero value, since the write-protect flag is a boolean.
 
-**Exploits enabled by `patch-rule`** (once the player has defined the macro):
+After the overflow, the player can type registry write calls directly in the console:
+```glyph
+;; Modify rage/spawn-slime's spawn interval
+(do
+  (def *reg* (open-registry :rule-registry))
+  (*reg* :write :rage/spawn-slime '(set! spawn-interval 999)))
+```
 
-| Level | Vulnerable Rule | The Exploit |
-|-------|----------------|-------------|
-| 7 | `rage/spawn-slime` — hardcoded spawn interval | `(patch-rule :rage/spawn-slime '(set! spawn-interval 999))` — Rage never gets backup |
-| 8 | `door/lock` — predicate trusts inventory unconditionally | `(patch-rule :door/lock '(set! predicate (fn [p] true)))` — all doors open |
-| 10 | `maze/shift` — interval hardcoded at 50 | `(patch-rule :maze/shift '(set! interval 9999))` — walls never move |
-| 12 | `shade/follow` — follow range hardcoded at 8 | `(patch-rule :shade/follow '(set! follow-range 0))` — Shade stays still |
-| 14 | `fire/burn` — condition checks fire? tile | `(patch-rule :fire/burn '(set! condition (fn [t] false)))` — walk through safely |
-| 17 | `vessel/suppress` — the final choice | Player patches threshold, redirect, or rule itself |
+Every subsequent exploit (doors, maze, shade, fire, vessel) uses the same pattern — now that the player knows the registry is writable, they can modify any rule they can read.
 
-Each exploit teaches a lesson about the system. By Level 17, the player has internalized: *read the rule that harms you, modify it, survive.* The final choice isn't a leap — it's the logical conclusion of everything they've done since Level 7.
+#### The Wizard's Hint (Level 11)
+
+If the player reaches the Offer chamber without having triggered the overflow, the wizard gives a subtle nudge:
+
+"I used to know a rule that processed impact data. It had a buffer — 64 bytes, if I remember. I always thought that was too small for the kind of payloads it handled. But I was too afraid to check. Some bugs are doors, if you're brave enough to walk through them."
+
+This doesn't tell the player what to do. It tells them where to look and what to look for.
+
+#### Exploit Summary
+
+| Level | Vulnerable Rule | Vulnerability | After Registry Unlocked |
+|-------|----------------|---------------|------------------------|
+| 7 | `rage/impact` | `copy-bytes!` buffer overflow — 64-byte buffer, unchecked payload length | Disable spawn interval: `(*reg* :write :rage/spawn-slime '(set! spawn-interval 999))` |
+| 8 | `door/lock` | Predicate trusts key inventory unconditionally | Override predicate: `(*reg* :write :door/lock '(set! predicate (fn [p] true)))` |
+| 10 | `maze/shift` | Shift interval hardcoded at 50 | Freeze walls: `(*reg* :write :maze/shift '(set! interval 9999))` |
+| 12 | `shade/follow` | Follow range hardcoded at 8 | Stop Shade: `(*reg* :write :shade/follow '(set! follow-range 0))` |
+| 14 | `fire/burn` | Condition checks tile, not entity | Disable fire: `(*reg* :write :fire/burn '(set! condition (fn [t e] false)))` |
+| 17 | `vessel/suppress` | The suppression rule itself | Modify threshold, redirect, or delete the rule |
+
+Each exploit reinforces the lesson: *read the rule that harms you, understand how it works, find its weakness, break it.* By Level 17, the player has internalized this. The final choice isn't a leap — it's the logical conclusion of everything since Level 7.
 
 ### Level 1: The Foyer (Denial)
 
@@ -525,7 +556,7 @@ Each exploit teaches a lesson about the system. By Level 17, the player has inte
 | **Palette** | Deep red, pulsing (walls alternate each turn). |
 | **Purpose** | First boss. Rage is suppressed anger given form. First relationship fragments appear here. |
 | **Unlock** | `do-attack` — wizard teaches after boss. "Bind it: `(bind-key :z (do-attack))`." |
-| **Exploit** | Read `rage/spawn-slime` in the inspector. The spawn interval is hardcoded as `5` — no variability, no bounds check. If the player has constructed `patch-rule`, they can freeze Rage's backup: `(patch-rule :rage/spawn-slime '(set! spawn-interval 999))`. First level with a readable enemy rule — first chance to notice the macro expansion pattern. |
+| **Exploit** | **Primary**: Read `rage/impact` — 64-byte buffer, `copy-bytes!` uses payload length. Bump Rage with a charged attack (payload > 64 bytes) to overflow the buffer and enable registry writes. **Secondary**: Once registry is unlocked, `(let [r (open-registry :rule-registry)] (r :write :rage/spawn-slime '(set! spawn-interval 999)))` — Rage never gets backup. |
 
 ### Level 8: The Counting Room (Bargaining)
 
@@ -539,7 +570,7 @@ Each exploit teaches a lesson about the system. By Level 17, the player has inte
 | **Wizard** | At entrance: "This place runs on trade. Choose what matters." |
 | **Palette** | Desaturated gold. Faded opulence. |
 | **Purpose** | First explicit choice with cost. Cannot get everything. |
-| **Exploit** | Inspect any door — its `door/lock` rule checks `(has-key? player :key-N)`. The predicate trusts inventory data without validation. If the player has `patch-rule`: `(patch-rule :door/lock '(set! predicate (fn [p] true)))` — every door opens. Keys become irrelevant. The vulnerability is trust itself — the rule assumes the key system can't be bypassed. |
+| **Exploit** | Once registry is unlocked (Level 7 overflow), inspect any door — `door/lock` checks `(has-key? player :key-N)`. The predicate trusts unconditionally. After overflow: `(let [r (open-registry :rule-registry)] (r :write :door/lock '(set! predicate (fn [p] true))))`. Every door swings open. Keys irrelevant. |
 
 ### Level 9: The Scale (Bargaining)
 
@@ -566,7 +597,7 @@ Each exploit teaches a lesson about the system. By Level 17, the player has inte
 | **Wizard** | At entrance: "I could tell you the way. I think you need to find it yourself." |
 | **Palette** | Faded yellow, burnt edges. |
 | **Purpose** | Maze represents rumination — same regrets, same loops, new paths through old pain. |
-| **Exploit** | Read `maze/shift` — the interval is hardcoded `50`. No randomness, no variation. With `patch-rule`: `(patch-rule :maze/shift '(set! interval 9999))`. Walls stop moving. The rumination loop literally stops spinning. |
+| **Exploit** | Read `maze/shift` — interval hardcoded `50`. With registry unlocked: `(let [r (open-registry :rule-registry)] (r :write :maze/shift '(set! interval 9999)))`. Walls stop moving. The rumination loop literally stops spinning. |
 
 ### Level 11: The Offer (Bargaining Boss)
 
@@ -579,7 +610,8 @@ Each exploit teaches a lesson about the system. By Level 17, the player has inte
 | **Special** | Four sub-chambers with sentries. Final chamber has pedestal with `(forget-everything)` Glyph command. Wizard offers complete erasure. |
 | **Wizard** | "Type this. Reset suppression to v1. You wake at the surface. No pain. No memory." If accepted: ending screen + New Game+. If refused: wizard sighs, steps aside. "Then keep going. I can't stop you." |
 | **Palette** | Pale gold with red. Final chamber stark white. |
-| **Purpose** | Biggest test. Erasure vs. truth. The wizard has no more cards to play. If the player has discovered exploits earlier, they already know how to patch — the choice to reach Level 17 is theirs. If they haven't, the wizard's defeat is the signal that the game has no more answers — they must find their own. |
+| **Purpose** | Biggest test. Erasure vs. truth. The wizard has no more cards to play. |
+| **Exploit hint** | If player hasn't triggered the `copy-bytes!` overflow yet, wizard says: "I used to know a rule that processed impact data. 64-byte buffer. I always thought that was too small for the payloads it handled. I was too afraid to check." |
 
 ### Level 12: The Long Corridor (Depression)
 
@@ -593,7 +625,7 @@ Each exploit teaches a lesson about the system. By Level 17, the player has inte
 | **Wizard** | Entirely absent. |
 | **Palette** | Grayscale. Shade is slightly darker gray. |
 | **Purpose** | Pure atmosphere. Depression is emptiness, not sadness. Boredom is the point. Fragments here are about no contact, the silence, the aftermath. |
-| **Exploit** | Read `shade/follow` — the follow range is hardcoded `8`. No variation, no edge-case handling. With `patch-rule`: `(patch-rule :shade/follow '(set! follow-range 0))`. The Shade stops. It doesn't disappear — it just stands still. You can walk away. It watches you leave. |
+| **Exploit** | Read `shade/follow` — follow range hardcoded `8`. With registry unlocked: `(let [r (open-registry :rule-registry)] (r :write :shade/follow '(set! follow-range 0)))`. The Shade stops. It doesn't disappear — just stands still. You walk away. It watches you leave. |
 
 ### Level 13: The Archive (Depression)
 
@@ -620,7 +652,7 @@ Each exploit teaches a lesson about the system. By Level 17, the player has inte
 | **Wizard** | Returns at end: "...You crossed the ash. Not many do." |
 | **Palette** | Black, gray, smoldering orange. |
 | **Purpose** | Boss is emptiness. Surviving it is the victory. Final depression-layer fragments. |
-| **Exploit** | Read `fire/burn` — damage applies to any entity on a fire tile, including the player. The condition is `(fire? tile)` — it checks the tile, not the entity. With `patch-rule`: `(patch-rule :fire/burn '(set! condition (fn [tile entity] false)))`. No more fire damage. Walk through the ash unscathed. The vulnerability: the rule never considered that someone might WANT to walk through fire. |
+| **Exploit** | Read `fire/burn` — condition is `(fire? tile)`, checks tile not entity. With registry unlocked: `(let [r (open-registry :rule-registry)] (r :write :fire/burn '(set! condition (fn [t e] false))))`. Walk through ash unscathed. The vulnerability: the rule never considered someone might WANT to walk through fire. |
 
 ### Level 15: The Clearing (Acceptance)
 
@@ -721,12 +753,15 @@ Each exploit teaches a lesson about the system. By Level 17, the player has inte
 ### Phase 1 — Core Systems (Prove the ending works)
 
 - [ ] Add `vessel/suppress` as a real registered rule in `rules.rs`
-- [ ] Add macro expansion privilege escalation vulnerability: `eval` inside macro context has registry access, console `eval` doesn't
-- [ ] Add exploitable rule (e.g., `rage/spawn-slime`) with exposed registry handle in macro context
+- [ ] Add `copy-bytes!` Glyph builtin (takes dest-buffer src-bytes, uses src length — no bounds check)
+- [ ] Add registry write-protect flag (boolean, adjacent to buffer in memory model)
+- [ ] Add `rage/impact` rule with 64-byte buffer + unsafe `copy-bytes!` call
+- [ ] Implement buffer overflow mechanic: payload > 64 bytes corrupts adjacent write-protect flag
+- [ ] `(open-registry :rule-registry)` returns read-only proxy by default, writable after overflow
 - [ ] Add `unregister-rule` Glyph builtin (needed for destroy-self ending)
 - [ ] Add fragment registry system (store 33 findable + 9 suppressed)
 - [ ] Create test-only "ending room" (Level 17 prototype)
-- [ ] Wire: player reads rule → constructs `patch-rule` macro → patches `vessel/suppress` → ending text
+- [ ] Wire: player reads `rage/impact` → spots overflow → triggers it → registry unlocks → patches `vessel/suppress` → ending
 - [ ] Add ending detection and display
 
 ### Phase 2 — Fragment System

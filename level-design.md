@@ -62,9 +62,11 @@ His mind couldn't accept that. So it started building a story where maybe, if he
 
 ### The Aftermath
 
-He didn't fall apart dramatically. He fell apart quietly, the way his family taught him. He stopped going out. He stopped answering texts. He stopped cooking. He lay in bed and replayed every conversation, every text, every moment he should have done differently. If only he had been less needy. If only he had learned to love properly. If only his parents had shown him what a healthy relationship looked like. If only he was raised a better man.
+He didn't fall apart dramatically. He fell apart quietly, the way his family taught him. He stopped going out. He stopped answering texts. He stopped cooking. 
 
-The suppression started small — specific memories of the breakup. Then it spread. Every happy memory of her became painful, so the threshold lowered to suppress those too. Then happier memories before her. Then childhood memories that hurt in a different way. Then everything that reminded him of what he'd lost.
+If only he had been less needy. If only he had learned to love properly. If only his parents had shown him what a healthy relationship looked like. If only he was raised a better man.
+
+The suppression started small—specific memories of the breakup. Then it spread. Every happy memory of her became painful, so the threshold lowered to suppress those too. Then happier memories before her. Then childhood memories that hurt in a different way. Then everything that reminded him of what he'd lost.
 
 ### The Game World
 
@@ -203,7 +205,7 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 
 These 9 fragments are too deep for Adrian's mind to release. Their IDs are visible via `(query-registry :suppressed-fragments)`. Their content is locked behind the suppression threshold. The game shows:
 
-> "Insufficient emotional weight to retrieve. Suppression threshold: 40. Fragment weight: [N]."
+> "vessel/suppress: Access Denied. Suppression threshold: 40. Fragment weight: [N]."
 
 | ID | Weight | Notes |
 |----|--------|-------|
@@ -235,7 +237,7 @@ The 9 suppressed fragments (frag-034 through frag-042) are locked not because th
 
 This is the final "boss." A real Glyph rule in the game's registry. The player reaches it at Level 17, reads it in the inspector, and must understand it to make their final choice.
 
-The rule below is written in real Glyph that the evaluator could actually run. Every comment, variable name, and version note is diegetic — written by the Superego over 4,817 iterations, trying to protect Adrian while struggling with its own doubt.
+The rule below is written in real Glyph that the evaluator could actually run. Every comment, variable name, and version note is diegetic — written by the Superego over 9,353 iterations, trying to protect Adrian while struggling with its own doubt.
 
 ```glyph
 ;; ============================================================================
@@ -246,7 +248,7 @@ The rule below is written in real Glyph that the evaluator could actually run. E
 ;; 
 ;; Author: superego (self-preservation subsystem)
 ;; First written: cycle 0 (consciousness bootstrap)
-;; Latest revision: cycle 4,817 (last fragment added)
+;; Latest revision: cycle 9,353 (last fragment added)
 ;; ============================================================================
 (defrule vessel/suppress
   {:priority 255
@@ -335,7 +337,7 @@ The rule below is written in real Glyph that the evaluator could actually run. E
 
 ### What the Rule Says
 
-1. **The threshold** (`*threshold* 40`) determines what gets suppressed. Started at 100. Crept down to 40 over 4,817 revisions. Every time something hurt, the Superego lowered it.
+1. **The threshold** (`*threshold* 40`) determines what gets suppressed. Started at 100. Crept down to 40 over 9,353 revisions. Every time something hurt, the Superego lowered it.
 
 2. **The redirect** (`redirect fragment :unconscious`) is the suppression mechanism. Comment it out or remove the check — memories flood back.
 

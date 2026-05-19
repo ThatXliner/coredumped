@@ -607,15 +607,8 @@ impl World {
         self.player_can_attack = true;
         self.wizard_taught = true;
 
-        // Make do-attack available in the console environment
-        self.glyph_env.bind(
-            "do-attack",
-            Value::Builtin(glyph::BuiltinFn {
-                name: "do-attack",
-                doc: "strike in a direction: (do-attack :north)",
-                func: builtin_do_attack,
-            }),
-        );
+        // Register do-attack so keybindings can find it
+        bind_do_attack(&self.glyph_env);
 
         self.event_log
             .push_colored("The wizard raises a glowing hand...", RGB::named(CYAN));
@@ -1445,6 +1438,17 @@ fn parse_attack_direction(value: &Value) -> Option<Direction> {
         },
         _ => None,
     }
+}
+
+pub(crate) fn bind_do_attack(env: &glyph::Env) {
+    env.bind(
+        "do-attack",
+        Value::Builtin(glyph::BuiltinFn {
+            name: "do-attack",
+            doc: "",
+            func: builtin_do_attack,
+        }),
+    );
 }
 
 fn builtin_do_attack(

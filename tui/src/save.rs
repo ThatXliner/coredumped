@@ -338,6 +338,13 @@ impl World {
         world.glyph_env = crate::game::setup_glyph_env();
         world.binding_env = crate::game::setup_binding_env(&world.glyph_env);
 
+        // Re-bind do-attack if player learned it (or wizard taught them but
+        // save is corrupted — heal the flag).
+        if world.player_can_attack || world.wizard_taught {
+            crate::game::bind_do_attack(&world.glyph_env);
+            world.player_can_attack = true;
+        }
+
         // --- Replay user source ---
         let glyph_env = world.glyph_env.clone();
         for source in &world.user_source.clone() {
@@ -347,24 +354,6 @@ impl World {
                         let _ = crate::glyph::eval_with_opts(
                             form,
                             &glyph_env,
-                            crate::glyph::SandboxOptions::default(),
-                            &mut world,
-                        );
-                    }
-                }
-                Err(_) => {}
-            }
-        }
-
-        // --- Replay key bindings ---
-        let binding_env = world.binding_env.clone();
-        for (_key, source) in data.bindings.clone() {
-            match crate::glyph::read_string(&source) {
-                Ok(forms) => {
-                    for form in &forms {
-                        let _ = crate::glyph::eval_with_opts(
-                            form,
-                            &binding_env,
                             crate::glyph::SandboxOptions::default(),
                             &mut world,
                         );

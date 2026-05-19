@@ -396,6 +396,20 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 
 The Glyph runtime has different kinds of bugs — not just one. Each layer teaches a different vulnerability class. Some exploits require the console. Some require game knowledge. Some require specific items. Each one is its own puzzle.
 
+#### What Is "The Registry"?
+
+The registry is the game engine's central rule storage (`RuleRegistry` in `rules.rs`). Every Glyph rule — slime AI, door locks, fire damage, the suppression engine at the core — lives in the registry. The player reads rules from it via the inspector (always available).
+
+By default, the registry is **read-only** to the player. You can inspect any rule, but you can't change one. The registry has a **write-protect flag** — a single boolean in memory that gates all modifications.
+
+The player interacts with the registry through the Glyph function `(open-registry :rule-registry)`. This is a registered Glyph builtin — it exists in the environment and can technically be called. But it is NOT listed in the help system. The only way to discover it is by reading rule source code and inferring the pattern.
+
+Gating: `(open-registry :rule-registry)` is callable before the overflow but returns an error: "Registry access denied: write-protect flag is set." This tells the player the function EXISTS but is BLOCKED — creating a goal. After the overflow flips the flag, the same call returns a handle with `:write` and `:unregister` access.
+
+**Why does this function exist?** Diegetically, the dungeon is Adrian's mind. The registry is his psyche's rule storage — the fundamental code of his consciousness. `(open-registry ...)` is an admin interface. It was always there. It was never "given" to him. It's his own mind. The Superego added the write-protect flag to keep him from accessing it — the same way he suppresses memories, the Superego suppresses the ability to change the rules themselves. The buffer overflow doesn't grant new power. It **bypasses the Superego's lock on power that was always his.**
+
+**Syntax plant**: The `rage/impact` rule (Level 7) calls `(open-registry :spawn-log)` to record spawn events. This is the player's first exposure to the pattern. They read the rule, see it, try `(open-registry :rule-registry)` on a hunch. Before overflow: error. After overflow: unlocked.
+
 **Exploit types across levels:**
 
 | Level | Class | Technique | Requires |
@@ -424,17 +438,23 @@ The Rage boss's AI rule uses `copy-bytes!` to process collision impact data. The
 
 (defrule rage/impact
   (on :collision [self payload]
-    (let [*buffer* (bytes 64)]
-      (copy-bytes! *buffer* payload)  ;; BUG: no length check
+    (let [*buffer* (bytes 64)
+          *log* (open-registry :spawn-log)]       ;; <-- syntax plant: player sees (open-registry ...) pattern
+      (copy-bytes! *buffer* payload)              ;; BUG: no length check
       (when (> (read-byte *buffer* 0) 12)
+        (*log* :write :shockwave {:turn (get-turn)})
         (emit :shockwave {:center self.pos :radius 2}))))
 ```
 
-**Discovery**: Player reads `rage/impact` in inspector. Spots 64-byte buffer and payload up to 256 bytes. Notices `copy-bytes!` doesn't check either length. Infers that adjacent memory can be overwritten.
+**Discovery**: Player reads `rage/impact` in inspector. Two things to notice:
+1. **Syntax plant**: The rule calls `(open-registry :spawn-log)` — this is the player's first exposure to the `(open-registry ...)` pattern. They learn that registries exist and can be opened by name. This plants the idea: "can I call `(open-registry :rule-registry)`?"
+2. **The bug**: 64-byte buffer, payload up to 256 bytes, `copy-bytes!` uses payload length. Adjacent memory can be overwritten.
 
 **Trigger**: Player bumps Rage with a charged attack where force > 12 (the shockwave threshold). The collision payload includes impact data. If payload > 64 bytes, the excess bytes overflow into the registry write-protect flag.
 
-**Effect**: Registry write-protect flag flips from read-only to writable. `(open-registry :rule-registry)` now returns a writable handle. **This is the only exploit that unlocks registry writes — it enables the Level 17 ending.**
+**Before the overflow**: `(open-registry :rule-registry)` returns error: "Registry access denied: write-protect flag is set." The player discovered the syntax by reading `rage/impact` (which uses `(open-registry :spawn-log)`), tried it with `:rule-registry` on a hunch, and hit a locked door. This tells them TWO things: the function exists, AND it's currently blocked. The overflow flip unlocks it.
+
+**After the overflow**: `(open-registry :rule-registry)` returns a writable handle. **This is the only exploit that unlocks registry writes — it enables the Level 17 ending.**
 
 **Wizard hint** (Level 11, if player hasn't triggered it): "I used to know a rule that processed impact data. 64-byte buffer. I always thought that was too small for the payloads it handled. I was too afraid to check."
 

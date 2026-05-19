@@ -1209,13 +1209,13 @@ fn builtin_do_attack(
     };
 
     if !world.player_can_attack {
-        world
-            .event_log
-            .push("You don't know how to attack yet. Find the wizard.");
-    } else {
-        world.player_facing = direction;
-        world.attack_in_direction(direction);
+        return Err(glyph::EvalError::Custom(
+            "You don't know how to attack yet. Find the wizard.".into(),
+        ));
     }
+
+    world.player_facing = direction;
+    world.attack_in_direction(direction);
     world.finish_tick();
     Ok(Value::Nil)
 }
@@ -1493,17 +1493,6 @@ mod tests {
         world
     }
 
-    fn give_world_do_attack(world: &mut World) {
-        world.glyph_env.bind(
-            "do-attack",
-            Value::Builtin(glyph::BuiltinFn {
-                name: "do-attack",
-                doc: "",
-                func: builtin_do_attack,
-            }),
-        );
-    }
-
     fn single_enemy(world: &World) -> EntityView {
         world
             .living_enemies()
@@ -1760,7 +1749,14 @@ mod tests {
     #[test]
     fn attack_key_hits_enemy_in_facing_direction() {
         let mut world = world_with_single_enemy(Position::new(6, 5));
-        give_world_do_attack(&mut world);
+        world.glyph_env.bind(
+            "do-attack",
+            Value::Builtin(glyph::BuiltinFn {
+                name: "do-attack",
+                doc: "",
+                func: builtin_do_attack,
+            }),
+        );
         world.player_can_attack = true;
         world.player_facing = Direction::East;
         world.bindings.insert("a".into(), "(do-attack)".into());
@@ -1776,7 +1772,14 @@ mod tests {
     #[test]
     fn attack_key_swings_at_empty_air() {
         let mut world = world_with_single_enemy(Position::new(20, 5));
-        give_world_do_attack(&mut world);
+        world.glyph_env.bind(
+            "do-attack",
+            Value::Builtin(glyph::BuiltinFn {
+                name: "do-attack",
+                doc: "",
+                func: builtin_do_attack,
+            }),
+        );
         world.player_can_attack = true;
         world.player_facing = Direction::North;
         world.bindings.insert("a".into(), "(do-attack)".into());

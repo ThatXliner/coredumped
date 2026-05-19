@@ -673,7 +673,31 @@ impl World {
             self.console_buffer.clear();
             return;
         }
-        let command = auto_close(trimmed);
+
+        let original = trimmed.to_string();
+        let command = match glyph::read_string(&original) {
+            Ok(_) => original,
+            Err(orig_err) => {
+                let closed = auto_close(&original);
+                if glyph::read_string(&closed).is_ok() {
+                    closed
+                } else {
+                    // Auto-close didn't help — show error against original input
+                    self.event_log.push(format!("> {}", original));
+                    self.console_output.clear();
+                    self.console_output_color = None;
+                    let report = orig_err.report(&original);
+                    for line in report.lines() {
+                        self.event_log.push_colored(line, RGB::named(RED));
+                    }
+                    self.console_output = report;
+                    self.console_output_color = Some(RGB::named(RED));
+                    self.console_buffer.clear();
+                    return;
+                }
+            }
+        };
+
         self.event_log.push(format!("> {}", command));
         self.console_output.clear();
         self.console_output_color = None;

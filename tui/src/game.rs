@@ -955,7 +955,7 @@ impl World {
 
         // Handle pending wipe confirmation
         if let Some(slot) = self.pending_wipe_slot.take() {
-            if trimmed == "I am aware of what I am doing." {
+            if trimmed == "i am aware of what i am doing." {
                 let path = crate::save::save_path(slot);
                 if path.exists() {
                     if let Err(e) = std::fs::remove_file(&path) {
@@ -1802,7 +1802,7 @@ fn builtin_wipe(
     world.pending_wipe_slot = Some(slot);
     world.event_log.push_colored(
         format!(
-            "Type 'I am aware of what I am doing.' to confirm wiping save slot {}.",
+            "Type 'i am aware of what i am doing.' in console to wipe slot {}.",
             slot
         ),
         RGB::named(RED),

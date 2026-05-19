@@ -100,115 +100,115 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 
 ### Findable Fragments
 
-#### Denial (Levels 1-3): Pre-relationship, early friendship
+#### Denial: Pre-relationship, early friendship
 
-**frag-001** — Level 2
+**frag-001** — Level 6 (Gauntlet)
 > I don't remember the first conversation we ever had. Just some random place where two people started talking and neither of them knew yet. But I remember the first time she laughed at something stupid I said. We were sitting on a bench outside a coffee shop. We'd only known each other a few months — still in that phase where everything the other person said felt like a discovery. I don't remember what I said. I remember the sound she made — this surprised wheeze like I'd caught her off guard. I wanted to make her do that forever.
 
-**frag-002** — Level 2
+**frag-002** — Level 7 (Boiling Heart)
 > She stayed late after a party to help me clean. Just the two of us, picking up plastic cups in the dark. She said "this is the best part of the night" and I pretended not to hear because if I heard it I'd have to admit I felt it too. I heard it. I felt it.
 
-**frag-003** — Level 3
+**frag-003** — Level 8 (Counting Room)
 > The first time she told me about her family. How close they were. How they called each other every Sunday. How they still took family trips — not out of obligation, but because they genuinely liked being together. I nodded and smiled and felt something crack open in my chest. I didn't know families did that. I still don't.
 
-**frag-004** — Level 3
+**frag-004** — Level 8 (Counting Room)
 > She texted me a picture of a dog in a sweater. Just randomly. No reason. I realized someone was thinking about me when I wasn't in the room. I didn't know that was something people did. I saved the picture. I still have it.
 
-#### Anger (Levels 4-7): Relationship, four months, first cracks
+#### Anger: Relationship, four months, first cracks
 
-**frag-005** — Level 4
-> The night we admitted it out loud. She said "I think I'm falling for you" and I said "I think I'm already there." We stayed up until 4 AM talking about nothing. I didn't want to sleep because I was afraid I'd wake up and it wouldn't be real. It was real. It was so real.
+**frag-005** — Level 9 (The Scale)
+> After one Friday night football game, we admitted it out loud, over text. "I know there isn't a homecoming dance this year, but if there was, I would have asked you." "Really? And I would have said yes"
 
-**frag-006** — Level 4
+**frag-006** — Level 9 (The Scale)
 > Our first fight. Two weeks in. She said something offhand and I spiraled for hours. I asked her "do you even like me?" and the look on her face — I'll never forget it. Hurt. Confused. The first time she saw the thing inside me that I try to hide. She forgave me. That made it worse.
 
-**frag-007** — Level 5
+**frag-007** — Level 10 (Maze of Regret)
 > The first time she said "I need some space." She said it gently. Reasonably. I said "okay" and then spent three hours staring at my phone trying not to text her, then texting her anyway, then apologizing for texting, then apologizing for apologizing. By the time she replied I had convinced myself she hated me. She didn't hate me. She was just at work.
 
-**frag-008** — Level 5
+**frag-008** — Level 10 (Maze of Regret)
 > I asked her what she was thinking. She said "nothing." I said "no really." She said "nothing, I promise." I didn't believe her. I couldn't believe her. No one in my family ever meant "nothing" when they said nothing. I kept pushing until she got quiet. Then I was quiet. Then we watched a movie without touching.
 
-**frag-009** — Level 6
+**frag-009** — Level 10 (Maze of Regret)
 > She introduced me to her friends. They were nice. Normal. They asked about my job. They laughed at my jokes. I spent the whole night convinced they could tell there was something wrong with me. Afterward she said "they loved you" and I said "really?" and she said "really" and I pretended to believe her. I think she pretended too.
 
-**frag-010** — Level 6
+**frag-010** — Level 11 (The Offer)
 > The first time I thought "she's going to leave me." Not because she did anything. Because I couldn't believe she'd stay. I lay awake next to her and counted all the ways I wasn't enough. I was still counting when the sun came up. She was still asleep. She was still there. She left anyway, eventually.
 
-**frag-011** — Level 7
+**frag-011** — Level 11 (The Offer)
 > Three months in. She said "I feel like I'm walking on eggshells." I said "that's not true." She said "I'm holding a carton of eggs and every time you ask if I'm upset I drop another one." I didn't understand what she meant. I understand now.
 
-**frag-012** — Level 7
+**frag-012** — Level 11 (The Offer)
 > I tried to explain my childhood to her. Not the big stuff — just the shape of it. Dad coming home at 9 PM too tired to talk. Mom filling her days with chores until she finally took a job and left me with an empty house. The family trips we stopped taking because nobody knew how to be together. The arguments I could hear the shape of but never the words, ending in silence instead of apology. The rooms everyone walked through without touching. She listened. She said "that sounds hard." I said "it wasn't that bad." We both knew I was lying.
 
-**frag-013** — Level 7
+**frag-013** — Level 12 (Long Corridor)
 > She wrote me a letter. A real one, on paper. She said I was kind and funny and she was lucky to know me. I read it seventeen times. I cried the first five. I never told her. I keep it in my jacket pocket even though the creases have worn through the words.
 
-**frag-014** — Level 7
+**frag-014** — Level 12 (Long Corridor)
 > The last good night. We made dinner together. She burned the rice. I spilled wine on the floor. We sat on the couch and she fell asleep on my shoulder. I didn't move for two hours. I knew even then that I would remember that night forever. I just didn't know I'd be remembering it alone.
 
-#### Bargaining (Levels 8-11): The breakup, the aftermath
+#### Bargaining: The breakup, the aftermath
 
-**frag-015** — Level 8
+**frag-015** — Level 12 (Long Corridor)
 > She said "we need to talk." Four words. I'd read about them. I'd rehearsed responses in the shower. None of it helped. My hands went cold. My voice went flat. I knew what was coming because I'd been waiting for it since the day we met.
 
-**frag-016** — Level 8
+**frag-016** — Level 13 (The Archive)
 > She cried when she said it. That was the worst part. If she'd been cold I could have been angry. But she cried. She said "I care about you so much. But I can't... I can't fix this. You need to fix this. I don't know how to help you." She was right. She was right and I hated her for being right.
 
-**frag-017** — Level 9
+**frag-017** — Level 13 (The Archive)
 > She said "I want to break up, and maybe we can be friends. I do have one condition: that we have a period of no-contact." Maybe she was being kind. Maybe she was being cruel. Or maybe she was being practical...I'll never know. I've rewritten her reasons so many times I can't remember which version I started with.
 
-**frag-018** — Level 10
+**frag-018** — Level 13 (The Archive)
 > I rehearsed asking her if we could still be friends. I had the whole speech memorized. "I know why you need this. I understand. But maybe someday..." I never said it. Because I didn't know why she needed it. Because the speech assumed I understood her reasons and I don't. Maybe she didn't need this at all and just wanted me gone. So I let her walk away without making it harder. I've never been more proud of myself. I've never hated myself more.
 
-**frag-019** — Level 10
+**frag-019** — Level 14 (Ash Field)
 > The first week after. I checked my phone every thirty seconds. She didn't text. Why would she text? The relationship was over. But I kept checking because what if she needed something? What if she changed her mind? What if? What if? What if?
 
-**frag-020** — Level 11
+**frag-020** — Level 14 (Ash Field)
 > I wrote her a letter. Five pages. I told her I was sorry. I told her I would change. I told her I understood why she left and I didn't blame her. I told her I loved her. I read it seven times, made three drafts, and never sent any of them. They're still in my drawer. I know exactly which drawer.
 
-**frag-021** — Level 11
+**frag-021** — Level 14 (Ash Field)
 > I imagined her with someone else. I don't know if it's real — I have no way of knowing. No contact means no information. She could be alone. She could be happy. She could be with someone who doesn't ruin things by caring too much. I'll never know. I imagine the worst version because at least then I can prepare for it. I imagine the best version because at least then she's happy.
 
-**frag-022** — Level 11
+**frag-022** — Level 14 (Ash Field)
 > My mother called. She asked how I was doing. I said "fine." She said "good." I almost told her the truth — almost. But I grew up in a house where you didn't bring your problems to the dinner table. Except by high school there was no dinner table. She was at work. Dad was at work. I was alone. So I said "fine" and she said "good" and we hung up. I couldn't remember the last time someone in my family asked a follow-up question.
 
-**frag-023** — Level 11
+**frag-023** — Level 14 (Ash Field)
 > The last time I felt truly happy. I didn't know it would be the last time. I would have stayed longer. I would have paid more attention. I would have memorized the way she looked in the morning light. But I didn't know. You never know.
 
-#### Depression (Levels 12-14): Spiral, isolation, lowest point
-
-**frag-024** — Level 12
+**frag-024** — Level 14 (Ash Field)
 > I stopped answering texts. First hers (what was I supposed to say). Then my friends'. Then my boss's. The phone would light up and I'd watch it until it went dark. Every unanswered message felt like one less person expecting things from me. Eventually they stopped sending them. That was worse.
 
-**frag-025** — Level 13
+#### Depression: Spiral, isolation, lowest point
+
+**frag-025** — Level 15 (The Clearing)
 > I looked in the mirror and didn't recognize myself. Not in a poetic way. I literally stood there trying to remember when my face got that tired. The bags under my eyes. The hollow cheeks. I looked like a photograph of someone I used to know.
 
-**frag-026** — Level 13
+**frag-026** — Level 15 (The Clearing)
 > I stopped cooking. I stopped eating. Not on purpose — I just forgot. I'd realize at midnight that I hadn't eaten anything and I'd eat crackers over the sink and tell myself tomorrow would be different. Tomorrow was the same.
 
-**frag-027** — Level 14
+**frag-027** — Level 15 (The Clearing)
 > I started going for walks at 3 AM. Through the city. Past closed cafes. Past the bench where she first laughed at my joke. Past her street, where the light in her window was always off. I wasn't trying to see her. I was trying to feel something other than this.
 
-**frag-028** — Level 14
+**frag-028** — Level 15 (The Clearing)
 > The bridge. I stood on it one night. The water was moving very fast. I thought about how easy it would be. Not because I wanted to die. Because I wanted the thinking to stop. I stood there for a long time. Eventually I walked home. I don't know why. I'm not brave. I was just too tired to decide.
 
-**frag-029** — Level 14
+**frag-029** — Level 16 (The Descent)
 > I deleted her number. Then I recovered it from the trash. Then I deleted it again. I did this seven times over three days. The eighth time I left it in the trash. That was a year ago. I still remember it.
 
-**frag-030** — Level 14
+**frag-030** — Level 16 (The Descent)
 > I looked up "anxious attachment" at 2 AM. I read twenty articles. I recognized myself in every one. I felt relief — there's a name for this. Then I felt worse — there's a name for this, which means it's real, which means I've always been like this, which means I'll always be like this. I closed the laptop and lay in the dark.
 
-#### Acceptance (Levels 15-16): Glimmers of healing
+#### Acceptance: Glimmers of healing
 
-**frag-031** — Level 15
+**frag-031** — Level 16 (The Descent)
 > I called a friend. Not to talk about her. Just to talk. We talked about nothing for an hour. Sports. Weather. A show I haven't watched. After I hung up I realized I'd gone two hours without thinking about her. Two hours. It's not much. It's more than I've had in months.
 
-**frag-032** — Level 16
+**frag-032** — Level 16 (The Descent)
 > I started writing again. Not letters. Just... things. Descriptions of days. Small things I noticed. The way light falls across my kitchen floor at 4 PM. A bird that visits the fire escape. I don't know if it's good. I don't care. It's mine. I'm making something again.
 
-#### Core (Level 17): The last fragment
+#### Core: The last fragment
 
-**frag-033** — Level 17
+**frag-033** — Level 17 (The Core)
 > Something about a garden. Or a park bench. Or snow. The fragment is corrupted — whether by time or by the suppression I can't tell. But I remember warmth. I remember not being alone. I remember being loved.
 
 ### Permanently Suppressed Fragments (Registry Only)
@@ -233,10 +233,10 @@ These 9 fragments are too deep for Adrian's mind to release. Their IDs are visib
 
 | Stage | Fragments | Story |
 |-------|-----------|-------|
-| Pre-relationship | 001-004 | Friendship forms. She makes him laugh. He sees her family's warmth. (Found levels 6-7) |
-| Relationship | 005-014 | Falling in love, anxious attachment surfaces, eggshells, childhood explanation, her letter, last good night. (Found levels 7-11) |
-| Breakup | 015-023 | "We need to talk." Clean breakup. No contact. Unsent letter. Imagining her. Mother's call. (Found levels 11-13) |
-| Aftermath | 024-030 | Isolation, not eating, 3AM walks, the bridge, deleting her number, attachment theory at 2AM. (Found levels 14-15) |
+| Pre-relationship | 001-004 | Friendship forms. She makes him laugh. He sees her family's warmth. (Found levels 6-8) |
+| Relationship | 005-014 | Falling in love, anxious attachment surfaces, eggshells, childhood explanation, her letter, last good night. (Found levels 9-12) |
+| Breakup | 015-023 | "We need to talk." Clean breakup. No contact. Unsent letter. Imagining her. Mother's call. (Found levels 12-14) |
+| Aftermath | 024-030 | Isolation, not eating, 3AM walks, the bridge, deleting her number, attachment theory at 2AM. (Found levels 14-16) |
 | Healing | 031-033 | Called a friend, writing again, corrupted warmth. (Found levels 16-17) |
 
 The 9 suppressed fragments (frag-034 through frag-042) are locked not because the game won't show them, but because Adrian's mind judged them too dangerous. Their weights (79-100) far exceed the current threshold of 40. Only by lowering the threshold can they be read.
@@ -646,11 +646,11 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Linear corridor — 8 segments, barriers lock behind |
 | **Size** | 55×20 |
 | **Enemies** | Waves: 2 Slimes, 1 Goblin, 2 Bats, 1 Slime+1 Goblin, 1 Ogre, 3 mixed waves |
-| **Fragments** | `frag-001` (segment 2), `frag-002` (segment 5) |
+| **Fragments** | `frag-001` (segment 2) |
 | **Special** | No backtracking. Each segment locks behind player. |
 | **Wizard** | Before: "I can't come with you through this. I'll meet you at the end." After: "...You're still standing." |
 | **Palette** | Dark red. Tight. Claustrophobic. |
-| **Purpose** | First gauntlet. Wizard absent during combat. Helplessness frustration mounting. First fragments drop here — reward for surviving. |
+| **Purpose** | First gauntlet. Wizard absent during combat. Helplessness frustration mounting. First fragment drops here — a single memory as reward for surviving, not a lore dump. |
 
 ### Level 7: The Boiling Heart (Anger Boss)
 
@@ -659,11 +659,11 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Large single room |
 | **Size** | 45×30 |
 | **Enemies** | Rage (`R` HP15 — 2 damage, always chase, spawns Slimes every 5 turns) |
-| **Fragments** | `frag-003` (left alcove), `frag-004` (right alcove), `frag-005` (near exit) |
-| **Special** | Boss room. Stairs appear after Rage defeated. Room pulses red. |
+| **Fragments** | `frag-002` (near exit — party cleanup) |
+| **Special** | Boss room. Stairs appear after Rage defeated. Room pulses red. Single fragment near exit — reward for surviving the fight, not a distraction from it. |
 | **Wizard** | Before: "There's something down there — remains of something I couldn't protect you from." After: "You did it. I don't know whether to be relieved or terrified." |
 | **Palette** | Deep red, pulsing (walls alternate each turn). |
-| **Purpose** | First boss. Rage is suppressed anger given form. First relationship fragments appear here. |
+| **Purpose** | First boss. Rage is suppressed anger given form. Single fragment near exit — brief pause before moving on. |
 | **Unlock** | `do-attack` — wizard teaches after boss. "Bind it: `(bind-key :z (do-attack))`." |
 | **Exploit** | **Buffer overflow**: Read `rage/impact` — 64-byte buffer, `copy-bytes!` uses payload length. Bump Rage with a charged attack (force > 12, payload > 64 bytes). Overflow flips registry write-protect flag. **This is the only exploit that unlocks registry writes for Level 17.** |
 
@@ -674,7 +674,7 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Room-based with locked doors |
 | **Size** | 55×33 |
 | **Enemies** | 3 Goblins (`g` HP5 — each holds a key), 2 Bats (`b` HP2) |
-| **Fragments** | `frag-006` (behind first locked door), `frag-007` (behind expensive door), `frag-008` (hidden room) |
+| **Fragments** | `frag-003` (behind first locked door — her family), `frag-004` (hidden room — dog picture) |
 | **Special** | Doors require keys. Keys held by specific enemies (visible via inspection). Not all doors openable. Player must choose. |
 | **Wizard** | At entrance: "This place runs on trade. Choose what matters." |
 | **Palette** | Desaturated gold. Faded opulence. |
@@ -688,7 +688,7 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Symmetrical room grid with central hub |
 | **Size** | 55×33 |
 | **Enemies** | 2 Ogres (`O` HP8), 2 Goblins (`g` HP5), 2 Bats (`b` HP2) |
-| **Fragments** | `frag-009` (center room — costs 1 sacrifice), `frag-010` (side room) |
+| **Fragments** | `frag-005` (center room — admission of love), `frag-006` (side room — first fight) |
 | **Special** | Two scales in hub room. Place fragments on scale to open doors. Placed fragments are PERMANENTLY LOST. Wizard's offer in center room: give 3 fragments for +5 max HP. |
 | **Wizard** | In center: "Give me the ones that hurt. I'll take them. You won't remember they existed." |
 | **Palette** | Pale gold. Center room blood-red. |
@@ -701,7 +701,7 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Shifting maze (walls reconfigure every 50 turns) |
 | **Size** | 55×33 |
 | **Enemies** | 4 Bats (`b` HP2), 2 Goblins (`g` HP5) |
-| **Fragments** | `frag-011` (center), `frag-012` (side chamber), `frag-013` (hidden behind shifting wall) |
+| **Fragments** | `frag-007` (center — "I need some space"), `frag-008` (side chamber — "nothing" fight), `frag-009` (hidden behind shifting wall — meeting her friends) |
 | **Special** | Walls shift every 50 turns. Center pedestal: take fragment (no cost) or leave it for clear exit path. |
 | **Wizard** | At entrance: "I could tell you the way. I think you need to find it yourself." |
 | **Palette** | Faded yellow, burnt edges. |
@@ -715,7 +715,7 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Single room with 4 sub-chambers |
 | **Size** | 55×33 |
 | **Enemies** | 4 Sentries (`T` HP6 — stationary, ranged every 2 turns) |
-| **Fragments** | `frag-014` (chamber 2 — last good night), `frag-015` (chamber 3 — "we need to talk"), `frag-016` (chamber 4 — she cried) |
+| **Fragments** | `frag-010` (chamber 2 — fear of abandonment), `frag-011` (chamber 3 — eggshells), `frag-012` (chamber 4 — childhood explanation) |
 | **Special** | Four sub-chambers with sentries. Final chamber has pedestal with `(forget-everything)` Glyph command. Wizard offers complete erasure. |
 | **Wizard** | "Type this. Reset suppression to v1. You wake at the surface. No pain. No memory." If accepted: ending screen + New Game+. If refused: wizard sighs, steps aside. "Then keep going. I can't stop you." |
 | **Palette** | Pale gold with red. Final chamber stark white. |
@@ -729,11 +729,11 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | 1-wide corridor, 50 tiles long with alcoves |
 | **Size** | 55×33 (mostly 1 tile wide) |
 | **Enemies** | 1 Shade (`~` HP∞ — follows, doesn't attack) |
-| **Fragments** | `frag-017` (alcove at tile 15), `frag-018` (alcove at tile 35), `frag-019` (alcove at tile 45) |
+| **Fragments** | `frag-013` (alcove at tile 15 — her letter), `frag-014` (alcove at tile 35 — last good night), `frag-015` (alcove at tile 45 — "we need to talk") |
 | **Special** | Empty. No combat. No puzzles. No items. Just walking. Shade follows silently. Deliberately boring. Three alcoves with fragments break up the walk. |
 | **Wizard** | Entirely absent. |
 | **Palette** | Grayscale. Shade is slightly darker gray. |
-| **Purpose** | Pure atmosphere. Depression is emptiness, not sadness. Boredom is the point. Fragments here are about no contact, the silence, the aftermath. |
+| **Purpose** | Pure atmosphere. Depression is emptiness, not sadness. Boredom is the point. Fragments here bridge the relationship's end — her letter, the last good night, and "we need to talk." The corridor to walk through before the real spiral begins. |
 | **Exploit** | **Item confusion**: Read `shade/follow` — notices `(entity? target)` check. Find "Shade Echo" item in Level 13 (desk drawer). Item has `:entity-id` attribute. Carry it to Level 12 — the rule treats it as an entity target. Drop the item. Shade stands by it instead of following. |
 
 ### Level 13: The Archive (Depression)
@@ -743,11 +743,11 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Room-based library/archive halls |
 | **Size** | 55×33 |
 | **Enemies** | 3 Shades (`~` HP∞), 2 Zombie Slimes (`s` HP3 — move every 3rd turn) |
-| **Fragments** | `frag-020`, `frag-021`, `frag-022` (one per archive room) |
+| **Fragments** | `frag-016` (she cried), `frag-017` (no contact), `frag-018` (rehearsed speech) — one per archive room |
 | **Special** | Each room has desk with journal entry from "the Archivist" — clinical, detached: "Subject reports persistent sadness. No interventions applied." One desk has **Shade Echo** (small stone that shivers). Another desk has **Vapor Canteen** (old flask, half-full). |
 | **Wizard** | Absent. |
 | **Palette** | Gray with blue undertones. |
-| **Purpose** | Heaviest emotional content. Pain being catalogued, not felt. Fragments: unsent letter, imagining her, mother's call. **Items found here enable exploits in Levels 12 and 14.** |
+| **Purpose** | Heaviest emotional content. Pain being catalogued, not felt. Fragments: she cried, the no-contact condition, the rehearsed speech that was never said. **Items found here enable exploits in Levels 12 and 14.** |
 | **Exploit** | None on this level. But two items found here enable exploits elsewhere: **Shade Echo** (Level 12 item confusion) and **Vapor Canteen** (Level 14 state corruption). |
 
 ### Level 14: The Ash Field (Depression Boss)
@@ -757,11 +757,11 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Open field, no walls except borders. Black floor (ash). |
 | **Size** | 55×33 |
 | **Enemies** | None. 3 fire zones (1 damage if walked through — avoidable). |
-| **Fragments** | `frag-023` (center — last happy), `frag-024` (near first fire — isolation), `frag-025` (near second fire — mirror), `frag-026` (near exit — not eating) |
+| **Fragments** | `frag-019` (center — checking phone), `frag-020` (near first fire — unsent letter), `frag-021` (near second fire — imagining her), `frag-022` (left edge — mother's call), `frag-023` (right edge — last happy), `frag-024` (near exit — stopped answering) |
 | **Special** | Open ash field. Stairs visible from start. Player must walk through to reach them. Four fragments scattered across field — last heavy collection before acceptance. |
 | **Wizard** | Returns at end: "...You crossed the ash. Not many do." |
 | **Palette** | Black, gray, smoldering orange. |
-| **Purpose** | Boss is emptiness. Surviving it is the victory. Final depression-layer fragments. |
+| **Purpose** | Boss is emptiness. Surviving it is the victory. Six fragments scattered across the field — the player's entire spiral laid bare in one place. Heaviest concentration in the game. |
 | **Exploit** | **State corruption**: Read `fire/burn` — sees `(fire? tile)` cache check + `(cache! :fire-tiles ...)` update. Cache only updates at tick start. Find "Vapor Canteen" item in Level 13 (Archive desk). Use it on a fire tile mid-tick — sets tile `:wet` state. Cache returns stale `:fire` = false. Walk through. |
 
 ### Level 15: The Clearing (Acceptance)
@@ -771,11 +771,11 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Open glade — single room with organic edges |
 | **Size** | 40×30 |
 | **Enemies** | None |
-| **Fragments** | `frag-027` (under central tree — 3AM walks), `frag-028` (pool of water — the bridge), `frag-029` (near exit — deleting her number) |
+| **Fragments** | `frag-025` (under central tree — mirror), `frag-026` (pool of water — not eating), `frag-027` (left clearing — 3AM walks), `frag-028` (near exit — the bridge) |
 | **Special** | No enemies, puzzles, or hazards. Single beautiful space. Tree in center (brown `T` + green `"` canopy). Pool of water. First true brightness since Denial. Three fragments scattered around — the lowest-point memories, now readable in a safe space. |
 | **Wizard** | Sitting under tree: "I was so sure I was protecting you. But protection isn't supposed to make the world smaller. I made it a cage." |
 | **Palette** | Green grass, blue sky, brown tree, warm sunlight. First non-warm/gray colors. |
-| **Purpose** | First beautiful level. The darkest memories (bridge, suicidal ideation) are presented in a safe environment. The Clearing makes them survivable. |
+| **Purpose** | First beautiful level. The darkest memories (mirror, not eating, 3AM walks, the bridge) are presented in a safe environment. The Clearing makes them survivable. |
 
 ### Level 16: The Descent (Acceptance)
 
@@ -784,11 +784,11 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Spiral walkway descending 3 loops |
 | **Size** | 55×55 |
 | **Enemies** | 1 Shade (`~` HP∞ — peaceful, not ominous) |
-| **Fragments** | `frag-030` (first loop — attachment article), `frag-031` (second loop — called a friend) |
+| **Fragments** | `frag-029` (first loop — deleting her number), `frag-030` (second loop — attachment article), `frag-031` (third loop — called a friend), `frag-032` (near final door — writing again) |
 | **Special** | Each loop has alcove with sign summarizing a layer: Denial, Anger, Bargaining, Depression, Acceptance. |
 | **Wizard** | Walks alongside. Dialogue fragments: "I was created to protect you. That's all I am — a rule with a purpose." / "I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad." / "I don't know if I'm protecting you anymore." At final door: "Read it. Understand it. Then choose. I was trying to love you. That's all I ever did." |
 | **Palette** | Deep blue to indigo. Final door black. |
-| **Purpose** | Wizard's farewell. Summary of all 5 layers. Fragments here are about understanding and reaching out — the first healing steps. |
+| **Purpose** | Wizard's farewell. Summary of all 5 layers. Four fragments here span the full arc — from deleting her number, through understanding, to reaching out and creating again. The player sees how far they've come. |
 | **Unlock** | Wizard grants `(unregister-rule)` if not already acquired. |
 
 ### Level 17: The Core
@@ -798,7 +798,7 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Single room, minimalist |
 | **Size** | 20×15 |
 | **Enemies** | None |
-| **Fragments** | `frag-032` (left of pedestal — writing again), `frag-033` (on pedestal — corrupted warmth) |
+| **Fragments** | `frag-033` (on pedestal — corrupted warmth) |
 | **Special** | Black floor. White walls. Center: pedestal with `vessel/suppress` rule in inspector. Console cursor active at bottom. Event log empty. No sounds. Just the rule and the cursor. |
 | **Wizard** | Does not enter. |
 | **Palette** | Black and white. Nothing else. |
@@ -810,12 +810,15 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | Levels | Fragments | Count | Tone |
 |--------|-----------|-------|------|
 | 1-5 | None (tutorial) | 0 | Subtle hints only |
-| 6-7 | frag-001 through frag-005 | 5 | Pre-relationship warmth, early dating |
-| 8-11 | frag-006 through frag-016 | 11 | Relationship cracks, breakup |
-| 12-14 | frag-017 through frag-026 | 10 | No contact, spiral, lowest point |
-| 15-16 | frag-027 through frag-031 | 5 | Survival, first healing steps |
-| 17 | frag-032, frag-033 | 2 | Acceptance, corrupted warmth |
-| **Findable** | frag-001 to frag-033 | **33** | (minus sacrifices at levels 9 and 11) |
+| 6-7 | frag-001, frag-002 | 2 | First fragments, gentle intro |
+| 8-9 | frag-003 through frag-006 | 4 | Pre-relationship warmth, early dating |
+| 10-11 | frag-007 through frag-012 | 6 | Relationship cracks |
+| 12-13 | frag-013 through frag-018 | 6 | Letter, breakup |
+| 14 | frag-019 through frag-024 | 6 | Spiral — heaviest concentration in game |
+| 15 | frag-025 through frag-028 | 4 | Lowest point, in safety |
+| 16 | frag-029 through frag-032 | 4 | Healing glimmers |
+| 17 | frag-033 | 1 | Last fragment |
+| **Findable** | frag-001 to frag-033 | **33** | (minus sacrifices at levels 9 and 11) ✓ |
 | **Suppressed** | frag-034 to frag-042 | **9** | Registry only |
 
 ### Player Capability Progression

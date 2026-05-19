@@ -551,6 +551,16 @@ impl World {
         self.player_can_attack = true;
         self.wizard_taught = true;
 
+        // Make do-attack available in the console environment
+        self.glyph_env.bind(
+            "do-attack",
+            Value::Builtin(glyph::BuiltinFn {
+                name: "do-attack",
+                doc: "strike in a direction: (do-attack :north)",
+                func: builtin_do_attack,
+            }),
+        );
+
         self.event_log
             .push_colored("The wizard raises a glowing hand...", RGB::named(CYAN));
         self.event_log.push_colored(
@@ -1016,19 +1026,8 @@ fn setup_glyph_env() -> Env {
 }
 
 /// Create the environment used for evaluating keybindings.
-/// Includes `do-attack` which is intentionally excluded from the console
-/// environment — the player must use keybindings to attack.
 fn setup_binding_env(base: &Env) -> Env {
-    let env = Env::extend(base);
-    env.bind(
-        "do-attack",
-        Value::Builtin(glyph::BuiltinFn {
-            name: "do-attack",
-            doc: "strike in a direction: (do-attack :north)",
-            func: builtin_do_attack,
-        }),
-    );
-    env
+    Env::extend(base)
 }
 
 fn builtin_quit_terminal(
@@ -1494,6 +1493,17 @@ mod tests {
         world
     }
 
+    fn give_world_do_attack(world: &mut World) {
+        world.glyph_env.bind(
+            "do-attack",
+            Value::Builtin(glyph::BuiltinFn {
+                name: "do-attack",
+                doc: "",
+                func: builtin_do_attack,
+            }),
+        );
+    }
+
     fn single_enemy(world: &World) -> EntityView {
         world
             .living_enemies()
@@ -1748,20 +1758,9 @@ mod tests {
     }
 
     #[test]
-    fn helpless_attack_key_flails() {
-        let mut world = world_with_single_enemy(Position::new(20, 5));
-        world.player_can_attack = false;
-        world.bindings.insert("a".into(), "(do-attack)".into());
-
-        world.apply_intent(Intent::ExecuteBinding("a".into()));
-
-        assert_eq!(world.turn, 1);
-        assert!(world.event_log.contains("don't know how to attack"));
-    }
-
-    #[test]
     fn attack_key_hits_enemy_in_facing_direction() {
         let mut world = world_with_single_enemy(Position::new(6, 5));
+        give_world_do_attack(&mut world);
         world.player_can_attack = true;
         world.player_facing = Direction::East;
         world.bindings.insert("a".into(), "(do-attack)".into());
@@ -1777,6 +1776,7 @@ mod tests {
     #[test]
     fn attack_key_swings_at_empty_air() {
         let mut world = world_with_single_enemy(Position::new(20, 5));
+        give_world_do_attack(&mut world);
         world.player_can_attack = true;
         world.player_facing = Direction::North;
         world.bindings.insert("a".into(), "(do-attack)".into());
@@ -1849,12 +1849,25 @@ mod tests {
 
     // --- do-attack builtin tests ---
 
+    fn setup_do_attack_test_env() -> Env {
+        let env = setup_glyph_env();
+        env.bind(
+            "do-attack",
+            Value::Builtin(glyph::BuiltinFn {
+                name: "do-attack",
+                doc: "",
+                func: builtin_do_attack,
+            }),
+        );
+        env
+    }
+
     #[test]
     fn do_attack_builtin_performs_attack() {
         let mut world = world_with_single_enemy(Position::new(6, 5));
         world.player_can_attack = true;
         world.player_facing = Direction::East;
-        let env = setup_binding_env(&setup_glyph_env());
+        let env = setup_do_attack_test_env();
         let forms = crate::glyph::read_string("(do-attack :east)").unwrap();
         let result = crate::glyph::eval_with_opts(
             &forms[0],
@@ -1873,7 +1886,7 @@ mod tests {
         let mut world = world_with_single_enemy(Position::new(6, 5));
         world.player_can_attack = true;
         world.player_facing = Direction::East;
-        let env = setup_binding_env(&setup_glyph_env());
+        let env = setup_do_attack_test_env();
         let forms = crate::glyph::read_string("(do-attack)").unwrap();
         let result = crate::glyph::eval_with_opts(
             &forms[0],
@@ -1890,7 +1903,7 @@ mod tests {
     #[test]
     fn do_attack_rejects_non_direction() {
         let mut world = World::minimal();
-        let env = setup_binding_env(&setup_glyph_env());
+        let env = setup_do_attack_test_env();
         let forms = crate::glyph::read_string("(do-attack :up)").unwrap();
         let result = crate::glyph::eval_with_opts(
             &forms[0],

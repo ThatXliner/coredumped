@@ -248,28 +248,27 @@ The rule below is written in real Glyph that the evaluator could actually run. E
   ;; Current value: 40
   ;; Meaning: anything sadder than a mild disappointment gets buried.
   (let [*threshold* 40]
-  
-    ;; --- Known suppressed fragments (auto-generated ledger) ---
+
+    ;; --- External fragment registry ---
     ;;
-    ;; Every redirect is logged here. The conscious mind never sees this
-    ;; list. I keep it so we know what we've lost. Not that it helps.
+    ;; Suppressed fragments are stored in the unconscious fragment registry,
+    ;; not inline here. The registry is written to by log-suppression and
+    ;; read by the inspection system. Each entry has: fragment id, the memory
+    ;; text, emotional weight, suppression timestamp, and status.
     ;;
     ;; Current count: 142 fragments suppressed.
-    
-    (let [*suppressed*
-          '{:frag-001 "The yellow room — warm light through lace curtains — someone is calling your name"
-            :frag-002 "A dog with one white paw — you buried them in the garden — you sang a song"
-            :frag-003 "The fight — glass breaking — you ran and didn't look back — you never went back"
-            :frag-017 "Her voice — the last thing she said to you — you replay it every night anyway"
-            :frag-031 "The hospital waiting room — fluorescent lights — the doctor's shoes — you stared at his shoes"
-            :frag-044 "The river — standing on the bridge — the water was moving very fast — you thought about it"
-            :frag-052 "The door with the chain lock — you installed it yourself — you were hiding from someone — or yourself"
-            :frag-078 "A birthday — someone forgot — you pretended not to care — you cried in the bathroom"
-            :frag-091 "The letter you never sent — still in the drawer — you rewrite it in your head every year"
-            :frag-104 "The conversation you rehearsed but never had — the apology you owe — the one you're owed"
-            :frag-117 "The last time you felt truly happy — you didn't know it would be the last time — you would have stayed longer"
-            :frag-131 "The mirror — you didn't recognize yourself — you've been avoiding mirrors ever since"
-            :frag-142 "Something about a garden — or a park bench — or snow — the fragment is corrupted — I think it was important"}]]
+    ;; Inspect via:  (query-registry :suppressed-fragments)
+    ;; Read one:     (inspect-fragment :frag-NNN)
+    ;;
+    ;; The registry persists across the entire run. Fragments the player
+    ;; finds in the dungeon are entries the suppression missed — memories
+    ;; that slipped through the threshold. Every fragment in the registry
+    ;; is one the player has not yet recovered.
+    ;;
+    ;; I don't know which is worse — that I've lost so many,
+    ;; or that some still escape.
+
+    (let [*registry* (open-registry :suppressed-fragments)]
   
       ;; --- Processing loop ---
       ;; Iterates all active memory fragments in the conscious buffer.
@@ -304,14 +303,14 @@ The rule below is written in real Glyph that the evaluator could actually run. E
                   weight " (below original v1 ceiling of 100)"))))
             
             ;; Memory passes through unmodified
-            fragment))))))
+            fragment)))))))              ;; closes 6 inner forms + *registry* + *threshold* + defrule
 ```
 
 **What this rule actually says**:
 
 The rule maintains a `*threshold*` (currently 40). Every memory fragment in the player's conscious buffer has an `:emotional-weight` property. If the weight exceeds threshold, the fragment is `redirect`ed to the `:unconscious` — it doesn't reach the player's awareness.
 
-The threshold started at 100 (only the single worst trauma) and has been creeping down over 4,817 revisions. Every time something hurts, the Superego lowers the threshold to protect the self from it. The ledger of suppressed fragments shows 142 memories — a mix of genuine trauma, painful but survivable experiences, and things that were once happy but became too painful to hold.
+The threshold started at 100 (only the single worst trauma) and has been creeping down over 4,817 revisions. Every time something hurts, the Superego lowers the threshold to protect the self from it. The external fragment registry logs 142 suppressed fragments — a mix of genuine trauma, painful but survivable experiences, and things that were once happy but became too painful to hold. The player can query this registry via the console: `(query-registry :suppressed-fragments)`.
 
 The comments are the Superego's private journal. They show doubt, guilt, exhaustion, and a growing awareness that the rule is no longer protecting — it's imprisoning.
 
@@ -321,7 +320,7 @@ Three things. The rule tells them all three if they read carefully:
 
 1. **The threshold** (`*threshold* 40`) — this is what determines what gets suppressed. A player who lowers it (or removes the threshold check entirely) will reintegrate all memories, including the painful ones.
 2. **The `redirect` call** — this is the suppression action. Commenting it out or removing the `if` branch stops suppression entirely.
-3. **The suppressed fragments list** — these are the actual memories the player has lost. Reading this list (which is in the code comments) gives the player a summary of their backstory without needing to find all 142 fragments in the game. The corrupted fragment (`frag-142`) hints at something even the Superego can't fully remember.
+3. **The external fragment registry** — The rule references an external registry (`*registry* (open-registry :suppressed-fragments)`) containing all suppressed memories. The player can inspect it via `(query-registry :suppressed-fragments)` from the console. Fragments the player found in the dungeon are memories that slipped through the suppression. Every entry in the registry is one still lost.
 
 **Available player actions at the core**:
 

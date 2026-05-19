@@ -77,4 +77,17 @@ pub const SOURCE: &str = r#";; ---- Glyph Prelude ------------------------------
   (if (if (< step 0) (> start end) (< start end))
       (cons start (range-internal (+ start step) end step))
       (list))))
+
+;; (repeat n expr...) evaluates the body expressions n times in sequence
+(defmacro repeat [n & body]
+  (list 'map
+        (apply list 'fn (cons (list '_) body))
+        (list 'range n)))
+
+;; (lambda body)         → zero-arg function with one body expression
+;; (lambda [params] body...) → alias for (fn [params] body...)
+(defmacro lambda [params & body]
+  (if (empty? body)
+      (list 'fn [] (list params))
+      (cons 'fn (cons params body))))
 "#;

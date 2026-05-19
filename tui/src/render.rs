@@ -442,7 +442,7 @@ fn render_console(ctx: &mut BTerm, world: &World) {
         x + 2,
         y + 2,
         width - 4,
-        "Glyph REPL. Try (help). Enter (quit-terminal) or press ESC to close.",
+        "Glyph REPL — press Ctrl+E to open an external editor for multi-line input. Try (help). ESC or ` to close.",
     );
 
     let output_y = y + 4;

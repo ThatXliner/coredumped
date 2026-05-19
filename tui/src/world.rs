@@ -57,6 +57,17 @@ pub struct World {
 
     /// Set to true when q is pressed to confirm quitting.
     pub confirming_quit: bool,
+
+    /// Ordered list of env-mutating Glyph source forms (const, defmacro, set!,
+    /// bind-key). Saved and replayed on load to restore user
+    /// definitions/overrides.
+    pub user_source: Vec<String>,
+
+    /// Slot number awaiting wipe confirmation. Set by (wipe!).
+    pub pending_wipe_slot: Option<u32>,
+
+    /// Countdown to quit after wiping. 0 = not counting down.
+    pub quit_countdown: u32,
 }
 
 impl World {
@@ -91,6 +102,9 @@ impl World {
             console_history_draft: String::new(),
             console_cursor: 0,
             confirming_quit: false,
+            user_source: Vec::new(),
+            pending_wipe_slot: None,
+            quit_countdown: 0,
         }
     }
 }

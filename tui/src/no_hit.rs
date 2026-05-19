@@ -234,6 +234,9 @@ mod tests {
             console_history_draft: String::new(),
             console_cursor: 0,
             confirming_quit: false,
+            user_source: Vec::new(),
+            pending_wipe_slot: None,
+            quit_countdown: 0,
         }
     }
 

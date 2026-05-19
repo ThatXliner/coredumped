@@ -4,6 +4,8 @@
 //! the player, and spawns entities. Adding a new hand-crafted level means
 //! writing one builder function and adding a match arm in [`build_level`].
 
+use bracket_lib::prelude::RandomNumberGenerator;
+
 use crate::{
     entity::Position,
     map::{Map, MapGenOutput, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -107,8 +109,20 @@ pub fn generate_barrel_depths() -> MapGenOutput {
         }
     }
 
+    let mut rng = RandomNumberGenerator::new();
     let player_start = Position::new(rx + 1, ry + 1);
-    let stairs_down = Position::new(rx + rw - 2, ry + rh - 2);
+
+    // Pick a random floor tile for stairs down, not too close to player start.
+    let mut floor_tiles: Vec<Position> = Vec::new();
+    for y in ry..ry + rh {
+        for x in rx..rx + rw {
+            let pos = Position::new(x, y);
+            if pos != player_start {
+                floor_tiles.push(pos);
+            }
+        }
+    }
+    let stairs_down = floor_tiles[rng.range(0, floor_tiles.len() as i32) as usize];
 
     map.set_tile(player_start, TileType::StairsUp);
     map.set_tile(stairs_down, TileType::StairsDown);
@@ -213,8 +227,20 @@ pub fn generate_barrel_horde() -> MapGenOutput {
         map.set_tile(Position::new(MAP_WIDTH - 1, y), TileType::Wall);
     }
 
+    let mut rng = RandomNumberGenerator::new();
     let player_start = Position::new(2, 2);
-    let stairs_down = Position::new(MAP_WIDTH - 3, MAP_HEIGHT - 3);
+
+    // Pick a random floor tile for stairs down, not too close to player start.
+    let mut floor_tiles: Vec<Position> = Vec::new();
+    for y in 1..MAP_HEIGHT - 1 {
+        for x in 1..MAP_WIDTH - 1 {
+            let pos = Position::new(x, y);
+            if pos != player_start {
+                floor_tiles.push(pos);
+            }
+        }
+    }
+    let stairs_down = floor_tiles[rng.range(0, floor_tiles.len() as i32) as usize];
 
     map.set_tile(player_start, TileType::StairsUp);
     map.set_tile(stairs_down, TileType::StairsDown);

@@ -16,8 +16,11 @@ pub mod input;
 pub(crate) mod levels;
 pub mod map;
 pub mod no_hit;
+pub mod playbook;
+pub(crate) mod player_profile;
 pub mod render;
 pub mod rules;
+pub mod save;
 pub mod world;
 
 pub use ecs::Ecs;

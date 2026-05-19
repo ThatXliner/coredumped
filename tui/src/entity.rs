@@ -5,8 +5,9 @@
 //! behavior live in `ecs.rs`; gameplay systems live in `game.rs`.
 
 use bracket_lib::prelude::Point;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct EntityId(usize);
 
 impl EntityId {
@@ -19,7 +20,7 @@ impl EntityId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {
     North,
     South,
@@ -38,7 +39,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
@@ -72,7 +73,7 @@ impl Position {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hp {
     pub current: i32,
     pub max: i32,
@@ -84,7 +85,7 @@ impl Hp {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntityKind {
     Player,
     Slime,
@@ -134,7 +135,7 @@ impl EntityKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RenderGlyph {
     pub glyph: char,
 }
@@ -147,7 +148,7 @@ impl RenderGlyph {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EntityView {
     pub id: EntityId,
     pub kind: EntityKind,

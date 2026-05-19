@@ -82,6 +82,10 @@ impl Ecs {
         self.sign_messages.remove(&id);
     }
 
+    pub fn entity_ids(&self) -> impl Iterator<Item = EntityId> + '_ {
+        self.entities.iter().copied()
+    }
+
     pub fn position(&self, id: EntityId) -> Option<Position> {
         self.positions.get(&id).copied()
     }
@@ -163,6 +167,10 @@ impl Ecs {
             .copied()
             .filter_map(|id| self.view(id))
             .filter(|view| view.alive)
+    }
+
+    pub(crate) fn set_next_id(&mut self, id: usize) {
+        self.next_id = id;
     }
 
     pub fn view(&self, id: EntityId) -> Option<EntityView> {

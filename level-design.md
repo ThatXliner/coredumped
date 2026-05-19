@@ -34,7 +34,13 @@ The player character is a man in his late twenties named **Adrian** (used in lor
 
 ### Family
 
-Adrian grew up in a house that was never quiet but never said anything important. His father worked double shifts and came home tired. His mother was present but distracted — always cleaning, always organizing, always doing something that kept her from having to sit still and talk. They weren't cruel. They were absent in the way that matters most: they never taught him what love was supposed to feel like.
+Adrian grew up in a house that was never quiet but never said anything important. His father was always at work — long hours, late nights, coming home after dinner was cold. When Adrian heard the front door at 9 PM he learned not to go downstairs. Dad was tired. Dad needed to decompress. Dad didn't have energy for questions about Adrian's day. The love was there, probably, but it arrived too late to be useful.
+
+His mother was the opposite problem — present, but checked out in a different way. She filled her days with the machinery of the household: cleaning, organizing, meal prep, laundry. She kept the house running perfectly and was too exhausted by the maintenance of it to actually live in it. When Adrian got to high school and could feed himself and get himself to school, she took a job — nothing ambitious, just something to get her out of the house. She had been so bored for so long she'd forgotten she was allowed to want things. After that, Adrian came home to an empty house most days. No one asked about homework. No one made snacks. No one was there.
+
+They did try, once. Family trips — a long weekend at a lake house, a week at the beach. Everyone in the same space. But the kids didn't know what to do with that version of their parents. They sat in separate rooms. They complained about the Wi-Fi. They didn't recognize the value of what they were being given. After the third trip where the tension outlasted the fun, the parents stopped planning them. No one ever said "let's not do this anymore." They just stopped. And the silence was agreement enough.
+
+His parents didn't do much together either. Separate lives under the same roof. His mother took dance classes twice a week — salsa, then tango, then whatever was offered at the community center. His father played basketball with friends on Saturdays and golf when the weather was good. They orbited the same house without colliding. Sometimes they argued — sharp, quiet fights behind the bedroom door that Adrian could hear the shape of but never the words. They'd emerge in silence and go to separate rooms. He never saw them apologize to each other. He never saw them reconcile. He just saw them reset to a cold equilibrium and wait for the next time someone said the wrong thing.
 
 No one in his family touched. No one apologized. No one cried where others could see. Problems were not solved — they were waited out until they became someone else's problem. Arguments ended in silence, not resolution. Love was assumed, never expressed. Adrian grew up knowing his parents loved him the same way he knew the sun would rise — as a fact, not a feeling.
 
@@ -42,7 +48,11 @@ He never learned to ask for what he needed. He never learned to say "I'm scared"
 
 ### The Relationship
 
-Then he met **Clara**. They were friends for a year before anything happened. She was patient. She laughed at his worst jokes. She stayed late talking. He fell in love the way you fall asleep — slowly, then all at once.
+Then he met **Clara**. He didn't know it at the time — thought it was just another conversation with another person at another event. But they clicked. The kind of click you only recognize in hindsight. They finished each other's sentences without trying. She laughed at things he said that no one else laughed at. He caught himself looking for her in rooms. It took him months to admit to himself what that meant.
+
+The summer before they started dating, they spent a month together at the same camp — counselors, both of them, assigned to the same age group. Four weeks of shared sunburn and bug-bitten ankles and late-night conversations on a cabin porch. He learned what she looked like in the morning. She learned that he couldn't whistle. They taught kids how to tie knots and paddle straight. When the month ended, they hugged goodbye and said they should keep in touch, meaning it for once.
+
+They were friends for a year before anything happened. She was patient. She laughed at his worst jokes. She stayed late talking. He fell in love the way you fall asleep — slowly, then all at once.
 
 They dated for four months. The happiest and most terrified four months of his life.
 

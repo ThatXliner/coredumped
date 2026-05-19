@@ -136,11 +136,16 @@ mod tests {
         }
 
         #[test]
-        fn test_vector() {
+        fn test_vector_sugar() {
             let f = read_string("#[1 2 3]").unwrap();
             assert_eq!(
                 f[0],
-                Value::Vector(vec![Value::I64(1), Value::I64(2), Value::I64(3)])
+                Value::List(vec![
+                    sym("list"),
+                    Value::I64(1),
+                    Value::I64(2),
+                    Value::I64(3)
+                ])
             );
         }
 

@@ -133,20 +133,22 @@ impl<'a> Reader<'a> {
     }
 
     fn read_vector(&mut self) -> ReadResult<Value> {
-        self.bump();
+        self.bump(); // consume [
         let mut items = Vec::new();
         loop {
             self.skip_ws();
             match self.input.peek() {
                 None => {
                     return Err(ReadError::UnexpectedEof(
-                        "reading vector".into(),
+                        "reading list".into(),
                         self.offset,
                     ))
                 }
                 Some(&']') => {
                     self.bump();
-                    return Ok(Value::Vector(items));
+                    let mut form = vec![super::sym("list")];
+                    form.extend(items);
+                    return Ok(Value::List(form));
                 }
                 Some(&_) => items.push(self.read_form()?),
             }
@@ -449,12 +451,12 @@ impl<'a> Reader<'a> {
     }
 
     /// Read a `[...]` block. If forms[1] is a known binary operator, parse infix.
-    /// Otherwise produce a Vector (for param lists, let bindings, etc.).
+    /// Otherwise produce a List (for param lists, let bindings, etc.).
     fn read_infix(&mut self) -> ReadResult<Value> {
         self.bump();
         let forms = self.read_inner_forms(b']')?;
         if forms.is_empty() {
-            return Ok(Value::Vector(vec![]));
+            return Ok(Value::List(vec![]));
         }
         if forms.len() == 1 {
             return Ok(forms.into_iter().next().unwrap());
@@ -470,7 +472,7 @@ impl<'a> Reader<'a> {
             let mut tokens = forms.into_iter().peekable();
             self.parse_prec(&mut tokens, 0)
         } else {
-            Ok(Value::Vector(forms))
+            Ok(Value::List(forms))
         }
     }
 

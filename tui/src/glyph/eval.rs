@@ -37,7 +37,6 @@ fn eval_inner(
         | Value::F64(_)
         | Value::String(_)
         | Value::Keyword(_)
-        | Value::Vector(_)
         | Value::Map(_)
         | Value::Set(_)
         | Value::Builtin(_)
@@ -494,8 +493,14 @@ fn eval_fn(args: &[Value], env: &Env) -> EvalResult<Value> {
         });
     }
     // Multi-arity: (fn ([params] body...) ([params] body...)*)
-    // Each clause is a list whose first element is a param spec (vec or symbol).
-    if args.len() > 1 && args.iter().all(|a| matches!(a, Value::List(_))) {
+    // Each clause is a list whose first element is a param spec.
+    // Distinguish from single-arity (fn [params] body...) by checking that
+    // every clause has ≥2 items and at least one has a list as its first
+    // element (indicating a multi-element param spec within the clause).
+    let is_multi = args.len() > 1
+        && args.iter().all(|a| matches!(a, Value::List(items) if items.len() >= 2))
+        && args.iter().any(|a| matches!(a, Value::List(items) if matches!(&items[0], Value::List(_))));
+    if is_multi {
         let mut arities = Vec::new();
         for clause in args {
             let items = match clause {
@@ -592,11 +597,11 @@ fn eval_defmacro(args: &[Value], env: &Env) -> EvalResult<Value> {
 
 fn parse_param_vec(v: &Value) -> EvalResult<Vec<String>> {
     let items: &[Value] = match v {
-        Value::Vector(items) => items.as_slice(),
+        Value::List(items) => items.as_slice(),
         Value::Symbol(s) => return Ok(vec![s.name.clone()]),
         other => {
             return Err(EvalError::TypeError {
-                expected: "vector or symbol for params",
+                expected: "list or symbol for params",
                 got: other.to_string(),
             })
         }
@@ -843,7 +848,6 @@ fn eval_match_inner(
     )?;
     for clause in &args[1..] {
         let (pattern, body) = match clause {
-            Value::Vector(v) if v.len() == 2 => (&v[0], &v[1]),
             Value::List(v) if v.len() == 2 => (&v[0], &v[1]),
             _ => {
                 return Err(EvalError::Custom(format!(
@@ -1106,15 +1110,6 @@ fn builtin_list(
     Ok(Value::List(args.to_vec()))
 }
 
-fn builtin_vector(
-    args: &[Value],
-    _env: &Env,
-    _opts: &SandboxOptions,
-    _world: &mut World,
-) -> EvalResult<Value> {
-    Ok(Value::Vector(args.to_vec()))
-}
-
 fn builtin_print(
     args: &[Value],
     _env: &Env,
@@ -1174,7 +1169,6 @@ fn builtin_type_of(
         Value::Symbol(_) => "symbol",
         Value::Keyword(_) => "keyword",
         Value::List(_) => "list",
-        Value::Vector(_) => "vector",
         Value::Map(_) => "map",
         Value::Set(_) => "set",
         Value::Builtin(_) => "builtin",
@@ -1267,10 +1261,9 @@ fn builtin_emptyq(
     }
     match &args[0] {
         Value::List(items) => Ok(Value::Bool(items.is_empty())),
-        Value::Vector(items) => Ok(Value::Bool(items.is_empty())),
         Value::String(s) => Ok(Value::Bool(s.is_empty())),
         other => Err(EvalError::TypeError {
-            expected: "list, vector, or string",
+            expected: "list or string",
             got: other.to_string(),
         }),
     }
@@ -1548,10 +1541,6 @@ pub fn default_env() -> Env {
     env.bind(
         "list",
         builtin_fn("list", "create a list from arguments", builtin_list),
-    );
-    env.bind(
-        "vector",
-        builtin_fn("vector", "create a vector from arguments", builtin_vector),
     );
     env.bind(
         "cons",

@@ -294,7 +294,6 @@ pub enum Value {
     Symbol(Symbol),
     Keyword(Keyword),
     List(Vec<Value>),
-    Vector(Vec<Value>),
     Map(BTreeMap<Value, Value>),
     Set(BTreeSet<Value>),
     Builtin(BuiltinFn),
@@ -316,7 +315,6 @@ impl PartialEq for Value {
             (Symbol(a), Symbol(b)) => a == b,
             (Keyword(a), Keyword(b)) => a == b,
             (List(a), List(b)) => a == b,
-            (Vector(a), Vector(b)) => a == b,
             (Map(a), Map(b)) => a == b,
             (Set(a), Set(b)) => a == b,
             (Builtin(a), Builtin(b)) => a == b,
@@ -355,12 +353,11 @@ impl Ord for Value {
                 Symbol(_) => 5,
                 Keyword(_) => 6,
                 List(_) => 7,
-                Vector(_) => 8,
-                Map(_) => 9,
-                Set(_) => 10,
-                Builtin(_) => 11,
-                Closure(_) => 12,
-                Macro(_) => 13,
+                Map(_) => 8,
+                Set(_) => 9,
+                Builtin(_) => 10,
+                Closure(_) => 11,
+                Macro(_) => 12,
             }
         }
         let t1 = tag(self);
@@ -377,7 +374,6 @@ impl Ord for Value {
             (Value::Symbol(a), Value::Symbol(b)) => a.name.cmp(&b.name),
             (Value::Keyword(a), Value::Keyword(b)) => a.name.cmp(&b.name),
             (Value::List(a), Value::List(b)) => a.cmp(b),
-            (Value::Vector(a), Value::Vector(b)) => a.cmp(b),
             (Value::Map(a), Value::Map(b)) => a.cmp(b),
             (Value::Set(a), Value::Set(b)) => a.cmp(b),
             (Value::Builtin(a), Value::Builtin(b)) => a.name.cmp(b.name),
@@ -417,16 +413,6 @@ impl fmt::Display for Value {
                     write!(f, "{}", item)?;
                 }
                 write!(f, ")")
-            }
-            Value::Vector(items) => {
-                write!(f, "#[")?;
-                for (i, item) in items.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, " ")?;
-                    }
-                    write!(f, "{}", item)?;
-                }
-                write!(f, "]")
             }
             Value::Map(entries) => {
                 write!(f, "{{")?;

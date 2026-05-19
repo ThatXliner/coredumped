@@ -223,11 +223,11 @@ These 9 fragments are too deep for Adrian's mind to release. Their IDs are visib
 
 | Stage | Fragments | Story |
 |-------|-----------|-------|
-| Pre-relationship | 001-004 | Friendship forms. She makes him laugh. He sees her family's warmth and feels his own lack. |
-| Relationship | 005-014 | Falling in love. Anxious attachment surfaces — need for space, eggshells, questioning. He tries to explain his childhood. Her letter. The last good night. |
-| Breakup | 015-023 | "We need to talk." Clean breakup. No contact. Rehearsed friendship speech (never delivered). Unsent letter. Imagining her happy without him. Mother's call. |
-| Aftermath | 024-030 | Isolation. Not eating. 3 AM walks. The bridge. Deleting her number. Learning about attachment theory at 2 AM. |
-| Healing | 031-033 | Called a friend. Writing again. Corrupted warmth. |
+| Pre-relationship | 001-004 | Friendship forms. She makes him laugh. He sees her family's warmth. (Found levels 6-7) |
+| Relationship | 005-014 | Falling in love, anxious attachment surfaces, eggshells, childhood explanation, her letter, last good night. (Found levels 7-11) |
+| Breakup | 015-023 | "We need to talk." Clean breakup. No contact. Unsent letter. Imagining her. Mother's call. (Found levels 11-13) |
+| Aftermath | 024-030 | Isolation, not eating, 3AM walks, the bridge, deleting her number, attachment theory at 2AM. (Found levels 14-15) |
+| Healing | 031-033 | Called a friend, writing again, corrupted warmth. (Found levels 16-17) |
 
 The 9 suppressed fragments (frag-034 through frag-042) are locked not because the game won't show them, but because Adrian's mind judged them too dangerous. Their weights (79-100) far exceed the current threshold of 40. Only by lowering the threshold can they be read.
 
@@ -386,7 +386,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | Stage | Levels | # | Purpose | Tone |
 |-------|--------|---|---------|------|
 | Denial | 1-3 | 3 | Tutorial / safe introduction | Warm, structured, protective |
-| Anger | 4-7 | 4 | Escalating threat, first memory reveals | Jagged, confrontational |
+| Anger | 4-7 | 4 | Escalating threat, fragments start at level 6 | Jagged, confrontational |
 | Bargaining | 8-11 | 4 | Puzzles with costs, wizard offers deals | Calculated, transactional |
 | Depression | 12-14 | 3 | Sparse isolation, memory floods | Empty, melancholic |
 | Acceptance | 15-16 | 2 | Calm reflection, preparation for truth | Open, still, resigning |
@@ -403,7 +403,8 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Special** | Sign at entrance: "Xlyph runtime booted. Consciousness loaded. Vessel integrity: 98%. Memory suppression active." Sign at stairs: "Move with arrow keys or hjkl. Descend when ready." |
 | **Wizard** | First meeting — heals player to full. "Ah — you're awake. I was starting to worry. You've been... resting. Come, let me show you how things work here." |
 | **Palette** | Warm amber, soft gray. Standard dungeon tones. |
-| **Purpose** | Establish baseline normal roguelike. No hint anything is wrong. |
+| **Purpose** | Establish baseline normal roguelike. No hint anything is wrong. Wizard dialogue includes subtle hint: "resting" implies he wasn't always here. |
+| **Subtle hints** | Wizard says "You've been resting" — first hint player was somewhere else before. Boot message mentions "memory suppression active" — meaningless to new player, meaningful on replay. |
 
 ### Level 2: The Holding Cells (Denial)
 
@@ -412,11 +413,12 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Room-based (3×3 grid, 9 rooms) |
 | **Size** | 55×33 |
 | **Enemies** | 2 Slimes (`s` HP3) |
-| **Fragments** | `frag-001` (room 1), `frag-002` (room 6) |
+| **Fragments** | None |
 | **Special** | Each room has a tutorial sign: movement, inspector, console, waiting, enemy inspection, help command, stairs. Room 9 sign: "Nothing is wrong." — first lie. |
 | **Wizard** | Room 3: "The inspector lets you read the rules. Try it." Room 6: "The console is powerful. Be careful what you ask for." |
 | **Palette** | Warm amber. Slightly dimmer in room 9. |
 | **Purpose** | Tutorial. Player learns inspector + console. First subtle crack with room 9 sign. |
+| **Subtle hints** | Room 9 sign "Nothing is wrong" is presented as tutorial flavor but reads differently later. Wizard's "Be careful what you ask for" — hints that console can uncover things. |
 
 ### Level 3: The Quiet Halls (Denial)
 
@@ -425,11 +427,12 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Corridor-based maze (long halls with alcoves, no dead ends) |
 | **Size** | 55×33 |
 | **Enemies** | 2 Bats (`b` HP2), 1 Slime (`s` HP3) |
-| **Fragments** | `frag-003` (alcove at center), `frag-004` (alcove near exit) |
+| **Fragments** | None |
 | **Special** | No attack ability — player shoves only (0 damage). Enemies can be pushed. |
 | **Wizard** | At start: "There are a few creatures wandering the halls. They're more confused than dangerous." At stairs: "You did well. The descent continues." |
 | **Palette** | Warm but dimmer. Halls feel narrower than they are. |
 | **Purpose** | First enemy exposure. Player is helpless (can't kill). Will matter later. |
+| **Subtle hints** | Wizard says enemies are "confused" — they're not evil, they're broken parts of self. Helplessness mechanic teaches that not all problems are solved by fighting — foreshadows that the final boss isn't fought. |
 
 ### Level 4: The First Scar (Anger)
 
@@ -438,11 +441,12 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Room-based (4×3 grid, procedural) |
 | **Size** | 55×33 |
 | **Enemies** | 3 Slimes (`s` HP3), 1 Goblin (`g` HP5) |
-| **Fragments** | `frag-005` (first room), `frag-006` (goblin's alcove) |
+| **Fragments** | None |
 | **Special** | First room red-tinted. Wizard absent at start — player alone for first time. |
 | **Wizard** | Midpoint, clipped: "Ah, you made it past the... the. I'm sorry. The air down here is different." |
 | **Palette** | Rust-red. Warm shifted to wrong. |
-| **Purpose** | First tonal shift. Wizard is not right. First fragments about relationship. |
+| **Purpose** | First tonal shift. Wizard is not right. Tone changes without explanation — first hint that the dungeon reacts emotionally. |
+| **Subtle hints** | Wizard's stutter ("the... the") is first sign the Superego is struggling. The red tint is first environmental emotional response. Player has no context yet. |
 
 ### Level 5: The Jagged Passages (Anger)
 
@@ -451,11 +455,12 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Cave generation (cellular automata) |
 | **Size** | 55×33 |
 | **Enemies** | 4 Slimes (`s` HP3), 1 Goblin (`g` HP5), 1 Ogre (`O` HP10) |
-| **Fragments** | `frag-007` (dead-end alcove), `frag-008` (behind ogre spawn) |
+| **Fragments** | None |
 | **Special** | Jagged terrain, dead ends, ambush corners. Map feels hostile. |
 | **Wizard** | If player hit: "You're hurt. Let me — no. I can't. Not here. Keep moving." First refusal to heal. |
 | **Palette** | Rust-red and bruised purple. |
 | **Purpose** | Wizard refuses to heal for first time. Dungeon reacts emotionally. |
+| **Subtle hints** | Wizard cuts himself off mid-sentence ("Let me — no.") — first sign he's not in full control. Refusal to heal is him choosing to let the player feel pain rather than suppress it. He's conflicted.
 
 ### Level 6: The Gauntlet (Anger)
 
@@ -464,11 +469,11 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Linear corridor — 8 segments, barriers lock behind |
 | **Size** | 55×20 |
 | **Enemies** | Waves: 2 Slimes, 1 Goblin, 2 Bats, 1 Slime+1 Goblin, 1 Ogre, 3 mixed waves |
-| **Fragments** | `frag-009` (segment 2), `frag-010` (segment 6) |
+| **Fragments** | `frag-001` (segment 2), `frag-002` (segment 5) |
 | **Special** | No backtracking. Each segment locks behind player. |
 | **Wizard** | Before: "I can't come with you through this. I'll meet you at the end." After: "...You're still standing." |
 | **Palette** | Dark red. Tight. Claustrophobic. |
-| **Purpose** | First gauntlet. Wizard absent during combat. Helplessness frustration mounting. |
+| **Purpose** | First gauntlet. Wizard absent during combat. Helplessness frustration mounting. First fragments drop here — reward for surviving. |
 
 ### Level 7: The Boiling Heart (Anger Boss)
 
@@ -477,11 +482,11 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Large single room |
 | **Size** | 45×30 |
 | **Enemies** | Rage (`R` HP15 — 2 damage, always chase, spawns Slimes every 5 turns) |
-| **Fragments** | `frag-011` (left alcove), `frag-012` (right alcove), `frag-013` (near exit), `frag-014` (under Rage spawn, visible after defeat) |
+| **Fragments** | `frag-003` (left alcove), `frag-004` (right alcove), `frag-005` (near exit) |
 | **Special** | Boss room. Stairs appear after Rage defeated. Room pulses red. |
 | **Wizard** | Before: "There's something down there — remains of something I couldn't protect you from." After: "You did it. I don't know whether to be relieved or terrified." |
 | **Palette** | Deep red, pulsing (walls alternate each turn). |
-| **Purpose** | First boss. Rage is suppressed anger given form. |
+| **Purpose** | First boss. Rage is suppressed anger given form. First relationship fragments appear here. |
 | **Unlock** | `do-attack` — wizard teaches after boss. "Bind it: `(bind-key :z (do-attack))`." |
 
 ### Level 8: The Counting Room (Bargaining)
@@ -491,7 +496,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Room-based with locked doors |
 | **Size** | 55×33 |
 | **Enemies** | 3 Goblins (`g` HP5 — each holds a key), 2 Bats (`b` HP2) |
-| **Fragments** | `frag-015` (behind first locked door), `frag-016` (behind expensive door), `frag-022` (in hidden room) |
+| **Fragments** | `frag-006` (behind first locked door), `frag-007` (behind expensive door), `frag-008` (hidden room) |
 | **Special** | Doors require keys. Keys held by specific enemies (visible via inspection). Not all doors openable. Player must choose. |
 | **Wizard** | At entrance: "This place runs on trade. Choose what matters." |
 | **Palette** | Desaturated gold. Faded opulence. |
@@ -504,7 +509,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Symmetrical room grid with central hub |
 | **Size** | 55×33 |
 | **Enemies** | 2 Ogres (`O` HP8), 2 Goblins (`g` HP5), 2 Bats (`b` HP2) |
-| **Fragments** | `frag-017` (center room — costs 1 sacrifice), `frag-021` (side room), `frag-023` (side room) |
+| **Fragments** | `frag-009` (center room — costs 1 sacrifice), `frag-010` (side room) |
 | **Special** | Two scales in hub room. Place fragments on scale to open doors. Placed fragments are PERMANENTLY LOST. Wizard's offer in center room: give 3 fragments for +5 max HP. |
 | **Wizard** | In center: "Give me the ones that hurt. I'll take them. You won't remember they existed." |
 | **Palette** | Pale gold. Center room blood-red. |
@@ -517,7 +522,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Shifting maze (walls reconfigure every 50 turns) |
 | **Size** | 55×33 |
 | **Enemies** | 4 Bats (`b` HP2), 2 Goblins (`g` HP5) |
-| **Fragments** | `frag-018` (center), `frag-019` (side chamber), `frag-020` (hidden behind shifting wall) |
+| **Fragments** | `frag-011` (center), `frag-012` (side chamber), `frag-013` (hidden behind shifting wall) |
 | **Special** | Walls shift every 50 turns. Center pedestal: take fragment (no cost) or leave it for clear exit path. |
 | **Wizard** | At entrance: "I could tell you the way. I think you need to find it yourself." |
 | **Palette** | Faded yellow, burnt edges. |
@@ -530,11 +535,11 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Single room with 4 sub-chambers |
 | **Size** | 55×33 |
 | **Enemies** | 4 Sentries (`T` HP6 — stationary, ranged every 2 turns) |
-| **Fragments** | `frag-020` (chamber 2 — only if not found in maze), `frag-021` (chamber 3 — only if not found in maze) |
+| **Fragments** | `frag-014` (chamber 2 — last good night), `frag-015` (chamber 3 — "we need to talk"), `frag-016` (chamber 4 — she cried) |
 | **Special** | Four sub-chambers with sentries. Final chamber has pedestal with `(forget-everything)` Glyph command. Wizard offers complete erasure. |
 | **Wizard** | "Type this. Reset suppression to v1. You wake at the surface. No pain. No memory." If accepted: ending screen + New Game+. If refused: grants `(patch-rule)`. |
 | **Palette** | Pale gold with red. Final chamber stark white. |
-| **Purpose** | Biggest test. Erasure vs. truth. Refusal unlocks patch capability. |
+| **Purpose** | Biggest test. Erasure vs. truth. Refusal unlocks patch capability. The fragments here are the breakup itself — hardest ones yet. |
 
 ### Level 12: The Long Corridor (Depression)
 
@@ -543,11 +548,11 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | 1-wide corridor, 50 tiles long with alcoves |
 | **Size** | 55×33 (mostly 1 tile wide) |
 | **Enemies** | 1 Shade (`~` HP∞ — follows, doesn't attack) |
-| **Fragments** | `frag-024` (alcove at tile 25) |
-| **Special** | Empty. No combat. No puzzles. No items. Just walking. Shade follows silently. Deliberately boring. |
+| **Fragments** | `frag-017` (alcove at tile 15), `frag-018` (alcove at tile 35), `frag-019` (alcove at tile 45) |
+| **Special** | Empty. No combat. No puzzles. No items. Just walking. Shade follows silently. Deliberately boring. Three alcoves with fragments break up the walk. |
 | **Wizard** | Entirely absent. |
 | **Palette** | Grayscale. Shade is slightly darker gray. |
-| **Purpose** | Pure atmosphere. Depression is emptiness, not sadness. Boredom is the point. |
+| **Purpose** | Pure atmosphere. Depression is emptiness, not sadness. Boredom is the point. Fragments here are about no contact, the silence, the aftermath. |
 
 ### Level 13: The Archive (Depression)
 
@@ -556,11 +561,11 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Room-based library/archive halls |
 | **Size** | 55×33 |
 | **Enemies** | 3 Shades (`~` HP∞), 2 Zombie Slimes (`s` HP3 — move every 3rd turn) |
-| **Fragments** | `frag-025`, `frag-026`, `frag-027` (one per archive room) |
+| **Fragments** | `frag-020`, `frag-021`, `frag-022` (one per archive room) |
 | **Special** | Each room has desk with journal entry from "the Archivist" — clinical, detached: "Subject reports persistent sadness. No interventions applied." |
 | **Wizard** | Absent. |
 | **Palette** | Gray with blue undertones. |
-| **Purpose** | Heaviest emotional content. Pain being catalogued, not felt. |
+| **Purpose** | Heaviest emotional content. Pain being catalogued, not felt. Fragments: unsent letter, imagining her, mother's call. |
 
 ### Level 14: The Ash Field (Depression Boss)
 
@@ -569,11 +574,11 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Open field, no walls except borders. Black floor (ash). |
 | **Size** | 55×33 |
 | **Enemies** | None. 3 fire zones (1 damage if walked through — avoidable). |
-| **Fragments** | `frag-028`, `frag-029`, `frag-030` (scattered across field) |
-| **Special** | Open ash field. Stairs visible from start. Player must walk through to reach them. |
+| **Fragments** | `frag-023` (center — last happy), `frag-024` (near first fire — isolation), `frag-025` (near second fire — mirror), `frag-026` (near exit — not eating) |
+| **Special** | Open ash field. Stairs visible from start. Player must walk through to reach them. Four fragments scattered across field — last heavy collection before acceptance. |
 | **Wizard** | Returns at end: "...You crossed the ash. Not many do." |
 | **Palette** | Black, gray, smoldering orange. |
-| **Purpose** | Boss is emptiness. Surviving it is the victory. |
+| **Purpose** | Boss is emptiness. Surviving it is the victory. Final depression-layer fragments. |
 
 ### Level 15: The Clearing (Acceptance)
 
@@ -582,11 +587,11 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Open glade — single room with organic edges |
 | **Size** | 40×30 |
 | **Enemies** | None |
-| **Fragments** | `frag-031` (under central tree) |
-| **Special** | No enemies, puzzles, or hazards. Single beautiful space. Tree in center (brown `T` + green `"` canopy). Pool of water. First true brightness since Denial. |
+| **Fragments** | `frag-027` (under central tree — 3AM walks), `frag-028` (pool of water — the bridge), `frag-029` (near exit — deleting her number) |
+| **Special** | No enemies, puzzles, or hazards. Single beautiful space. Tree in center (brown `T` + green `"` canopy). Pool of water. First true brightness since Denial. Three fragments scattered around — the lowest-point memories, now readable in a safe space. |
 | **Wizard** | Sitting under tree: "I was so sure I was protecting you. But protection isn't supposed to make the world smaller. I made it a cage." |
 | **Palette** | Green grass, blue sky, brown tree, warm sunlight. First non-warm/gray colors. |
-| **Purpose** | First beautiful level. Wizard accepts what's coming. |
+| **Purpose** | First beautiful level. The darkest memories (bridge, suicidal ideation) are presented in a safe environment. The Clearing makes them survivable. |
 
 ### Level 16: The Descent (Acceptance)
 
@@ -595,11 +600,11 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Spiral walkway descending 3 loops |
 | **Size** | 55×55 |
 | **Enemies** | 1 Shade (`~` HP∞ — peaceful, not ominous) |
-| **Fragments** | `frag-032` (second loop) |
+| **Fragments** | `frag-030` (first loop — attachment article), `frag-031` (second loop — called a friend) |
 | **Special** | Each loop has alcove with sign summarizing a layer: Denial, Anger, Bargaining, Depression, Acceptance. |
 | **Wizard** | Walks alongside. Dialogue fragments: "I was created to protect you. That's all I am — a rule with a purpose." / "I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad." / "I don't know if I'm protecting you anymore." At final door: "Read it. Understand it. Then choose. I was trying to love you. That's all I ever did." |
 | **Palette** | Deep blue to indigo. Final door black. |
-| **Purpose** | Wizard's farewell. Summary of all 5 layers. |
+| **Purpose** | Wizard's farewell. Summary of all 5 layers. Fragments here are about understanding and reaching out — the first healing steps. |
 | **Unlock** | Wizard grants `(unregister-rule)` if not already acquired. |
 
 ### Level 17: The Core
@@ -609,7 +614,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Map type** | Single room, minimalist |
 | **Size** | 20×15 |
 | **Enemies** | None |
-| **Fragments** | `frag-033` (on pedestal) |
+| **Fragments** | `frag-032` (left of pedestal — writing again), `frag-033` (on pedestal — corrupted warmth) |
 | **Special** | Black floor. White walls. Center: pedestal with `vessel/suppress` rule in inspector. Console cursor active at bottom. Event log empty. No sounds. Just the rule and the cursor. |
 | **Wizard** | Does not enter. |
 | **Palette** | Black and white. Nothing else. |
@@ -620,12 +625,12 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 
 | Levels | Fragments | Count | Tone |
 |--------|-----------|-------|------|
-| 1-3 | frag-001 through frag-004 | 4 | Pre-relationship warmth |
-| 4-7 | frag-005 through frag-014 | 10 | Relationship highs and cracks |
-| 8-11 | frag-015 through frag-023 | 9 | Breakup and aftermath |
-| 12-14 | frag-024 through frag-030 | 7 | Spiral and isolation |
-| 15-16 | frag-031, frag-032 | 2 | Glimmers of healing |
-| 17 | frag-033 | 1 | Corrupted warmth |
+| 1-5 | None (tutorial) | 0 | Subtle hints only |
+| 6-7 | frag-001 through frag-005 | 5 | Pre-relationship warmth, early dating |
+| 8-11 | frag-006 through frag-016 | 11 | Relationship cracks, breakup |
+| 12-14 | frag-017 through frag-026 | 10 | No contact, spiral, lowest point |
+| 15-16 | frag-027 through frag-031 | 5 | Survival, first healing steps |
+| 17 | frag-032, frag-033 | 2 | Acceptance, corrupted warmth |
 | **Findable** | frag-001 to frag-033 | **33** | (minus sacrifices at levels 9 and 11) |
 | **Suppressed** | frag-034 to frag-042 | **9** | Registry only |
 

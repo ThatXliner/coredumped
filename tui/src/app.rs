@@ -6,12 +6,7 @@
 
 use bracket_lib::prelude::*;
 
-use crate::{
-    game::Intent,
-    input::key_to_intent,
-    render::render,
-    world::World,
-};
+use crate::{game::Intent, input::key_to_intent, render::render, world::World};
 
 const COUNTDOWN_FRAMES: u32 = 30;
 
@@ -26,10 +21,8 @@ impl State {
             World::load_from_disk(0).unwrap_or_else(|e| {
                 eprintln!("Auto-load failed ({}), starting new game.", e);
                 let mut w = World::new_game();
-                w.event_log.push_colored(
-                    "Save file corrupted. Starting new game.",
-                    RGB::named(RED),
-                );
+                w.event_log
+                    .push_colored("Save file corrupted. Starting new game.", RGB::named(RED));
                 w
             })
         } else {

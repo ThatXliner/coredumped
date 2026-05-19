@@ -386,6 +386,10 @@ impl World {
         std::fs::write(&path, &json)
             .map_err(|e| format!("cannot write save file {:?}: {}", path, e))?;
 
+        // Also persist player profile (bindings, macros, abilities) separately
+        // so it survives restart or carries across save slots.
+        let _ = crate::player_profile::PlayerProfile::from_world(self).save();
+
         Ok(())
     }
 

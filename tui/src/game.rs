@@ -483,7 +483,17 @@ impl World {
     }
 
     fn restart(&mut self) {
+        // Save player profile (bindings, macros, abilities) before nuking
+        let profile = crate::player_profile::PlayerProfile::from_world(self);
+        let _ = profile.save();
+
         *self = World::new_game();
+
+        // Re-apply profile so bindings and customizations survive restart
+        if let Some(loaded) = crate::player_profile::PlayerProfile::load() {
+            loaded.apply_to(self);
+            self.event_log.push("Player profile restored.");
+        }
     }
 
     fn apply_player_move(&mut self, direction: Direction) {
@@ -954,13 +964,10 @@ impl World {
                 let path = crate::save::save_path(slot);
                 if path.exists() {
                     if let Err(e) = std::fs::remove_file(&path) {
-                        self.event_log
-                            .push(format!("Cannot delete save: {}", e));
+                        self.event_log.push(format!("Cannot delete save: {}", e));
                     } else {
-                        self.event_log.push_colored(
-                            format!("Save slot {} deleted.", slot),
-                            RGB::named(RED),
-                        );
+                        self.event_log
+                            .push_colored(format!("Save slot {} deleted.", slot), RGB::named(RED));
                         self.quit_countdown = 3;
                     }
                 } else {
@@ -1257,11 +1264,7 @@ pub(crate) fn setup_glyph_env() -> Env {
         "load a saved game: (load! slot-number)",
         builtin_load
     );
-    reg!(
-        "wipe!",
-        "delete a save: (wipe! slot-number)",
-        builtin_wipe
-    );
+    reg!("wipe!", "delete a save: (wipe! slot-number)", builtin_wipe);
 
     ai_builtins::register_all(&env);
 
@@ -1783,7 +1786,10 @@ fn builtin_load(
     let loaded = World::load_from_disk(slot).map_err(|e| glyph::EvalError::Custom(e))?;
     *world = loaded;
     world.event_log.push_colored(
-        format!("Game loaded from slot {}. Use (wipe! {}) to delete the save.", slot, slot),
+        format!(
+            "Game loaded from slot {}. Use (wipe! {}) to delete the save.",
+            slot, slot
+        ),
         RGB::named(GREEN),
     );
     Ok(Value::I64(slot as i64))

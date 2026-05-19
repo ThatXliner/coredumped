@@ -472,7 +472,26 @@ impl World {
         self.wizard_id = None;
     }
 
+    fn wipe_player_state(&mut self) {
+        self.bindings = default_bindings();
+        self.user_source.clear();
+        self.console_history.clear();
+        self.console_buffer.clear();
+        self.console_output.clear();
+        self.console_output_color = None;
+        self.player_can_attack = false;
+        self.wizard_taught = false;
+        self.cheat_unlocked = false;
+        self.blocking = false;
+        self.konami_index = 0;
+        self.pending_wipe_slot = None;
+        self.quit_countdown = 0;
+        self.confirming_quit = false;
+        crate::player_profile::PlayerProfile::delete();
+    }
+
     fn respawn(&mut self) {
+        self.wipe_player_state();
         self.clear_all_enemies();
         self.ecs
             .set_hp(self.player_id, Hp::new(self.player_hp().max));
@@ -483,17 +502,8 @@ impl World {
     }
 
     fn restart(&mut self) {
-        // Save player profile (bindings, macros, abilities) before nuking
-        let profile = crate::player_profile::PlayerProfile::from_world(self);
-        let _ = profile.save();
-
+        self.wipe_player_state();
         *self = World::new_game();
-
-        // Re-apply profile so bindings and customizations survive restart
-        if let Some(loaded) = crate::player_profile::PlayerProfile::load() {
-            loaded.apply_to(self);
-            self.event_log.push("Player profile restored.");
-        }
     }
 
     fn apply_player_move(&mut self, direction: Direction) {

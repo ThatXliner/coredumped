@@ -1,13 +1,10 @@
 //! Player profile — bindings, macros, learned abilities, and console history
-//! that survive restart (shift+R) or carry across save slots.
+//! bundled into game saves. Deleted on respawn/restart/wipe.
 //!
-//! Saved to `~/.xlyph/profile.json` alongside full game saves. On restart,
-//! the profile is re-applied after `World::new_game()` so the player's
-//! customizations aren't lost.
+//! Saved to `~/.xlyph/profile.json` alongside full game saves.
 
 use serde::{Deserialize, Serialize};
 
-use crate::glyph::{eval_with_opts, read_string, SandboxOptions};
 use crate::save::xlyph_dir;
 use crate::world::World;
 
@@ -48,36 +45,6 @@ impl PlayerProfile {
         }
     }
 
-    /// Apply profile onto a world (fresh or existing).
-    ///
-    /// Overwrites bindings, flags, and console history, then re-registers
-    /// builtins and replays `user_source` against the glyph environment.
-    pub fn apply_to(&self, world: &mut World) {
-        world.bindings = self.bindings.iter().cloned().collect();
-        world.user_source = self.user_source.clone();
-        world.player_can_attack = self.player_can_attack;
-        world.wizard_taught = self.wizard_taught;
-        world.cheat_unlocked = self.cheat_unlocked;
-        world.blocking = self.blocking;
-        world.console_history = self.console_history.clone();
-
-        // Re-register do-attack if player had learned it
-        if self.player_can_attack {
-            crate::game::bind_do_attack(&world.glyph_env);
-        }
-
-        // Replay env-mutating forms (const, defmacro, set!, bind-key)
-        let glyph_env = world.glyph_env.clone();
-        for source in &self.user_source {
-            if let Ok(forms) = read_string(source) {
-                for form in &forms {
-                    let _ = eval_with_opts(form, &glyph_env, SandboxOptions::default(), world);
-                }
-            }
-        }
-    }
-
-    /// Write profile to disk at `~/.xlyph/profile.json`.
     /// Delete the profile file from disk.
     pub fn delete() {
         let path = Self::path();
@@ -86,6 +53,7 @@ impl PlayerProfile {
         }
     }
 
+    /// Write profile to disk at `~/.xlyph/profile.json`.
     pub fn save(&self) -> Result<(), String> {
         let dir = xlyph_dir();
         std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create xlyph dir: {}", e))?;
@@ -95,13 +63,4 @@ impl PlayerProfile {
         Ok(())
     }
 
-    /// Load profile from disk, or `None` if no profile exists yet.
-    pub fn load() -> Option<Self> {
-        let path = Self::path();
-        if !path.is_file() {
-            return None;
-        }
-        let json = std::fs::read_to_string(&path).ok()?;
-        serde_json::from_str(&json).ok()
-    }
 }

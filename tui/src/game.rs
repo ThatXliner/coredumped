@@ -5,7 +5,7 @@
 //! systems that read or mutate those components: player intent handling,
 //! enemy AI, ticking, console state, and inspector state.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bracket_lib::prelude::{
     a_star_search, NavigationPath, CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW,
@@ -119,6 +119,7 @@ impl World {
             user_source: Vec::new(),
             pending_wipe_slot: None,
             quit_countdown: 0,
+            seen_entity_kinds: HashSet::new(),
         };
 
         world.load_playbook();
@@ -177,6 +178,7 @@ impl World {
             user_source: Vec::new(),
             pending_wipe_slot: None,
             quit_countdown: 0,
+            seen_entity_kinds: HashSet::new(),
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -487,6 +489,7 @@ impl World {
         self.pending_wipe_slot = None;
         self.quit_countdown = 0;
         self.confirming_quit = false;
+        self.seen_entity_kinds.clear();
         crate::player_profile::PlayerProfile::delete();
     }
 

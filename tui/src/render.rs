@@ -11,6 +11,7 @@ use bracket_lib::prelude::*;
 
 use crate::{
     entity::{EntityKind, EntityView, Position},
+    rules::Rule,
     event_log::LogEntry,
     game::Mode,
     glyph::highlight::{self, Span},
@@ -228,6 +229,21 @@ fn render_overlay_backdrop(ctx: &mut BTerm) {
     // Re-render is handled by the overlay draw that follows
 }
 
+/// Rules always visible regardless of enemy discovery.
+const ALWAYS_VISIBLE_RULES: &[&str] = &["slime-hunt", "flashlight"];
+
+fn rule_visible(rule: &Rule, seen: &HashSet<EntityKind>) -> bool {
+    if ALWAYS_VISIBLE_RULES.contains(&rule.id) {
+        return true;
+    }
+    for kind in seen {
+        if kind.rule_name() == rule.id {
+            return true;
+        }
+    }
+    false
+}
+
 fn render_inspector(ctx: &mut BTerm, world: &World) {
     let x = 2;
     let y = 1;
@@ -239,7 +255,11 @@ fn render_inspector(ctx: &mut BTerm, world: &World) {
 
     let mut line_y = y + 2;
     let inner_w = width - 4;
-    let rules = world.registry.iter().collect::<Vec<_>>();
+    let rules: Vec<_> = world
+        .registry
+        .iter()
+        .filter(|r| rule_visible(r, &world.seen_entity_kinds))
+        .collect();
     let selected = world.inspector_selection.min(rules.len().saturating_sub(1));
 
     if rules.is_empty() {

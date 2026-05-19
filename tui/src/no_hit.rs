@@ -237,6 +237,7 @@ mod tests {
             user_source: Vec::new(),
             pending_wipe_slot: None,
             quit_countdown: 0,
+            seen_entity_kinds: std::collections::HashSet::new(),
         }
     }
 

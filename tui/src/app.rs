@@ -80,6 +80,8 @@ impl GameState for State {
             self.world.apply_intent(intent);
         }
 
+        self.world.mark_visible_entities();
+
         if !self.world.running {
             ctx.quitting = true;
             return;

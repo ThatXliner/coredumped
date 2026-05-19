@@ -3,13 +3,13 @@
 //! Defined here so the glyph module can reference it in `BuiltinFn`'s
 //! signature without creating circular `use` confusion.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bracket_lib::prelude::RGB;
 
 use crate::{
     ecs::Ecs,
-    entity::{Direction, EntityId},
+    entity::{Direction, EntityId, EntityKind},
     event_log::EventLog,
     game::Mode,
     glyph::Env,
@@ -68,6 +68,9 @@ pub struct World {
 
     /// Countdown to quit after wiping. 0 = not counting down.
     pub quit_countdown: u32,
+
+    /// Entity kinds the player has seen (via flashlight or interaction).
+    pub seen_entity_kinds: HashSet<EntityKind>,
 }
 
 impl World {
@@ -105,6 +108,19 @@ impl World {
             user_source: Vec::new(),
             pending_wipe_slot: None,
             quit_countdown: 0,
+            seen_entity_kinds: HashSet::new(),
+        }
+    }
+
+    /// Mark entity kinds in the flashlight cone as seen.
+    pub fn mark_visible_entities(&mut self) {
+        let lit =
+            self.map
+                .flashlight_tiles(self.player_pos(), self.player_facing);
+        for entity in self.ecs.renderable_entities() {
+            if lit.contains(&entity.pos) || entity.kind == EntityKind::Player {
+                self.seen_entity_kinds.insert(entity.kind);
+            }
         }
     }
 }

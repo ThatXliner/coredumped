@@ -235,6 +235,7 @@ mod tests {
             console_cursor: 0,
             confirming_quit: false,
             user_source: Vec::new(),
+            pending_wipe_slot: None,
         }
     }
 

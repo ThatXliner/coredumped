@@ -62,6 +62,9 @@ pub struct World {
     /// bind-key). Saved and replayed on load to restore user
     /// definitions/overrides.
     pub user_source: Vec<String>,
+
+    /// Slot number awaiting wipe confirmation. Set by (wipe!).
+    pub pending_wipe_slot: Option<u32>,
 }
 
 impl World {
@@ -97,6 +100,7 @@ impl World {
             console_cursor: 0,
             confirming_quit: false,
             user_source: Vec::new(),
+            pending_wipe_slot: None,
         }
     }
 }

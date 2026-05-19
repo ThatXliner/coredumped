@@ -116,6 +116,7 @@ impl World {
             console_cursor: 0,
             confirming_quit: false,
             user_source: Vec::new(),
+            pending_wipe_slot: None,
         };
 
         world.load_playbook();
@@ -171,6 +172,7 @@ impl World {
             console_cursor: 0,
             confirming_quit: false,
             user_source: Vec::new(),
+            pending_wipe_slot: None,
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -948,6 +950,32 @@ impl World {
 
     fn submit_console(&mut self) {
         let trimmed = self.console_buffer.trim();
+
+        // Handle pending wipe confirmation
+        if let Some(slot) = self.pending_wipe_slot.take() {
+            if trimmed == "I am aware of what I am doing." {
+                let path = crate::save::save_path(slot);
+                if path.exists() {
+                    if let Err(e) = std::fs::remove_file(&path) {
+                        self.event_log
+                            .push(format!("Cannot delete save: {}", e));
+                    } else {
+                        self.event_log.push_colored(
+                            format!("Save slot {} deleted.", slot),
+                            RGB::named(RED),
+                        );
+                    }
+                } else {
+                    self.event_log
+                        .push(format!("Save slot {} does not exist.", slot));
+                }
+            } else {
+                self.event_log.push("Wipe cancelled.");
+            }
+            self.console_buffer.clear();
+            return;
+        }
+
         if trimmed.is_empty() {
             self.event_log.push("Console waits. No query submitted.");
             self.console_buffer.clear();
@@ -1230,6 +1258,11 @@ pub(crate) fn setup_glyph_env() -> Env {
         "load!",
         "load a saved game: (load! slot-number)",
         builtin_load
+    );
+    reg!(
+        "wipe!",
+        "delete a save: (wipe! slot-number)",
+        builtin_wipe
     );
 
     ai_builtins::register_all(&env);
@@ -1741,10 +1774,37 @@ fn builtin_load(
     let loaded = World::load_from_disk(slot).map_err(|e| glyph::EvalError::Custom(e))?;
     *world = loaded;
     world.event_log.push_colored(
-        format!("Game loaded from slot {}.", slot),
+        format!("Game loaded from slot {}. Use (wipe! {}) to delete the save.", slot, slot),
         RGB::named(GREEN),
     );
     Ok(Value::I64(slot as i64))
+}
+
+fn builtin_wipe(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let slot: u32 = match args.first() {
+        Some(Value::I64(n)) if *n >= 0 => *n as u32,
+        None => 0,
+        _ => {
+            return Err(glyph::EvalError::TypeError {
+                expected: "non-negative integer slot number",
+                got: args.first().map(|v| v.to_string()).unwrap_or_default(),
+            })
+        }
+    };
+    world.pending_wipe_slot = Some(slot);
+    world.event_log.push_colored(
+        format!(
+            "Type 'I am aware of what I am doing.' to confirm wiping save slot {}.",
+            slot
+        ),
+        RGB::named(RED),
+    );
+    Ok(Value::Nil)
 }
 
 impl Default for World {

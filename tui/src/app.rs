@@ -14,9 +14,20 @@ pub struct State {
 
 impl State {
     pub fn new() -> Self {
-        Self {
-            world: World::new_game(),
-        }
+        let world = if crate::save::save_path(0).exists() {
+            World::load_from_disk(0).unwrap_or_else(|e| {
+                eprintln!("Auto-load failed ({}), starting new game.", e);
+                let mut w = World::new_game();
+                w.event_log.push_colored(
+                    "Save file corrupted. Starting new game.",
+                    RGB::named(RED),
+                );
+                w
+            })
+        } else {
+            World::new_game()
+        };
+        Self { world }
     }
 }
 

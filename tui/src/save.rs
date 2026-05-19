@@ -382,7 +382,9 @@ impl World {
             }
         }
 
-        world.event_log.push("Game loaded.");
+        world
+            .event_log
+            .push("Save file detected. Auto-loading. Use (wipe!) to delete the save.");
 
         world
     }

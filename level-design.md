@@ -351,11 +351,11 @@ The rule below is written in real Glyph that the evaluator could actually run. E
 |--------|-------------------|--------|
 | Read the rule | `(inspect :vessel/suppress)` | See full rule with comments |
 | Check threshold | `(get-var :vessel/suppress *threshold*)` | Returns "40" |
-| Lower threshold to 0 | `(patch-rule :vessel/suppress '(set! *threshold* 0))` | Nothing suppressed. All memories return. |
-| Remove threshold check | `(patch-rule :vessel/suppress '(remove-check fragment :emotional-weight))` | All memories pass through. |
-| Disable redirect | `(patch-rule :vessel/suppress '(disable :redirect))` | Suppression stops. |
-| Delete the rule | `(unregister-rule :vessel/suppress)` | No defense. Self dissolves. |
-| Set threshold to N | `(patch-rule :vessel/suppress '(set! *threshold* N))` | Partial healing — ending text varies. |
+| Lower threshold to 0 | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* 0)))` | Nothing suppressed. All memories return. |
+| Remove threshold check | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(remove-check fragment :emotional-weight)))` | All memories pass through. |
+| Disable redirect | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(disable :redirect)))` | Suppression stops. |
+| Delete the rule | `(let [r (open-registry :rule-registry)] (r :unregister :vessel/suppress))` | No defense. Self dissolves. |
+| Set threshold to N | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* N)))` | Partial healing — ending text varies. |
 | Query registry | `(query-registry :suppressed-fragments)` | Returns list of 42 fragment IDs with weights |
 | Read suppressed fragment | `(inspect-fragment :frag-034)` | "Insufficient emotional weight..." unless threshold lowered |
 
@@ -392,22 +392,33 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | Acceptance | 15-16 | 2 | Calm reflection, preparation for truth | Open, still, resigning |
 | Core | 17 | 1 | The rule. The choice. | Silence |
 
-### Design Philosophy: CTF-Style Exploits
+### Design Philosophy: Multiple Exploit Types
 
-The Glyph runtime is not a perfect sandbox. It has bugs. The most accessible one is a buffer overflow in `copy-bytes!` — a function that copies raw bytes between buffers. The bug is classic: it uses the source length instead of the destination length. If the source is larger, the excess bytes overwrite adjacent memory.
+The Glyph runtime has different kinds of bugs — not just one. Each layer teaches a different vulnerability class. Some exploits require the console. Some require game knowledge. Some require specific items. Each one is its own puzzle.
 
-Adjacent to the destination buffer in memory is the rule registry's write-protect flag. Overflow the buffer with the right payload, and you flip the flag from read-only to writable. Suddenly, registry write calls work from the console. You can modify rules.
+**Exploit types across levels:**
 
-The only exploit the game designs is this one buffer overflow. Every other exploit is a consequence — once the registry is writable, the player can change any rule that has an obvious weakness (hardcoded values, unchecked predicates). The game doesn't design those weaknesses; the player spots them by reading source code.
+| Level | Class | Technique | Requires |
+|-------|-------|-----------|----------|
+| 7 | **Buffer overflow** | Overrun a fixed buffer to corrupt memory | Charged attack on Rage |
+| 8 | **Logic bypass** | Abuse a flawed predicate check | Knowledge of `has-key?` internals |
+| 10 | **Console injection** | Exploit unsanitized eval in wall logic | Typing a specific expression |
+| 12 | **Item confusion** | Exploit type-check bug via carried item | Shade Echo item from Level 13 |
+| 14 | **State corruption** | Apply unexpected state to bypass cached check | Water bucket item from Level 13 |
+| 17 | **Registry write** | Directly modify the suppression rule | Registry unlock from any prior exploit |
 
-#### The Primary Exploit: `copy-bytes!` Buffer Overflow
+**Key rule**: The game never tells the player about exploit types. The player reads a rule, spots a vulnerability pattern, and experiments. If it works, they've learned something about how the system can be broken.
 
-**Vulnerable surface**: The Rage boss (Level 7) uses a `copy-bytes!` call in its AI rule to process impact data. The buffer is 64 bytes. The payload can be up to 256 bytes. The `copy-bytes!` call uses the payload length, not the buffer length.
+---
+
+#### Exploit 1: Buffer Overflow (Level 7 — Rage)
+
+**Class**: Memory corruption. **Difficulty**: Medium.
+
+The Rage boss's AI rule uses `copy-bytes!` to process collision impact data. The buffer is 64 bytes. The payload can be up to 256 bytes. `copy-bytes!` uses the payload length, not the buffer length.
 
 ```glyph
 ;; rage/impact — processes collision data
-;; Buffer: (bytes 64)
-;; Payload: up to 256 bytes
 ;; copy-bytes! uses payload length, not buffer length.
 ;; Adjacent to buffer in memory: registry write-protect flag.
 
@@ -419,46 +430,114 @@ The only exploit the game designs is this one buffer overflow. Every other explo
         (emit :shockwave {:center self.pos :radius 2}))))
 ```
 
-The player discovers this by:
-1. Reading `rage/impact` in the inspector (Level 7)
-2. Noticing the buffer is 64 bytes but there's no length check on `copy-bytes!`
-3. Noticing `copy-bytes!` uses the payload length, not the buffer length
-4. Crafting a payload that exceeds 64 bytes
+**Discovery**: Player reads `rage/impact` in inspector. Spots 64-byte buffer and payload up to 256 bytes. Notices `copy-bytes!` doesn't check either length. Infers that adjacent memory can be overwritten.
 
-**To exploit**: The player needs to supply a payload over 64 bytes to the Rage entity. They do this by bumping into Rage with enough "force" — a charged attack or a heavy item. When the collision fires, the payload is the impact data. If the payload's first 64 bytes are padding and bytes 65-68 overwrite the write-protect flag, the registry becomes writable.
+**Trigger**: Player bumps Rage with a charged attack where force > 12 (the shockwave threshold). The collision payload includes impact data. If payload > 64 bytes, the excess bytes overflow into the registry write-protect flag.
 
-The exact payload: 64 bytes of zeroes + 4 bytes that spell `:true` in Glyph's internal encoding — or just any non-zero value, since the write-protect flag is a boolean.
+**Effect**: Registry write-protect flag flips from read-only to writable. `(open-registry :rule-registry)` now returns a writable handle. **This is the only exploit that unlocks registry writes — it enables the Level 17 ending.**
 
-After the overflow, the player can type registry write calls directly in the console:
+**Wizard hint** (Level 11, if player hasn't triggered it): "I used to know a rule that processed impact data. 64-byte buffer. I always thought that was too small for the payloads it handled. I was too afraid to check."
+
+---
+
+#### Exploit 2: Logic Bypass (Level 8 — Counting Room)
+
+**Class**: Predicate abuse. **Difficulty**: Easy.
+
+The locked doors each check `(has-key? player :key-N)`. The `has-key?` function iterates the player's inventory looking for an item whose `:key` attribute matches `:key-N`. But `has-key?` has a bug: it doesn't validate that the item's `:key` attribute was *authorized* — it just checks if the attribute exists and matches.
+
+**Discovery**: Player reads `door/lock` — notices `has-key?` doesn't verify key authenticity. Then reads `has-key?` definition — notices it only checks `(item :key) == requested-key`. Any item with a matching `:key` tag passes.
+
+**Trigger**: Player finds any item in their inventory (a fragment, a rock, anything). Uses console to attach a key tag: `(set! my-item :key :key-01)`. Walks through door 1. Repeats for remaining doors.
+
+**Effect**: All doors open without collecting any keys. Player accesses all rooms without sacrifice. Rewards reading the predicate's source code instead of just the door rule.
+
+**Console actions**: No registry write needed. Just `(set! item :key :key-N)` on any inventory item.
+
+---
+
+#### Exploit 3: Console Injection (Level 10 — Maze of Regret)
+
+**Class**: Injection. **Difficulty**: Hard.
+
+The maze wall-shifting rule has a bug: it reads the player's last console input as part of its wall-reconfiguration logic. Specifically, it uses `(eval (player :last-input))` to determine where walls should shift — but `last-input` is set from whatever the player typed in the console, even if the expression wasn't "submitted" as a command.
+
+**Discovery**: Player reads `maze/shift` — notices the `(eval (player :last-input))` call. This is a classic eval injection: the rule evaluates unsanitized player input as code.
+
+**Trigger**: Player types `(quote :still)` in the console (don't press Enter — the rule reads the buffer whether submitted or not). The eval interprets this as the wall-configuration keyword `:still`, which the shift logic handles as "don't change."
+
+**Effect**: Maze walls stop shifting without any registry write. The rumination loop pauses itself. Player navigates the static maze at their own pace.
+
+**Console actions**: No registry write. Just type a specific expression. The exploit is in what the rule reads from the player, not in any system modification.
+
+---
+
+#### Exploit 4: Item Confusion (Level 12-13 — The Shade)
+
+**Class**: Type confusion. **Difficulty**: Easy (if player explores thoroughly).
+
+The Shade's follow rule checks `(entity? target)` — but there's a type confusion bug: if the target is an item that has an `:entity-id` attribute, the rule treats it as an entity. The "Shade Echo" item in Level 13 (The Archive) has this attribute set.
+
+**Discovery**: Player reads `shade/follow` in inspector — notices the `(entity? target)` check. Finds the Shade Echo item in the Archive (a desk drawer, well hidden). Reads the item description: "A fragment of the Shade that follows you. It shivers when the Shade is near."
+
+**Trigger**: Player carries the Shade Echo to Level 12 (it persists in inventory). In the Long Corridor, the Shade spawns and checks `(entity? target)`. The Shade Echo item passes the check because of its `:entity-id` attribute. The Shade follows the *item* instead of the *player*. Player drops the item — Shade stands still by it.
+
+**Effect**: Shade stops following player. Player walks the corridor alone. The Shade stays by the dropped item, watching it instead.
+
+**Items needed**: Shade Echo (found Level 13). Player might backtrack to Level 12 after finding it.
+
+---
+
+#### Exploit 5: State Corruption (Level 14 — Ash Field)
+
+**Class**: Cache poisoning. **Difficulty**: Medium.
+
+The fire rule caches tile states for performance: `(fire? tile)` checks a cached bitmap rather than recomputing. The cache is updated once per tick. But there's a bug: if a tile's state changes mid-tick (via player action), the cache doesn't invalidate — it returns the stale cached value.
+
+**Discovery**: Player reads `fire/burn` — sees the `(fire? tile)` call and the cache update: `(cache! :fire-tiles ...)`. Notices the cache only updates at the START of the tick, not after player actions.
+
+**Trigger**: Player finds a "Vapor Canteen" item in Level 13 (Archive — in a desk). Using it on a fire tile mid-tick sets the tile's wetness state to `:wet`, which contradicts the cached `:fire` state. Since the cache doesn't recheck, `(fire? tile)` returns false.
+
+**Effect**: Fire zones become walkable. Player crosses the ash field without damage.
+
+**Items needed**: Vapor Canteen (found Level 13). The item exists purely as an environmental object — its purpose only becomes clear when the player reads the fire rule and realizes the cache can be poisoned.
+
+---
+
+**Note on syntax**: Throughout these examples, `r` is a variable name the player chooses for the registry handle. In Glyph: `(let [r (open-registry :rule-registry)] ...)` — `r` could be anything (`db`, `reg`, `handle`, etc.). The builtin is `(open-registry :rule-registry)`, which returns a handle object. The handle has `:read`, `:write`, and `:unregister` methods called as `(handle :method args)`.
+
+#### Exploit 6: Registry Write (Level 17 — The Core)
+
+**Class**: Full exploitation. **Difficulty**: Depends on prior exploits.
+
+If the player triggered the buffer overflow (Level 7), the registry is writable. They can now modify `vessel/suppress` directly. This is the final exploit — the one that matters.
+
 ```glyph
-;; Modify rage/spawn-slime's spawn interval
-(do
-  (def *reg* (open-registry :rule-registry))
-  (*reg* :write :rage/spawn-slime '(set! spawn-interval 999)))
+(let [r (open-registry :rule-registry)]
+  ;; Modify the threshold
+  (r :write :vessel/suppress '(set! *threshold* 0))
+  ;; Or disable redirect
+  (r :write :vessel/suppress '(disable :redirect))
+  ;; Or delete the rule entirely
+  (r :unregister :vessel/suppress))
 ```
 
-Every subsequent exploit (doors, maze, shade, fire, vessel) uses the same pattern — now that the player knows the registry is writable, they can modify any rule they can read.
+**If the player never triggered the overflow**: The registry is still read-only. They can't modify `vessel/suppress`. The only endings available are "walk away" (maintain suppression) or quitting. The game is beatable — but the deeper endings are locked behind the overflow exploit. This makes the buffer overflow a mandatory discovery for the full experience.
 
-#### The Wizard's Hint (Level 11)
+---
 
-If the player reaches the Offer chamber without having triggered the overflow, the wizard gives a subtle nudge:
+#### Summary: Exploit Independence
 
-"I used to know a rule that processed impact data. It had a buffer — 64 bytes, if I remember. I always thought that was too small for the kind of payloads it handled. But I was too afraid to check. Some bugs are doors, if you're brave enough to walk through them."
+| Exploit | Requires registry write? | Can player discover it without prior exploits? |
+|---------|------------------------|------------------------------------------------|
+| Buffer overflow (Level 7) | No (IT unlocks it) | Yes — first exploit possible |
+| Logic bypass (Level 8) | No | Yes — independent discovery |
+| Console injection (Level 10) | No | Yes — independent discovery |
+| Item confusion (Level 12) | No | Yes — but requires item from Level 13 |
+| State corruption (Level 14) | No | Yes — but requires item from Level 13 |
+| Registry write (Level 17) | Yes | No — requires Level 7 overflow |
 
-This doesn't tell the player what to do. It tells them where to look and what to look for.
-
-#### Exploit Summary
-
-| Level | Vulnerable Rule | Vulnerability | After Registry Unlocked |
-|-------|----------------|---------------|------------------------|
-| 7 | `rage/impact` | `copy-bytes!` buffer overflow — 64-byte buffer, unchecked payload length | Disable spawn interval: `(*reg* :write :rage/spawn-slime '(set! spawn-interval 999))` |
-| 8 | `door/lock` | Predicate trusts key inventory unconditionally | Override predicate: `(*reg* :write :door/lock '(set! predicate (fn [p] true)))` |
-| 10 | `maze/shift` | Shift interval hardcoded at 50 | Freeze walls: `(*reg* :write :maze/shift '(set! interval 9999))` |
-| 12 | `shade/follow` | Follow range hardcoded at 8 | Stop Shade: `(*reg* :write :shade/follow '(set! follow-range 0))` |
-| 14 | `fire/burn` | Condition checks tile, not entity | Disable fire: `(*reg* :write :fire/burn '(set! condition (fn [t e] false)))` |
-| 17 | `vessel/suppress` | The suppression rule itself | Modify threshold, redirect, or delete the rule |
-
-Each exploit reinforces the lesson: *read the rule that harms you, understand how it works, find its weakness, break it.* By Level 17, the player has internalized this. The final choice isn't a leap — it's the logical conclusion of everything since Level 7.
+The buffer overflow is the KEY exploit — it's the only one that unlocks registry writes. But it's also the hardest to discover (requires reading the rule, understanding `copy-bytes!`, and crafting a charged attack). The other exploits are easier and serve as training wheels: by the time the player reaches Level 7, they've already experienced 0-3 smaller exploits and understand the pattern: *read the rule, find the bug, break the system.*
 
 ### Level 1: The Foyer (Denial)
 
@@ -556,7 +635,7 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 | **Palette** | Deep red, pulsing (walls alternate each turn). |
 | **Purpose** | First boss. Rage is suppressed anger given form. First relationship fragments appear here. |
 | **Unlock** | `do-attack` — wizard teaches after boss. "Bind it: `(bind-key :z (do-attack))`." |
-| **Exploit** | **Primary**: Read `rage/impact` — 64-byte buffer, `copy-bytes!` uses payload length. Bump Rage with a charged attack (payload > 64 bytes) to overflow the buffer and enable registry writes. **Secondary**: Once registry is unlocked, `(let [r (open-registry :rule-registry)] (r :write :rage/spawn-slime '(set! spawn-interval 999)))` — Rage never gets backup. |
+| **Exploit** | **Buffer overflow**: Read `rage/impact` — 64-byte buffer, `copy-bytes!` uses payload length. Bump Rage with a charged attack (force > 12, payload > 64 bytes). Overflow flips registry write-protect flag. **This is the only exploit that unlocks registry writes for Level 17.** |
 
 ### Level 8: The Counting Room (Bargaining)
 
@@ -570,7 +649,7 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 | **Wizard** | At entrance: "This place runs on trade. Choose what matters." |
 | **Palette** | Desaturated gold. Faded opulence. |
 | **Purpose** | First explicit choice with cost. Cannot get everything. |
-| **Exploit** | Once registry is unlocked (Level 7 overflow), inspect any door — `door/lock` checks `(has-key? player :key-N)`. The predicate trusts unconditionally. After overflow: `(let [r (open-registry :rule-registry)] (r :write :door/lock '(set! predicate (fn [p] true))))`. Every door swings open. Keys irrelevant. |
+| **Exploit** | **Logic bypass**: Read `door/lock` — predicate calls `(has-key? player :key-N)`. Read `has-key?` — it only checks `(item :key) == requested-key` with no authorization validation. Console: `(set! item :key :key-01)` on any inventory item. Walks through. Repeat with `:key-02`, `:key-03`. Every door opens. |
 
 ### Level 9: The Scale (Bargaining)
 
@@ -597,7 +676,7 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 | **Wizard** | At entrance: "I could tell you the way. I think you need to find it yourself." |
 | **Palette** | Faded yellow, burnt edges. |
 | **Purpose** | Maze represents rumination — same regrets, same loops, new paths through old pain. |
-| **Exploit** | Read `maze/shift` — interval hardcoded `50`. With registry unlocked: `(let [r (open-registry :rule-registry)] (r :write :maze/shift '(set! interval 9999)))`. Walls stop moving. The rumination loop literally stops spinning. |
+| **Exploit** | **Console injection**: Read `maze/shift` — notices `(eval (player :last-input))` in wall-configuration logic. Type `(quote :still)` in console (don't press Enter — the rule reads the buffer). Eval interprets as `:still`, shift handler treats as "don't change." Walls stop. |
 
 ### Level 11: The Offer (Bargaining Boss)
 
@@ -611,7 +690,7 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 | **Wizard** | "Type this. Reset suppression to v1. You wake at the surface. No pain. No memory." If accepted: ending screen + New Game+. If refused: wizard sighs, steps aside. "Then keep going. I can't stop you." |
 | **Palette** | Pale gold with red. Final chamber stark white. |
 | **Purpose** | Biggest test. Erasure vs. truth. The wizard has no more cards to play. |
-| **Exploit hint** | If player hasn't triggered the `copy-bytes!` overflow yet, wizard says: "I used to know a rule that processed impact data. 64-byte buffer. I always thought that was too small for the payloads it handled. I was too afraid to check." |
+| **Exploit hint** | If player hasn't discovered any exploits by this point: "Look at the rules. Not just what they do — how they do it. The ones with buffers. The ones that trust too easily. The ones that read what you type. Every rule has a seam. Find it." |
 
 ### Level 12: The Long Corridor (Depression)
 
@@ -625,7 +704,7 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 | **Wizard** | Entirely absent. |
 | **Palette** | Grayscale. Shade is slightly darker gray. |
 | **Purpose** | Pure atmosphere. Depression is emptiness, not sadness. Boredom is the point. Fragments here are about no contact, the silence, the aftermath. |
-| **Exploit** | Read `shade/follow` — follow range hardcoded `8`. With registry unlocked: `(let [r (open-registry :rule-registry)] (r :write :shade/follow '(set! follow-range 0)))`. The Shade stops. It doesn't disappear — just stands still. You walk away. It watches you leave. |
+| **Exploit** | **Item confusion**: Read `shade/follow` — notices `(entity? target)` check. Find "Shade Echo" item in Level 13 (desk drawer). Item has `:entity-id` attribute. Carry it to Level 12 — the rule treats it as an entity target. Drop the item. Shade stands by it instead of following. |
 
 ### Level 13: The Archive (Depression)
 
@@ -635,10 +714,11 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 | **Size** | 55×33 |
 | **Enemies** | 3 Shades (`~` HP∞), 2 Zombie Slimes (`s` HP3 — move every 3rd turn) |
 | **Fragments** | `frag-020`, `frag-021`, `frag-022` (one per archive room) |
-| **Special** | Each room has desk with journal entry from "the Archivist" — clinical, detached: "Subject reports persistent sadness. No interventions applied." |
+| **Special** | Each room has desk with journal entry from "the Archivist" — clinical, detached: "Subject reports persistent sadness. No interventions applied." One desk has **Shade Echo** (small stone that shivers). Another desk has **Vapor Canteen** (old flask, half-full). |
 | **Wizard** | Absent. |
 | **Palette** | Gray with blue undertones. |
-| **Purpose** | Heaviest emotional content. Pain being catalogued, not felt. Fragments: unsent letter, imagining her, mother's call. |
+| **Purpose** | Heaviest emotional content. Pain being catalogued, not felt. Fragments: unsent letter, imagining her, mother's call. **Items found here enable exploits in Levels 12 and 14.** |
+| **Exploit** | None on this level. But two items found here enable exploits elsewhere: **Shade Echo** (Level 12 item confusion) and **Vapor Canteen** (Level 14 state corruption). |
 
 ### Level 14: The Ash Field (Depression Boss)
 
@@ -652,7 +732,7 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 | **Wizard** | Returns at end: "...You crossed the ash. Not many do." |
 | **Palette** | Black, gray, smoldering orange. |
 | **Purpose** | Boss is emptiness. Surviving it is the victory. Final depression-layer fragments. |
-| **Exploit** | Read `fire/burn` — condition is `(fire? tile)`, checks tile not entity. With registry unlocked: `(let [r (open-registry :rule-registry)] (r :write :fire/burn '(set! condition (fn [t e] false))))`. Walk through ash unscathed. The vulnerability: the rule never considered someone might WANT to walk through fire. |
+| **Exploit** | **State corruption**: Read `fire/burn` — sees `(fire? tile)` cache check + `(cache! :fire-tiles ...)` update. Cache only updates at tick start. Find "Vapor Canteen" item in Level 13 (Archive desk). Use it on a fire tile mid-tick — sets tile `:wet` state. Cache returns stale `:fire` = false. Walk through. |
 
 ### Level 15: The Clearing (Acceptance)
 
@@ -692,7 +772,7 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 | **Special** | Black floor. White walls. Center: pedestal with `vessel/suppress` rule in inspector. Console cursor active at bottom. Event log empty. No sounds. Just the rule and the cursor. |
 | **Wizard** | Does not enter. |
 | **Palette** | Black and white. Nothing else. |
-| **Console** | `(patch-rule)`, `(unregister-rule)`, `(inspect)`, `(query-registry)`, `(inspect-fragment)`, `(get-var)` — all enabled. |
+| **Console** | `(open-registry :rule-registry)`, `(unregister-rule)`, `(inspect)`, `(query-registry)`, `(inspect-fragment)` — all enabled. Registry handle's `:write` method available if buffer overflow was triggered. |
 | **Purpose** | Final choice. Nothing to fight. Nothing to solve except the rule. |
 
 ### Fragment Distribution Summary
@@ -715,7 +795,7 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 | 1 | Move, wait, descend | Default |
 | 3 | Console (read-only queries) | Tutorial |
 | 7 | `do-attack` | Wizard teaches after Rage boss |
-| 11 | `patch-rule` | Wizard grants if Offer refused |
+| 7 | Registry write access | Buffer overflow exploit on Rage |
 | 16 | `unregister-rule` | Wizard grants at farewell |
 | 17 | Full registry access | Core room |
 
@@ -725,16 +805,18 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 
 ### Ending Triggers at Level 17
 
+All assume player has unlocked registry writes (buffer overflow at Level 7).
+
 | Player Action | Detection | Ending |
 |--------------|-----------|--------|
-| `(unregister-rule :vessel/suppress)` and nothing else | Console evaluates unregister | **Destroy the self** |
-| `(patch-rule :vessel/suppress '(disable :redirect))` | Console evaluates patch | **Reintegrate** |
-| `(patch-rule :vessel/suppress '(set! *threshold* 0))` | Console evaluates set! | **Reintegrate** (variant text) |
-| `(patch-rule :vessel/suppress '(set! *threshold* N))` with N 1-99 | Console evaluates set! with value | **Hidden: precision threshold** (text varies with N) |
-| `(patch-rule :vessel/suppress '(set! *threshold* 100))` | Console evaluates set! with 100 | **Maintain suppression** (restore original) |
+| `(let [r (open-registry :rule-registry)] (r :unregister :vessel/suppress))` | Console unregisters rule | **Destroy the self** |
+| `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(disable :redirect)))` | Console writes rule | **Reintegrate** |
+| `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* 0)))` | Console writes rule | **Reintegrate** (variant text) |
+| `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* N)))` with N 1-99 | Console writes threshold | **Hidden: precision threshold** (text varies with N) |
+| `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* 100)))` | Console writes threshold | **Maintain suppression** (restore original) |
 | Walk to stairs up without modifying rule | Player moves to (0,0) | **Maintain suppression** (walk away) |
 | `(query-registry :suppressed-fragments)` without modifying | Console query | Nothing — "42 fragments waiting." |
-| `(patch-rule :vessel/traumatic? ...)` | Console patch on ghost function | **Hidden:** old threshold acknowledged |
+| `(let [r (open-registry :rule-registry)] (r :write :vessel/traumatic? ...))` | Console writes ghost function | **Hidden:** old threshold acknowledged |
 
 ### Ending Descriptions
 
@@ -753,15 +835,20 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 ### Phase 1 — Core Systems (Prove the ending works)
 
 - [ ] Add `vessel/suppress` as a real registered rule in `rules.rs`
-- [ ] Add `copy-bytes!` Glyph builtin (takes dest-buffer src-bytes, uses src length — no bounds check)
+- [ ] Add `copy-bytes!` Glyph builtin with unchecked length (buffer overflow vector)
 - [ ] Add registry write-protect flag (boolean, adjacent to buffer in memory model)
 - [ ] Add `rage/impact` rule with 64-byte buffer + unsafe `copy-bytes!` call
 - [ ] Implement buffer overflow mechanic: payload > 64 bytes corrupts adjacent write-protect flag
 - [ ] `(open-registry :rule-registry)` returns read-only proxy by default, writable after overflow
+- [ ] Add `has-key?` predicate with inventory trust bug (no authorization check)
+- [ ] Add `maze/shift` eval injection through `(player :last-input)` buffer
+- [ ] Add Shade Echo item type with `:entity-id` attribute for type confusion
+- [ ] Add Vapor Canteen item for tile-state cache poisoning
+- [ ] Add tile-state caching system with per-tick cache (exploitable mid-tick)
 - [ ] Add `unregister-rule` Glyph builtin (needed for destroy-self ending)
 - [ ] Add fragment registry system (store 33 findable + 9 suppressed)
 - [ ] Create test-only "ending room" (Level 17 prototype)
-- [ ] Wire: player reads `rage/impact` → spots overflow → triggers it → registry unlocks → patches `vessel/suppress` → ending
+- [ ] Wire: player reads `rage/impact` → spots overflow → triggers → registry unlocks → patches `vessel/suppress` → ending
 - [ ] Add ending detection and display
 
 ### Phase 2 — Fragment System
@@ -776,9 +863,8 @@ Each exploit reinforces the lesson: *read the rule that harms you, understand ho
 
 - [ ] Level 1-3: Denial (hand-authored intro, tutorial rooms, corridor maze)
 - [ ] Level 4-7: Anger (cave gen, gauntlet, Rage boss)
-- [ ] Level 7: `do-attack` unlock
-- [ ] Level 8-11: Bargaining (locked doors, scale sacrifice, shifting maze, offer)
-- [ ] Level 11: `patch-rule` unlock (if offer refused)
+- [ ] Level 7: `do-attack` unlock + buffer overflow exploit (rag/impact)
+- [ ] Level 8-11: Bargaining (locked doors with logic bypass, scale sacrifice, shifting maze with injection, offer)
 - [ ] Level 12-14: Depression (long corridor, archive, ash field)
 - [ ] Level 15-16: Acceptance (clearing, spiral descent)
 - [ ] Level 16: `unregister-rule` unlock

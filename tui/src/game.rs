@@ -8,8 +8,9 @@
 use std::collections::HashMap;
 
 use bracket_lib::prelude::{
-    a_star_search, NavigationPath, CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB,
+    a_star_search, NavigationPath, CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW,
 };
+use serde::{Deserialize, Serialize};
 
 const KONAMI_CODE: [&str; 8] = ["up", "up", "down", "down", "left", "right", "left", "right"];
 
@@ -23,14 +24,14 @@ use crate::{
     rules::RuleRegistry,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionCost {
     Free,
     Tick,
     Quit,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Intent {
     /// Execute a keybinding (checks bindings map).
     ExecuteBinding(String),
@@ -49,13 +50,16 @@ pub enum Intent {
     ToggleKeybindings,
     Respawn,
     Restart,
+    SaveGame(u32),
+    LoadGame(u32),
+    OpenExternalEditor,
     Quit,
     Noop,
 }
 
 use crate::world::World;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Mode {
     Normal,
     Inspector,
@@ -82,7 +86,7 @@ impl World {
         let glyph_env = setup_glyph_env();
         let binding_env = setup_binding_env(&glyph_env);
 
-        Self {
+        let mut world = Self {
             map: Map::new_static(),
             ecs,
             registry,
@@ -111,7 +115,11 @@ impl World {
             console_history_draft: String::new(),
             console_cursor: 0,
             confirming_quit: false,
-        }
+            user_source: Vec::new(),
+        };
+
+        world.load_playbook();
+        world
     }
 
     /// Create a world with a procedurally generated dungeon starting at depth 1.
@@ -162,9 +170,11 @@ impl World {
             console_history_draft: String::new(),
             console_cursor: 0,
             confirming_quit: false,
+            user_source: Vec::new(),
         };
 
         crate::levels::build_level(&mut world, depth);
+        world.load_playbook();
         world
     }
 
@@ -308,8 +318,36 @@ impl World {
                 ActionCost::Free
             }
             Intent::Quit => {
+                let _ = self.save_to_disk(0);
+                self.event_log.push("Game saved.");
                 self.running = false;
                 ActionCost::Quit
+            }
+            Intent::SaveGame(slot) => {
+                if let Err(e) = self.save_to_disk(slot) {
+                    self.event_log.push(format!("Save failed: {}", e));
+                } else {
+                    self.event_log
+                        .push_colored(format!("Game saved to slot {}.", slot), RGB::named(GREEN));
+                }
+                ActionCost::Free
+            }
+            Intent::LoadGame(slot) => {
+                match World::load_from_disk(slot) {
+                    Ok(world) => {
+                        *self = world;
+                    }
+                    Err(e) => {
+                        self.event_log.push(format!("Load failed: {}", e));
+                    }
+                }
+                ActionCost::Free
+            }
+            Intent::OpenExternalEditor => {
+                if self.mode == Mode::Console {
+                    self.open_external_editor();
+                }
+                ActionCost::Free
             }
             Intent::Noop => ActionCost::Free,
         }
@@ -388,6 +426,7 @@ impl World {
         crate::levels::build_level(self, self.depth);
         self.event_log
             .push(format!("You descend to depth {}.", self.depth));
+        let _ = self.save_to_disk(0);
         self.turn += 1;
     }
 
@@ -401,6 +440,7 @@ impl World {
         crate::levels::build_level(self, self.depth);
         self.event_log
             .push(format!("You ascend to depth {}.", self.depth));
+        let _ = self.save_to_disk(0);
         self.turn += 1;
     }
 
@@ -412,6 +452,18 @@ impl World {
         if let Some(wizard_id) = self.wizard_id.take() {
             self.ecs.remove(wizard_id);
         }
+    }
+
+    pub(crate) fn clear_level_entities(&mut self) {
+        let ids: Vec<EntityId> = self
+            .ecs
+            .entity_ids()
+            .filter(|id| *id != self.player_id)
+            .collect();
+        for id in ids {
+            self.ecs.remove(id);
+        }
+        self.wizard_id = None;
     }
 
     fn respawn(&mut self) {
@@ -727,6 +779,108 @@ impl World {
         self.console_cursor = self.console_buffer.len();
     }
 
+    fn load_playbook(&mut self) {
+        use bracket_lib::prelude::GREEN;
+        if !crate::playbook::has_playbook() {
+            return;
+        }
+
+        let glyph_env = self.glyph_env.clone();
+        let binding_env = self.binding_env.clone();
+        let mut loaded = false;
+
+        // Load init.glyph
+        if let Some(init_source) = crate::playbook::load_init_glyph() {
+            match crate::glyph::read_string(&init_source) {
+                Ok(forms) => {
+                    for form in &forms {
+                        let source = form.to_string();
+                        match crate::glyph::eval_with_opts(
+                            form,
+                            &glyph_env,
+                            crate::glyph::SandboxOptions::default(),
+                            self,
+                        ) {
+                            Ok(_) => {
+                                self.user_source.push(source.clone());
+                                let _ = crate::glyph::eval_with_opts(
+                                    form,
+                                    &binding_env,
+                                    crate::glyph::SandboxOptions::default(),
+                                    self,
+                                );
+                            }
+                            Err(e) => {
+                                self.event_log.push(format!("Playbook init error: {}", e));
+                            }
+                        }
+                    }
+                    loaded = true;
+                }
+                Err(e) => {
+                    self.event_log
+                        .push(format!("Playbook init.glyph parse error: {}", e));
+                }
+            }
+        }
+
+        // Load lib/*.glyph files
+        for lib_file in crate::playbook::list_lib_files() {
+            match std::fs::read_to_string(&lib_file) {
+                Ok(source) => match crate::glyph::read_string(&source) {
+                    Ok(forms) => {
+                        for form in &forms {
+                            let source = form.to_string();
+                            match crate::glyph::eval_with_opts(
+                                form,
+                                &glyph_env,
+                                crate::glyph::SandboxOptions::default(),
+                                self,
+                            ) {
+                                Ok(_) => {
+                                    self.user_source.push(source.clone());
+                                    let _ = crate::glyph::eval_with_opts(
+                                        form,
+                                        &binding_env,
+                                        crate::glyph::SandboxOptions::default(),
+                                        self,
+                                    );
+                                }
+                                Err(e) => {
+                                    self.event_log.push(format!(
+                                        "Playbook lib '{}' error: {}",
+                                        lib_file.display(),
+                                        e
+                                    ));
+                                }
+                            }
+                        }
+                        loaded = true;
+                    }
+                    Err(e) => {
+                        self.event_log.push(format!(
+                            "Playbook lib '{}' parse error: {}",
+                            lib_file.display(),
+                            e
+                        ));
+                    }
+                },
+                Err(e) => {
+                    self.event_log.push(format!(
+                        "Cannot read playbook lib '{}': {}",
+                        lib_file.display(),
+                        e
+                    ));
+                }
+            }
+        }
+
+        if loaded {
+            self.event_log
+                .push_colored("Playbook loaded.", RGB::named(GREEN));
+        }
+    }
+
     fn check_konami(&mut self, key: &str) {
         if self.cheat_unlocked {
             return;
@@ -748,6 +902,48 @@ impl World {
             // Wrong direction — reset, but if the key is "up" it starts a new attempt
             self.konami_index = if key == "up" { 1 } else { 0 };
         }
+    }
+
+    fn open_external_editor(&mut self) {
+        let temp_path = crate::save::temp_edit_path();
+        let _ = std::fs::create_dir_all(temp_path.parent().unwrap());
+
+        if std::fs::write(&temp_path, &self.console_buffer).is_err() {
+            self.event_log.push("Cannot write temp file for editor.");
+            return;
+        }
+
+        let editor = std::env::var("EDITOR").unwrap_or_else(|_| "nano".to_string());
+        self.event_log.push_colored(
+            format!("Opening {} (game paused)...", editor),
+            RGB::named(YELLOW),
+        );
+
+        let status = std::process::Command::new(&editor).arg(&temp_path).status();
+
+        match status {
+            Ok(s) if s.success() => match std::fs::read_to_string(&temp_path) {
+                Ok(contents) => {
+                    self.console_buffer = contents;
+                    self.console_cursor = self.console_buffer.len();
+                    self.event_log.push("Editor closed. Buffer updated.");
+                }
+                Err(e) => {
+                    self.event_log
+                        .push(format!("Cannot read edited file: {}", e));
+                }
+            },
+            Ok(s) => {
+                self.event_log
+                    .push(format!("Editor exited ({}) — buffer unchanged.", s));
+            }
+            Err(e) => {
+                self.event_log
+                    .push(format!("Cannot spawn '{}': {}", editor, e));
+            }
+        }
+
+        let _ = std::fs::remove_file(&temp_path);
     }
 
     fn submit_console(&mut self) {
@@ -788,6 +984,12 @@ impl World {
         self.console_history.push(command.clone());
         match glyph::read_string(&command) {
             Ok(forms) => {
+                // Track env-mutating forms for save/load persistence
+                for form in &forms {
+                    if is_env_mutating_form(form) {
+                        self.user_source.push(form.to_string());
+                    }
+                }
                 let mut last = Value::Nil;
                 let mut err = None;
                 let env = self.glyph_env.clone();
@@ -884,6 +1086,19 @@ fn console_value_text(value: &Value) -> String {
     }
 }
 
+/// Returns true if the top-level form mutates the Glyph environment.
+fn is_env_mutating_form(form: &Value) -> bool {
+    match form {
+        Value::List(items) if !items.is_empty() => match &items[0] {
+            Value::Symbol(s) => {
+                matches!(s.name.as_str(), "const" | "defmacro" | "set!" | "bind-key")
+            }
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
 /// Auto-close unmatched opening brackets/parens/braces in source code.
 ///
 /// Skips contents of string literals and line comments so that parens
@@ -952,7 +1167,7 @@ fn default_bindings() -> HashMap<String, String> {
     m
 }
 
-fn setup_glyph_env() -> Env {
+pub(crate) fn setup_glyph_env() -> Env {
     let env = Env::extend(&glyph::default_env());
 
     macro_rules! reg {
@@ -1010,6 +1225,13 @@ fn setup_glyph_env() -> Env {
         "warp to a dungeon level: (set-level N)",
         builtin_set_level
     );
+    reg!("save!", "save the game: (save! slot-number)", builtin_save);
+    reg!(
+        "load!",
+        "load a saved game: (load! slot-number)",
+        builtin_load
+    );
+
     ai_builtins::register_all(&env);
 
     #[cfg(feature = "prelude")]
@@ -1026,7 +1248,7 @@ fn setup_glyph_env() -> Env {
 }
 
 /// Create the environment used for evaluating keybindings.
-fn setup_binding_env(base: &Env) -> Env {
+pub(crate) fn setup_binding_env(base: &Env) -> Env {
     Env::extend(base)
 }
 
@@ -1046,6 +1268,7 @@ fn builtin_quit_bang(
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
     if world.confirming_quit {
+        let _ = world.save_to_disk(0);
         world.running = false;
     } else {
         world.confirming_quit = true;
@@ -1335,7 +1558,10 @@ Syntax:
 Console commands (game-specific):\n\
   (help)        — show this help text\n\
   (help <name>) — show help for a specific function\n\
-  (quit-terminal) — close the console overlay",
+  (save! [slot]) — save the game (F5 to quick-save)\n\
+  (load! [slot]) — load a saved game (F9 to quick-load)\n\
+  (quit-terminal) — close the console overlay\n\
+  (quit!)       — exit the game (auto-saves)",
     );
 
     if world.player_can_attack {
@@ -1467,6 +1693,58 @@ fn builtin_player_facing(
         Direction::West => "west",
     };
     Ok(glyph::kw(name))
+}
+
+fn builtin_save(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    use bracket_lib::prelude::GREEN;
+    let slot: u32 = match args.first() {
+        Some(Value::I64(n)) if *n >= 0 => *n as u32,
+        None => 1,
+        _ => {
+            return Err(glyph::EvalError::TypeError {
+                expected: "non-negative integer slot number",
+                got: args.first().map(|v| v.to_string()).unwrap_or_default(),
+            })
+        }
+    };
+    world
+        .save_to_disk(slot)
+        .map_err(|e| glyph::EvalError::Custom(e))?;
+    world
+        .event_log
+        .push_colored(format!("Game saved to slot {}.", slot), RGB::named(GREEN));
+    Ok(Value::I64(slot as i64))
+}
+
+fn builtin_load(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    use bracket_lib::prelude::GREEN;
+    let slot: u32 = match args.first() {
+        Some(Value::I64(n)) if *n >= 0 => *n as u32,
+        None => 1,
+        _ => {
+            return Err(glyph::EvalError::TypeError {
+                expected: "non-negative integer slot number",
+                got: args.first().map(|v| v.to_string()).unwrap_or_default(),
+            })
+        }
+    };
+    let loaded = World::load_from_disk(slot).map_err(|e| glyph::EvalError::Custom(e))?;
+    *world = loaded;
+    world.event_log.push_colored(
+        format!("Game loaded from slot {}.", slot),
+        RGB::named(GREEN),
+    );
+    Ok(Value::I64(slot as i64))
 }
 
 impl Default for World {
@@ -2068,6 +2346,41 @@ mod tests {
 
         assert_eq!(cost, ActionCost::Tick);
         assert_eq!(world.depth, 4);
+    }
+
+    #[test]
+    fn descending_from_barrel_depth_clears_barrels_and_signs() {
+        let mut world = World::new_game();
+        world.depth = 4;
+        world.wizard_taught = true;
+        world.bindings.insert("z".into(), "(do-attack)".into());
+        crate::levels::build_level(&mut world, 4);
+
+        let barrel_depth_entities = world.renderable_entities().count();
+        assert!(world
+            .renderable_entities()
+            .any(|entity| entity.kind == EntityKind::Barrel));
+        assert!(world
+            .renderable_entities()
+            .any(|entity| entity.kind == EntityKind::Sign));
+
+        let stairs_down = crate::levels::find_stairs_down(&world.map);
+        if let Some(barrel_id) = world.ecs.entity_at(stairs_down) {
+            world.ecs.remove(barrel_id);
+        }
+        world.ecs.set_position(world.player_id, stairs_down);
+
+        let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
+
+        assert_eq!(cost, ActionCost::Tick);
+        assert_eq!(world.depth, 5);
+        assert!(world.renderable_entities().count() < barrel_depth_entities);
+        assert!(!world
+            .renderable_entities()
+            .any(|entity| entity.kind == EntityKind::Barrel));
+        assert!(!world
+            .renderable_entities()
+            .any(|entity| entity.kind == EntityKind::Sign));
     }
 
     #[cfg(feature = "prelude")]

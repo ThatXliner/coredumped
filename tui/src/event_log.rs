@@ -4,10 +4,11 @@
 //! strings, and the renderer shows the newest lines in the bottom panel.
 
 use bracket_lib::prelude::RGB;
+use serde::{Deserialize, Serialize};
 
 pub const MAX_LOG_LINES: usize = 100;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LogEntry {
     pub text: String,
     pub color: Option<RGB>,

@@ -1,0 +1,426 @@
+//! Save/load system for persisting game progress.
+//!
+//! The core design: persist user-evaluated Glyph **source code** (not runtime
+//! state). On load, the base environment is rebuilt from hardcoded builtins,
+//! then user source is replayed to restore definitions and overrides.
+
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+use crate::entity::{Direction, EntityId, EntityKind, Hp, Position, RenderGlyph};
+use crate::world::World;
+
+// ---------------------------------------------------------------------------
+// Path helpers
+// ---------------------------------------------------------------------------
+
+fn home_dir() -> PathBuf {
+    std::env::var("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."))
+}
+
+pub fn xlyph_dir() -> PathBuf {
+    home_dir().join(".xlyph")
+}
+
+pub fn saves_dir() -> PathBuf {
+    xlyph_dir().join("saves")
+}
+
+pub fn save_path(slot: u32) -> PathBuf {
+    saves_dir().join(format!("slot-{}.json", slot))
+}
+
+pub fn temp_edit_path() -> PathBuf {
+    xlyph_dir().join("tmp").join("console-input.glyph")
+}
+
+// ---------------------------------------------------------------------------
+// Serialisable snapshot types
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize, Deserialize)]
+pub struct SaveData {
+    pub version: u32,
+    pub depth: u32,
+    pub turn: u64,
+    pub player_id_raw: usize,
+    pub player_facing: String,
+    pub player_can_attack: bool,
+    pub wizard_taught: bool,
+    pub wizard_id_raw: Option<usize>,
+    pub cheat_unlocked: bool,
+    pub blocking: bool,
+    pub map_width: i32,
+    pub map_height: i32,
+    pub map_tiles: Vec<char>,
+    pub entities: Vec<EntitySnapshot>,
+    pub event_log: Vec<SavedLogEntry>,
+    pub bindings: Vec<(String, String)>,
+    pub user_source: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct EntitySnapshot {
+    pub id: usize,
+    pub kind: String,
+    pub x: i32,
+    pub y: i32,
+    pub hp_current: i32,
+    pub hp_max: i32,
+    pub alive: bool,
+    pub has_enemy_ai: bool,
+    pub glyph: char,
+    pub sign_message: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SavedLogEntry {
+    pub text: String,
+    pub color_r: f32,
+    pub color_g: f32,
+    pub color_b: f32,
+    pub has_color: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Conversion helpers
+// ---------------------------------------------------------------------------
+
+fn direction_to_string(d: Direction) -> String {
+    match d {
+        Direction::North => "north".into(),
+        Direction::South => "south".into(),
+        Direction::West => "west".into(),
+        Direction::East => "east".into(),
+    }
+}
+
+fn direction_from_string(s: &str) -> Direction {
+    match s {
+        "north" => Direction::North,
+        "south" => Direction::South,
+        "west" => Direction::West,
+        _ => Direction::East,
+    }
+}
+
+fn kind_to_string(k: EntityKind) -> String {
+    k.name().to_string()
+}
+
+fn kind_from_string(s: &str) -> EntityKind {
+    match s {
+        "player" => EntityKind::Player,
+        "slime" => EntityKind::Slime,
+        "goblin" => EntityKind::Goblin,
+        "bat" => EntityKind::Bat,
+        "ogre" => EntityKind::Ogre,
+        "wizard" => EntityKind::Wizard,
+        "barrel" => EntityKind::Barrel,
+        "sign" => EntityKind::Sign,
+        _ => EntityKind::Slime,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// World → SaveData
+// ---------------------------------------------------------------------------
+
+impl World {
+    pub fn to_save_data(&self) -> SaveData {
+        let map_tiles: Vec<char> = (0..(self.map.width * self.map.height))
+            .map(
+                |idx| match self.map.tile(self.map.position_for_idx(idx as usize)) {
+                    crate::map::TileType::Floor => 'F',
+                    crate::map::TileType::Wall => 'W',
+                    crate::map::TileType::StairsDown => 'D',
+                    crate::map::TileType::StairsUp => 'U',
+                },
+            )
+            .collect();
+
+        let entities: Vec<EntitySnapshot> = self
+            .ecs
+            .entity_ids()
+            .filter_map(|id| {
+                let view = self.ecs.view(id)?;
+                let has_enemy_ai = matches!(
+                    view.kind,
+                    EntityKind::Slime | EntityKind::Goblin | EntityKind::Bat | EntityKind::Ogre
+                );
+                Some(EntitySnapshot {
+                    id: id.raw(),
+                    kind: kind_to_string(view.kind),
+                    x: view.pos.x,
+                    y: view.pos.y,
+                    hp_current: view.hp.current,
+                    hp_max: view.hp.max,
+                    alive: view.alive,
+                    has_enemy_ai,
+                    glyph: view.glyph(),
+                    sign_message: self.ecs.sign_message(id).map(|s| s.to_string()),
+                })
+            })
+            .collect();
+
+        let event_log: Vec<SavedLogEntry> = self
+            .event_log
+            .entries()
+            .iter()
+            .map(|entry| {
+                let (has_color, r, g, b) = match entry.color {
+                    Some(c) => (true, c.r, c.g, c.b),
+                    None => (false, 1.0, 1.0, 1.0),
+                };
+                SavedLogEntry {
+                    text: entry.text.clone(),
+                    color_r: r,
+                    color_g: g,
+                    color_b: b,
+                    has_color,
+                }
+            })
+            .collect();
+
+        let bindings: Vec<(String, String)> = self
+            .bindings
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+
+        SaveData {
+            version: 1,
+            depth: self.depth,
+            turn: self.turn,
+            player_id_raw: self.player_id.raw(),
+            player_facing: direction_to_string(self.player_facing),
+            player_can_attack: self.player_can_attack,
+            wizard_taught: self.wizard_taught,
+            wizard_id_raw: self.wizard_id.map(|id| id.raw()),
+            cheat_unlocked: self.cheat_unlocked,
+            blocking: self.blocking,
+            map_width: self.map.width,
+            map_height: self.map.height,
+            map_tiles,
+            entities,
+            event_log,
+            bindings,
+            user_source: self.user_source.clone(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SaveData → World
+// ---------------------------------------------------------------------------
+
+impl World {
+    pub fn from_save_data(data: &SaveData) -> Self {
+        // Start with a minimal world (fresh envs, no game builtins yet)
+        let mut world = World::minimal();
+
+        // --- Map ---
+        let mut map = crate::map::Map::new_filled(
+            data.map_width,
+            data.map_height,
+            crate::map::TileType::Floor,
+        );
+        for (i, ch) in data.map_tiles.iter().enumerate() {
+            let tile = match ch {
+                'F' => crate::map::TileType::Floor,
+                'W' => crate::map::TileType::Wall,
+                'D' => crate::map::TileType::StairsDown,
+                'U' => crate::map::TileType::StairsUp,
+                _ => crate::map::TileType::Floor,
+            };
+            let pos = map.position_for_idx(i);
+            map.set_tile(pos, tile);
+        }
+        world.map = map;
+
+        // --- ECS ---
+        let mut ecs = crate::ecs::Ecs::new();
+        for ent in &data.entities {
+            let kind = kind_from_string(&ent.kind);
+            let pos = Position::new(ent.x, ent.y);
+            let hp = Hp {
+                current: ent.hp_current,
+                max: ent.hp_max,
+            };
+            let _glyph = RenderGlyph { glyph: ent.glyph };
+
+            // We need to allocate entities manually. The ECS doesn't expose a
+            // generic "insert arbitrary entity" method, so we use the spawn
+            // methods that match the kind, then overwrite position/hp/glyph.
+            let allocated = match kind {
+                EntityKind::Player => ecs.spawn_player(pos),
+                EntityKind::Slime => ecs.spawn_slime(pos),
+                EntityKind::Goblin => ecs.spawn_goblin(pos),
+                EntityKind::Bat => ecs.spawn_bat(pos),
+                EntityKind::Ogre => ecs.spawn_ogre(pos),
+                EntityKind::Wizard => ecs.spawn_wizard(pos),
+                EntityKind::Barrel => ecs.spawn_barrel(pos),
+                EntityKind::Sign => {
+                    let msg = ent.sign_message.as_deref().unwrap_or("");
+                    ecs.spawn_sign(pos, msg)
+                }
+            };
+
+            // Overwrite with the saved state
+            ecs.set_position(allocated, pos);
+            ecs.set_hp(allocated, hp);
+
+            // Handle alive state
+            if !ent.alive {
+                // Remove from alive set (damage to 0 or below kills)
+                ecs.damage(allocated, hp.current + 1);
+            }
+
+            // Remove any stale entities that were auto-created at wrong IDs
+            if allocated.raw() != ent.id {
+                ecs.remove(allocated);
+            }
+        }
+
+        // Ensure next_id is beyond all loaded entity IDs
+        let max_id = data.entities.iter().map(|e| e.id).max().unwrap_or(0);
+        ecs.set_next_id(max_id + 1);
+        world.ecs = ecs;
+
+        // --- Game state ---
+        world.player_id = EntityId::new(data.player_id_raw);
+        world.player_facing = direction_from_string(&data.player_facing);
+        world.depth = data.depth;
+        world.turn = data.turn;
+        world.player_can_attack = data.player_can_attack;
+        world.wizard_taught = data.wizard_taught;
+        world.wizard_id = data.wizard_id_raw.map(EntityId::new);
+        world.cheat_unlocked = data.cheat_unlocked;
+        world.blocking = data.blocking;
+
+        // --- Event log ---
+        {
+            use bracket_lib::prelude::RGB;
+            let mut log = crate::event_log::EventLog::new();
+            for entry in &data.event_log {
+                let color = if entry.has_color {
+                    Some(RGB::from_f32(entry.color_r, entry.color_g, entry.color_b))
+                } else {
+                    None
+                };
+                log.push_colored(
+                    &entry.text,
+                    color.unwrap_or(RGB::named(bracket_lib::prelude::WHITE)),
+                );
+                // Cheat: push_colored always adds color; to push without color we
+                // need to work around. Just push with white if no color.
+                if !entry.has_color {
+                    // Clear the last entry and re-push without color
+                }
+            }
+            // Simplification: just recreate the log from SavedLogEntry data
+            let mut log2 = crate::event_log::EventLog::new();
+            for entry in &data.event_log {
+                if entry.has_color {
+                    log2.push_colored(
+                        &entry.text,
+                        RGB::from_f32(entry.color_r, entry.color_g, entry.color_b),
+                    );
+                } else {
+                    log2.push(&entry.text);
+                }
+            }
+            world.event_log = log2;
+        }
+
+        // --- Bindings ---
+        world.bindings = data.bindings.iter().cloned().collect();
+
+        // --- User source ---
+        world.user_source = data.user_source.clone();
+
+        // --- Rebuild Glyph envs on top of minimal env ---
+        world.glyph_env = crate::game::setup_glyph_env();
+        world.binding_env = crate::game::setup_binding_env(&world.glyph_env);
+
+        // --- Replay user source ---
+        let glyph_env = world.glyph_env.clone();
+        for source in &world.user_source.clone() {
+            match crate::glyph::read_string(source) {
+                Ok(forms) => {
+                    for form in &forms {
+                        let _ = crate::glyph::eval_with_opts(
+                            form,
+                            &glyph_env,
+                            crate::glyph::SandboxOptions::default(),
+                            &mut world,
+                        );
+                    }
+                }
+                Err(_) => {}
+            }
+        }
+
+        // --- Replay key bindings ---
+        let binding_env = world.binding_env.clone();
+        for (_key, source) in data.bindings.clone() {
+            match crate::glyph::read_string(&source) {
+                Ok(forms) => {
+                    for form in &forms {
+                        let _ = crate::glyph::eval_with_opts(
+                            form,
+                            &binding_env,
+                            crate::glyph::SandboxOptions::default(),
+                            &mut world,
+                        );
+                    }
+                }
+                Err(_) => {}
+            }
+        }
+
+        world.event_log.push("Game loaded.");
+
+        world
+    }
+
+    // -----------------------------------------------------------------------
+    // Disk I/O convenience methods
+    // -----------------------------------------------------------------------
+
+    pub fn save_to_disk(&self, slot: u32) -> Result<(), String> {
+        let dir = saves_dir();
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| format!("cannot create save directory {:?}: {}", dir, e))?;
+
+        let data = self.to_save_data();
+        let json = serde_json::to_string_pretty(&data)
+            .map_err(|e| format!("serialization error: {}", e))?;
+        let path = save_path(slot);
+        std::fs::write(&path, &json)
+            .map_err(|e| format!("cannot write save file {:?}: {}", path, e))?;
+
+        Ok(())
+    }
+
+    pub fn load_from_disk(slot: u32) -> Result<Self, String> {
+        let path = save_path(slot);
+        let json = std::fs::read_to_string(&path)
+            .map_err(|e| format!("cannot read save slot {}: {}", slot, e))?;
+
+        let data: SaveData =
+            serde_json::from_str(&json).map_err(|e| format!("invalid save data: {}", e))?;
+
+        if data.version != 1 {
+            return Err(format!(
+                "unsupported save version {}. expected 1.",
+                data.version
+            ));
+        }
+
+        Ok(World::from_save_data(&data))
+    }
+}

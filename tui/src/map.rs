@@ -10,6 +10,8 @@ use bracket_lib::prelude::{
     Algorithm2D, BaseMap, DistanceAlg, Point, RandomNumberGenerator, SmallVec,
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::entity::{Direction, Position};
 
 pub const MAP_WIDTH: i32 = 55;
@@ -17,7 +19,7 @@ pub const MAP_HEIGHT: i32 = 33;
 pub const FLASHLIGHT_RADIUS: i32 = 12;
 const FLASHLIGHT_SPREAD_DOT: f32 = 0.70;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TileType {
     Floor,
     Wall,

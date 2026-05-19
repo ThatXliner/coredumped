@@ -31,7 +31,7 @@ impl GameState for State {
         ctx.cls();
 
         if let Some(key) = ctx.key {
-            let intent = key_to_intent(key, ctx.shift, &self.world);
+            let intent = key_to_intent(key, ctx.shift, ctx.control, &self.world);
             self.world.apply_intent(intent);
         }
 

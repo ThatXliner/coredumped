@@ -11,9 +11,14 @@ use crate::{
     world::World,
 };
 
-pub fn key_to_intent(key: VirtualKeyCode, shift: bool, world: &World) -> Intent {
+pub fn key_to_intent(key: VirtualKeyCode, shift: bool, ctrl: bool, world: &World) -> Intent {
     match world.mode {
         Mode::Normal => {
+            match key {
+                VirtualKeyCode::F5 => return Intent::SaveGame(1),
+                VirtualKeyCode::F9 => return Intent::LoadGame(1),
+                _ => {}
+            }
             if let Some(name) = key_to_binding_name(key, shift) {
                 if world.bindings.contains_key(&name) {
                     return Intent::ExecuteBinding(name);
@@ -23,7 +28,7 @@ pub fn key_to_intent(key: VirtualKeyCode, shift: bool, world: &World) -> Intent 
         }
         Mode::Inspector => inspector_key_to_intent(key),
         Mode::Keybindings => keybindings_key_to_intent(key),
-        Mode::Console => console_key_to_intent(key, shift),
+        Mode::Console => console_key_to_intent(key, shift, ctrl),
         Mode::Dead => dead_key_to_intent(key, shift),
     }
 }
@@ -64,7 +69,10 @@ fn inspector_key_to_intent(key: VirtualKeyCode) -> Intent {
     }
 }
 
-fn console_key_to_intent(key: VirtualKeyCode, shift: bool) -> Intent {
+fn console_key_to_intent(key: VirtualKeyCode, shift: bool, ctrl: bool) -> Intent {
+    if ctrl && key == VirtualKeyCode::E {
+        return Intent::OpenExternalEditor;
+    }
     match (key, shift) {
         (VirtualKeyCode::Escape, _) => Intent::CloseOverlay,
         (VirtualKeyCode::Grave, _) => Intent::ToggleConsole,

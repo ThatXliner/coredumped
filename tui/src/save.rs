@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::entity::{Direction, EntityId, EntityKind, Hp, Position, RenderGlyph};
+use crate::entity::{Direction, EntityId, EntityKind, Hp, Position};
 use crate::world::World;
 
 // ---------------------------------------------------------------------------
@@ -250,11 +250,9 @@ impl World {
                 current: ent.hp_current,
                 max: ent.hp_max,
             };
-            let _glyph = RenderGlyph { glyph: ent.glyph };
 
-            // We need to allocate entities manually. The ECS doesn't expose a
-            // generic "insert arbitrary entity" method, so we use the spawn
-            // methods that match the kind, then overwrite position/hp/glyph.
+            // Allocate at the exact saved ID to avoid gaps causing mismatches
+            ecs.set_next_id(ent.id);
             let allocated = match kind {
                 EntityKind::Player => ecs.spawn_player(pos),
                 EntityKind::Slime => ecs.spawn_slime(pos),
@@ -275,13 +273,7 @@ impl World {
 
             // Handle alive state
             if !ent.alive {
-                // Remove from alive set (damage to 0 or below kills)
                 ecs.damage(allocated, hp.current + 1);
-            }
-
-            // Remove any stale entities that were auto-created at wrong IDs
-            if allocated.raw() != ent.id {
-                ecs.remove(allocated);
             }
         }
 

@@ -65,6 +65,9 @@ pub struct World {
 
     /// Slot number awaiting wipe confirmation. Set by (wipe!).
     pub pending_wipe_slot: Option<u32>,
+
+    /// Countdown to quit after wiping. 0 = not counting down.
+    pub quit_countdown: u32,
 }
 
 impl World {
@@ -101,6 +104,7 @@ impl World {
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
+            quit_countdown: 0,
         }
     }
 }

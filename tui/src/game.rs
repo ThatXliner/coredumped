@@ -117,6 +117,7 @@ impl World {
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
+            quit_countdown: 0,
         };
 
         world.load_playbook();
@@ -173,6 +174,7 @@ impl World {
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
+            quit_countdown: 0,
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -181,6 +183,20 @@ impl World {
     }
 
     pub fn apply_intent(&mut self, intent: Intent) -> ActionCost {
+        // Countdown after wipe — any keypress advances it
+        if self.quit_countdown > 0 {
+            self.event_log.push_colored(
+                format!("Quitting in {}...", self.quit_countdown),
+                RGB::named(RED),
+            );
+            self.quit_countdown -= 1;
+            if self.quit_countdown == 0 {
+                self.running = false;
+                return ActionCost::Quit;
+            }
+            return ActionCost::Free;
+        }
+
         // Any action other than q when confirming quit should cancel it
         if self.confirming_quit {
             match &intent {
@@ -964,6 +980,7 @@ impl World {
                             format!("Save slot {} deleted.", slot),
                             RGB::named(RED),
                         );
+                        self.quit_countdown = 3;
                     }
                 } else {
                     self.event_log

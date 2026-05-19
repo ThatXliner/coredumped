@@ -236,6 +236,7 @@ mod tests {
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
+            quit_countdown: 0,
         }
     }
 

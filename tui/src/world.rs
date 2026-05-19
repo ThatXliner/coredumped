@@ -46,8 +46,12 @@ pub struct World {
     /// Set to true when the full Konami code is entered.
     pub cheat_unlocked: bool,
 
-    /// Scroll offset for console output (0 = bottom/latest).
-    pub console_scroll: usize,
+    /// History of submitted console commands (most recent last).
+    pub console_history: Vec<String>,
+    /// Position in history: 0 = at new input, 1 = at most recent entry, etc.
+    pub console_history_index: usize,
+    /// Saved buffer when user first presses up to browse history.
+    pub console_history_draft: String,
 
     /// Set to true when q is pressed to confirm quitting.
     pub confirming_quit: bool,
@@ -80,7 +84,9 @@ impl World {
             bindings: HashMap::new(),
             konami_index: 0,
             cheat_unlocked: false,
-            console_scroll: 0,
+            console_history: Vec::new(),
+            console_history_index: 0,
+            console_history_draft: String::new(),
             confirming_quit: false,
         }
     }

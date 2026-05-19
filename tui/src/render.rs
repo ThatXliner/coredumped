@@ -434,7 +434,7 @@ fn render_console(ctx: &mut BTerm, world: &World) {
         x + 2,
         y + 2,
         width - 4,
-        "Glyph REPL. Try (help). Enter (quit-terminal) to close.",
+        "Glyph REPL. Try (help). Enter (quit-terminal) or press ESC to close.",
     );
 
     let output_y = y + 4;
@@ -466,10 +466,7 @@ fn render_console(ctx: &mut BTerm, world: &World) {
         } else {
             wrap_text(&world.console_output, (width - 4) as usize)
         };
-        let total_lines = lines.len();
-        let max_scroll = total_lines.saturating_sub(output_available as usize);
-        let scroll = world.console_scroll.min(max_scroll);
-        let start = total_lines.saturating_sub(output_available as usize + scroll);
+        let start = lines.len().saturating_sub(output_available as usize);
         for (i, line) in lines[start..]
             .iter()
             .enumerate()

@@ -229,7 +229,9 @@ mod tests {
             bindings: std::collections::HashMap::new(),
             konami_index: 0,
             cheat_unlocked: false,
-            console_scroll: 0,
+            console_history: Vec::new(),
+            console_history_index: 0,
+            console_history_draft: String::new(),
             confirming_quit: false,
         }
     }

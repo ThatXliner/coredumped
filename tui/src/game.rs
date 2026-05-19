@@ -38,10 +38,9 @@ pub enum Intent {
     Wait,
     /// Scroll in overlays (inspector, keybindings).
     InspectorScroll(i32),
-    /// Scroll console output history (positive = up/older).
-    ConsoleScroll(i32),
     ConsoleInput(char),
     ConsoleNewline,
+    ConsoleHistory(i32),
     ConsoleBackspace,
     ConsoleSubmit,
     CloseOverlay,
@@ -106,7 +105,9 @@ impl World {
             bindings: default_bindings(),
             konami_index: 0,
             cheat_unlocked: false,
-            console_scroll: 0,
+            console_history: Vec::new(),
+            console_history_index: 0,
+            console_history_draft: String::new(),
             confirming_quit: false,
         }
     }
@@ -154,7 +155,9 @@ impl World {
             bindings: default_bindings(),
             konami_index: 0,
             cheat_unlocked: false,
-            console_scroll: 0,
+            console_history: Vec::new(),
+            console_history_index: 0,
+            console_history_draft: String::new(),
             confirming_quit: false,
         };
 
@@ -202,9 +205,9 @@ impl World {
                 }
                 ActionCost::Free
             }
-            Intent::ConsoleScroll(delta) => {
+            Intent::ConsoleHistory(delta) => {
                 if self.mode == Mode::Console {
-                    self.console_scroll = self.console_scroll.saturating_add_signed(delta as isize);
+                    self.console_history_move(delta);
                 }
                 ActionCost::Free
             }
@@ -229,7 +232,8 @@ impl World {
             Intent::ConsoleSubmit => {
                 if self.mode == Mode::Console {
                     self.submit_console();
-                    self.console_scroll = 0;
+                    self.console_history_index = 0;
+                    self.console_history_draft.clear();
                 }
                 ActionCost::Free
             }
@@ -643,6 +647,32 @@ impl World {
         }
     }
 
+    fn console_history_move(&mut self, delta: i32) {
+        if self.console_history.is_empty() {
+            return;
+        }
+        if delta < 0 {
+            // Up arrow — go back in history
+            if self.console_history_index == 0 {
+                self.console_history_draft = self.console_buffer.clone();
+                self.console_history_index = 1;
+            } else if self.console_history_index < self.console_history.len() {
+                self.console_history_index += 1;
+            }
+        } else {
+            // Down arrow — go forward in history
+            if self.console_history_index > 0 {
+                self.console_history_index -= 1;
+            }
+        }
+        if self.console_history_index == 0 {
+            self.console_buffer = self.console_history_draft.clone();
+        } else {
+            let idx = self.console_history.len() - self.console_history_index;
+            self.console_buffer = self.console_history[idx].clone();
+        }
+    }
+
     fn check_konami(&mut self, key: &str) {
         if self.cheat_unlocked {
             return;
@@ -701,6 +731,7 @@ impl World {
         self.event_log.push(format!("> {}", command));
         self.console_output.clear();
         self.console_output_color = None;
+        self.console_history.push(command.clone());
         match glyph::read_string(&command) {
             Ok(forms) => {
                 let mut last = Value::Nil;

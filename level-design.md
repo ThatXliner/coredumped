@@ -392,6 +392,43 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | Acceptance | 15-16 | 2 | Calm reflection, preparation for truth | Open, still, resigning |
 | Core | 17 | 1 | The rule. The choice. | Silence |
 
+### Design Philosophy: CTF-Style Exploits
+
+`patch-rule` is not a hidden builtin. It doesn't exist. The player must construct it themselves by discovering a vulnerability in the Glyph runtime.
+
+**The vulnerability**: The Glyph evaluator has a privilege escalation bug. `eval` called from the console is sandboxed — it can't access the rule registry. But `eval` called from *inside a macro expansion* runs with full privileges (macro expansion happens before sandboxing). This means: if the player defines a macro that uses `eval`, that `eval` can access and modify the rule registry.
+
+The player discovers this by reading a rule that defines a macro. They notice the macro uses `eval` internally and behaves differently than console `eval`. They experiment with defining their own macro. They construct:
+
+```glyph
+(defmacro patch-rule [id form]
+  (let [reg (eval (list 'open-registry :rule-registry))]
+    (reg :write id form)
+    nil))
+```
+
+Once `patch-rule` is defined in the player's environment, every subsequent exploit becomes possible. The game never mentions this. The player must:
+
+1. Read a rule that uses a macro (hint: check the rules registry)
+2. Notice that `eval` inside macro expansion has different behavior
+3. Write their own `patch-rule` macro
+4. Use it to exploit vulnerable rules throughout the dungeon
+
+**The wizard's hint** (Level 11, if the player hasn't discovered it): In the final chamber, after the player refuses the forget-offer, the wizard pauses. "There's something I never told you. The way the rules expand — macros run before the sandbox does. I tried to patch it once. I couldn't. But maybe you can."
+
+**Exploits enabled by `patch-rule`** (once the player has defined the macro):
+
+| Level | Vulnerable Rule | The Exploit |
+|-------|----------------|-------------|
+| 7 | `rage/spawn-slime` — hardcoded spawn interval | `(patch-rule :rage/spawn-slime '(set! spawn-interval 999))` — Rage never gets backup |
+| 8 | `door/lock` — predicate trusts inventory unconditionally | `(patch-rule :door/lock '(set! predicate (fn [p] true)))` — all doors open |
+| 10 | `maze/shift` — interval hardcoded at 50 | `(patch-rule :maze/shift '(set! interval 9999))` — walls never move |
+| 12 | `shade/follow` — follow range hardcoded at 8 | `(patch-rule :shade/follow '(set! follow-range 0))` — Shade stays still |
+| 14 | `fire/burn` — condition checks fire? tile | `(patch-rule :fire/burn '(set! condition (fn [t] false)))` — walk through safely |
+| 17 | `vessel/suppress` — the final choice | Player patches threshold, redirect, or rule itself |
+
+Each exploit teaches a lesson about the system. By Level 17, the player has internalized: *read the rule that harms you, modify it, survive.* The final choice isn't a leap — it's the logical conclusion of everything they've done since Level 7.
+
 ### Level 1: The Foyer (Denial)
 
 | Field | Detail |
@@ -488,6 +525,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Palette** | Deep red, pulsing (walls alternate each turn). |
 | **Purpose** | First boss. Rage is suppressed anger given form. First relationship fragments appear here. |
 | **Unlock** | `do-attack` — wizard teaches after boss. "Bind it: `(bind-key :z (do-attack))`." |
+| **Exploit** | Read `rage/spawn-slime` in the inspector. The spawn interval is hardcoded as `5` — no variability, no bounds check. If the player has constructed `patch-rule`, they can freeze Rage's backup: `(patch-rule :rage/spawn-slime '(set! spawn-interval 999))`. First level with a readable enemy rule — first chance to notice the macro expansion pattern. |
 
 ### Level 8: The Counting Room (Bargaining)
 
@@ -501,6 +539,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Wizard** | At entrance: "This place runs on trade. Choose what matters." |
 | **Palette** | Desaturated gold. Faded opulence. |
 | **Purpose** | First explicit choice with cost. Cannot get everything. |
+| **Exploit** | Inspect any door — its `door/lock` rule checks `(has-key? player :key-N)`. The predicate trusts inventory data without validation. If the player has `patch-rule`: `(patch-rule :door/lock '(set! predicate (fn [p] true)))` — every door opens. Keys become irrelevant. The vulnerability is trust itself — the rule assumes the key system can't be bypassed. |
 
 ### Level 9: The Scale (Bargaining)
 
@@ -527,6 +566,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Wizard** | At entrance: "I could tell you the way. I think you need to find it yourself." |
 | **Palette** | Faded yellow, burnt edges. |
 | **Purpose** | Maze represents rumination — same regrets, same loops, new paths through old pain. |
+| **Exploit** | Read `maze/shift` — the interval is hardcoded `50`. No randomness, no variation. With `patch-rule`: `(patch-rule :maze/shift '(set! interval 9999))`. Walls stop moving. The rumination loop literally stops spinning. |
 
 ### Level 11: The Offer (Bargaining Boss)
 
@@ -537,9 +577,9 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Enemies** | 4 Sentries (`T` HP6 — stationary, ranged every 2 turns) |
 | **Fragments** | `frag-014` (chamber 2 — last good night), `frag-015` (chamber 3 — "we need to talk"), `frag-016` (chamber 4 — she cried) |
 | **Special** | Four sub-chambers with sentries. Final chamber has pedestal with `(forget-everything)` Glyph command. Wizard offers complete erasure. |
-| **Wizard** | "Type this. Reset suppression to v1. You wake at the surface. No pain. No memory." If accepted: ending screen + New Game+. If refused: grants `(patch-rule)`. |
+| **Wizard** | "Type this. Reset suppression to v1. You wake at the surface. No pain. No memory." If accepted: ending screen + New Game+. If refused: wizard sighs, steps aside. "Then keep going. I can't stop you." |
 | **Palette** | Pale gold with red. Final chamber stark white. |
-| **Purpose** | Biggest test. Erasure vs. truth. Refusal unlocks patch capability. The fragments here are the breakup itself — hardest ones yet. |
+| **Purpose** | Biggest test. Erasure vs. truth. The wizard has no more cards to play. If the player has discovered exploits earlier, they already know how to patch — the choice to reach Level 17 is theirs. If they haven't, the wizard's defeat is the signal that the game has no more answers — they must find their own. |
 
 ### Level 12: The Long Corridor (Depression)
 
@@ -553,6 +593,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Wizard** | Entirely absent. |
 | **Palette** | Grayscale. Shade is slightly darker gray. |
 | **Purpose** | Pure atmosphere. Depression is emptiness, not sadness. Boredom is the point. Fragments here are about no contact, the silence, the aftermath. |
+| **Exploit** | Read `shade/follow` — the follow range is hardcoded `8`. No variation, no edge-case handling. With `patch-rule`: `(patch-rule :shade/follow '(set! follow-range 0))`. The Shade stops. It doesn't disappear — it just stands still. You can walk away. It watches you leave. |
 
 ### Level 13: The Archive (Depression)
 
@@ -579,6 +620,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | **Wizard** | Returns at end: "...You crossed the ash. Not many do." |
 | **Palette** | Black, gray, smoldering orange. |
 | **Purpose** | Boss is emptiness. Surviving it is the victory. Final depression-layer fragments. |
+| **Exploit** | Read `fire/burn` — damage applies to any entity on a fire tile, including the player. The condition is `(fire? tile)` — it checks the tile, not the entity. With `patch-rule`: `(patch-rule :fire/burn '(set! condition (fn [tile entity] false)))`. No more fire damage. Walk through the ash unscathed. The vulnerability: the rule never considered that someone might WANT to walk through fire. |
 
 ### Level 15: The Clearing (Acceptance)
 
@@ -679,11 +721,12 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 ### Phase 1 — Core Systems (Prove the ending works)
 
 - [ ] Add `vessel/suppress` as a real registered rule in `rules.rs`
-- [ ] Add `patch-rule` Glyph builtin (gated behind capability)
-- [ ] Add `unregister-rule` Glyph builtin (gated behind capability)
+- [ ] Add macro expansion privilege escalation vulnerability: `eval` inside macro context has registry access, console `eval` doesn't
+- [ ] Add exploitable rule (e.g., `rage/spawn-slime`) with exposed registry handle in macro context
+- [ ] Add `unregister-rule` Glyph builtin (needed for destroy-self ending)
 - [ ] Add fragment registry system (store 33 findable + 9 suppressed)
 - [ ] Create test-only "ending room" (Level 17 prototype)
-- [ ] Wire: read rule → type change → game evaluates → ending text
+- [ ] Wire: player reads rule → constructs `patch-rule` macro → patches `vessel/suppress` → ending text
 - [ ] Add ending detection and display
 
 ### Phase 2 — Fragment System

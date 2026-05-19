@@ -24,7 +24,7 @@
 
 **The final boss is not a monster.** It's a Glyph program called `vessel/suppress`. The player must read it, understand what it does, and decide whether to modify it. The ending is not a cutscene — it's the player typing a change into the console and pressing Enter.
 
-**The story**: A man named Adrian (the player character, called "you" in-game) went through a devastating breakup after a 4-month relationship with someone he'd been friends with for a year. His anxious attachment style, rooted in a dysfunctional family that never taught him how to love, sabotaged the relationship. She ended it cleanly — kindly, with no blame — and asked for no contact. Not out of cruelty, but because she knew he needed to heal. He understood. He agreed. It destroyed him anyway. He spiraled. His mind started suppressing memories — first the breakup, then the relationship, then anything that reminded him of what he'd lost. By the time the game begins, 42 memories have been buried. 33 are still findable, leaking through the suppression. 9 are locked so deep they can only be read by modifying the rule.
+**The story**: A man named Adrian (the player character, called "you" in-game) went through a devastating breakup after a 4-month relationship with someone he'd been friends with for a year. His anxious attachment style, rooted in a dysfunctional family that never taught him how to love, sabotaged the relationship. She ended it cleanly — kindly, with no blame — and asked for no contact. He tells himself she did it because she cares, because she knew he needed to heal. Maybe that's true. Maybe she just wanted to move on. He'll never know. He spiraled. His mind started suppressing memories — first the breakup, then the relationship, then anything that reminded him of what he'd lost. By the time the game begins, 42 memories have been buried. 33 are still findable, leaking through the suppression. 9 are locked so deep they can only be read by modifying the rule.
 
 ---
 
@@ -50,13 +50,15 @@ He was too much. He texted her when she didn't text back. He read meaning into s
 
 ### The Breakup
 
-When she ended it, she did it kindly. She sat him down and said the words cleanly, without blame, without cruelty. She said she cared about him. She said she wished it could be different. And then she said the thing that broke him in a different way: she couldn't be in contact with him. Not because she didn't care — because she did. Because she knew he needed to heal, and she couldn't be part of that healing. Every text would give him hope. Every reply would be a thread he'd pull until the whole thing unraveled.
+When she ended it, she did it kindly. She sat him down and said the words cleanly, without blame, without cruelty. She said she cared about him. She said she wished it could be different. And then she said she couldn't be in contact with him.
 
-He understood. He even agreed with her. That was the worst part. She was right. Contact would destroy him slowly. No contact would destroy him quickly. She chose the kind option. He knew it was the kind option. It didn't feel kind.
+He's never known exactly why. He tells himself it's because she cared too much to let him hold on. He tells himself she was protecting him the only way she could. He tells himself a lot of things. The truth is she just said no contact and never explained further. Maybe she had her own reasons. Maybe she was protecting herself. Maybe she just wanted a clean break. He'll never ask. He can't.
 
-He spent months wanting to text her. He drafted messages he never sent. He imagined running into her, imagined what he'd say, imagined her smiling and saying she missed him too. None of it was real. The clean break was clean. There was no door left open. There was no "someday." She was gone.
+He spent months filling that silence with stories. She's seeing someone else. She's focused on her career. She's happier without him. She's miserable but too proud to reach out. She thinks about him at night. She's forgotten he exists. All of them are equally possible. None of them help.
 
-His mind couldn't accept that. So it started building a story where maybe, if he'd handled it differently, she would have offered friendship. Maybe, if he was better, she'd have stayed. Maybe, if he knew how to love properly, he wouldn't be alone.
+He wanted to text her. He drafted messages he never sent. He imagined running into her, imagined what he'd say, imagined her smiling. None of it was real. The silence was total. The door was closed from the outside.
+
+His mind couldn't accept that. So it started building a story where maybe, if he'd handled it differently, the door would have stayed open. Maybe, if he was better, she'd have wanted to stay in touch. Maybe she didn't want to hurt him. Maybe she did want to hurt him. Maybe she didn't think about him at all. The maybe is the worst part.
 
 ### The Aftermath
 
@@ -141,10 +143,10 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 > She cried when she said it. That was the worst part. If she'd been cold I could have been angry. But she cried. She said "I care about you so much. But I can't... I can't fix this. You need to fix this. I don't know how to help you." She was right. She was right and I hated her for being right.
 
 **frag-017** — Level 9
-> She said "I can't be in contact with you. Not because I don't care. Because I do." She said every reply I'd send her would be something I'd hold onto. She said I needed to let go and she couldn't help me do that. She was right. I hate that she was right. I'd still rather have her wrong and here.
+> She said "I want to break up, and maybe we can be friends. I do have one condition: that we have a period of no-contact." Maybe she was being kind. Maybe she was being cruel. Or maybe she was being practical...I'll never know. I've rewritten her reasons so many times I can't remember which version I started with.
 
 **frag-018** — Level 10
-> I rehearsed asking her if we could still be friends. I had the whole speech memorized. "I know this is what you need. I respect it. But maybe someday..." I never said it. She was right and I knew she was right and I let her walk away without making it harder. I've never been more proud of myself. I've never hated myself more.
+> I rehearsed asking her if we could still be friends. I had the whole speech memorized. "I know why you need this. I understand. But maybe someday..." I never said it. Because I didn't know why she needed it. Because the speech assumed I understood her reasons and I don't. Maybe she didn't need this at all and just wanted me gone. So I let her walk away without making it harder. I've never been more proud of myself. I've never hated myself more.
 
 **frag-019** — Level 10
 > The first week after. I checked my phone every thirty seconds. She didn't text. Why would she text? The relationship was over. But I kept checking because what if she needed something? What if she changed her mind? What if? What if? What if?

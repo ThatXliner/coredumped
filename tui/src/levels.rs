@@ -12,10 +12,13 @@ use crate::{
 
 /// Dispatch to the appropriate level builder for the given depth.
 pub fn build_level(world: &mut World, depth: u32) {
+    world.clear_level_entities();
+
     match depth {
         1 | 2 => build_procedural_level(world, depth),
         3 => build_wizard_chamber(world),
         4 => build_barrel_depths(world),
+        8 => build_barrel_horde(world),
         _ => build_procedural_level(world, depth),
     }
 }
@@ -88,9 +91,116 @@ pub fn generate_wizard_box() -> MapGenOutput {
 // Depth 4 — Barrel Depths
 // ---------------------------------------------------------------------------
 
-/// Build the map for the barrel depths: a solid rectangle of floor with walls
-/// around the border. The entire level is then filled with 1-HP barrels.
+/// Build the map for the barrel depths: a floor room smaller than the full
+/// map, surrounded by walls. The room is then filled with 1-HP barrels.
 pub fn generate_barrel_depths() -> MapGenOutput {
+    let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Wall);
+
+    let rx = 5;
+    let ry = 4;
+    let rw = 45;
+    let rh = 25;
+
+    for y in ry..ry + rh {
+        for x in rx..rx + rw {
+            map.set_tile(Position::new(x, y), TileType::Floor);
+        }
+    }
+
+    let player_start = Position::new(rx + 1, ry + 1);
+    let stairs_down = Position::new(rx + rw - 2, ry + rh - 2);
+
+    map.set_tile(player_start, TileType::StairsUp);
+    map.set_tile(stairs_down, TileType::StairsDown);
+
+    MapGenOutput {
+        map,
+        player_start,
+        stairs_up: player_start,
+        stairs_down,
+        combat_spawns: vec![],
+        boss_spawns: vec![],
+    }
+}
+
+fn build_barrel_depths(world: &mut World) {
+    let gen = generate_barrel_depths();
+    apply_map(world, &gen);
+
+    let stairs = find_stairs_down(&world.map);
+    let player_start = world.player_pos();
+
+    // Fill every Floor tile in the room with a 1-HP barrel
+    for y in 1..MAP_HEIGHT - 1 {
+        for x in 1..MAP_WIDTH - 1 {
+            let pos = Position::new(x, y);
+            if world.map.tile(pos) == TileType::Floor && pos != player_start {
+                world.ecs.spawn_barrel(pos);
+            }
+        }
+    }
+
+    // Remove barrel from the exit stairs and re-hide it
+    if let Some(barrel) = world.ecs.entity_at(stairs) {
+        world.ecs.remove(barrel);
+    }
+    world.ecs.spawn_barrel(stairs);
+
+    // Clear a 3×3 zone around the player start so they have room to move
+    let px = player_start.x;
+    let py = player_start.y;
+    for x in px..=px + 2 {
+        for y in py..=py + 2 {
+            if Position::new(x, y) != player_start {
+                if let Some(barrel) = world.ecs.entity_at(Position::new(x, y)) {
+                    world.ecs.remove(barrel);
+                }
+            }
+        }
+    }
+
+    // Place signs (remove the barrel underneath first)
+    let place_sign = |world: &mut World, pos: Position, msg: &str| {
+        if let Some(barrel) = world.ecs.entity_at(pos) {
+            world.ecs.remove(barrel);
+        }
+        world.ecs.spawn_sign(pos, msg);
+    };
+
+    place_sign(
+        world,
+        Position::new(8, 6),
+        "This is a lot of barrels...\nThink about rebinding your keys.\nOne key can (do) what many cannot.",
+    );
+
+    place_sign(
+        world,
+        Position::new(20, 14),
+        "Program your character with Glyph commands:\n  (move! :east)  (move! :south)  (move! :north)\nChain moves and attacks in (do ...):\n  (do (move! :east) (do-attack :east) (move! :east) (do-attack :east))\nBind to one key and your character does the work!",
+    );
+
+    place_sign(
+        world,
+        Position::new(46, 16),
+        "\
+Welcome to the Barrel Depths!\n\n\
+Each (do-attack) costs 1 tick. But\nyou can chain them with (do ...):\n  \
+(do (do-attack :north) (do-attack :south))\n\
+That attacks twice — 2 ticks total.\n\
+Bind the full combo to ONE key:\n  \
+(bind-key :x (do (do-attack :north) (do-attack :south)\n  \
+                  (do-attack :east)  (do-attack :west)))\n\
+Now clear these barrels and find the exit!",
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Depth 8 — Barrel Horde
+// ---------------------------------------------------------------------------
+
+/// Build the map for the barrel horde: the entire map floor filled with barrels.
+/// A harder, larger version of the Barrel Depths for later in the run.
+pub fn generate_barrel_horde() -> MapGenOutput {
     let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Floor);
 
     // Walls around the entire border
@@ -119,18 +229,18 @@ pub fn generate_barrel_depths() -> MapGenOutput {
     }
 }
 
-fn build_barrel_depths(world: &mut World) {
-    let gen = generate_barrel_depths();
+fn build_barrel_horde(world: &mut World) {
+    let gen = generate_barrel_horde();
     apply_map(world, &gen);
 
     let stairs = find_stairs_down(&world.map);
     let player_start = world.player_pos();
 
-    // Fill every walkable tile with a 1-HP barrel
+    // Fill every Floor tile with a barrel
     for y in 1..MAP_HEIGHT - 1 {
         for x in 1..MAP_WIDTH - 1 {
             let pos = Position::new(x, y);
-            if pos != player_start {
+            if world.map.tile(pos) == TileType::Floor && pos != player_start {
                 world.ecs.spawn_barrel(pos);
             }
         }
@@ -164,27 +274,13 @@ fn build_barrel_depths(world: &mut World) {
     place_sign(
         world,
         Position::new(5, 3),
-        "This is a lot of barrels...\nThink about rebinding your keys.\nOne key can (do) what many cannot.",
-    );
-
-    place_sign(
-        world,
-        Position::new(15, 20),
-        "Program your character with Glyph commands:\n  (move! :east)  (move! :south)  (move! :north)\nChain moves and attacks in (do ...):\n  (do (move! :east) (do-attack :east) (move! :east) (do-attack :east))\nBind to one key and your character does the work!",
+        "The Barrel Horde.\n\nYou know the drill.",
     );
 
     place_sign(
         world,
         Position::new(MAP_WIDTH - 5, MAP_HEIGHT / 2),
-        "\
-Welcome to the Barrel Depths!\n\n\
-Each (do-attack) costs 1 tick. But\nyou can chain them with (do ...):\n  \
-(do (do-attack :north) (do-attack :south))\n\
-That attacks twice — 2 ticks total.\n\
-Bind the full combo to ONE key:\n  \
-(bind-key :x (do (do-attack :north) (do-attack :south)\n  \
-                  (do-attack :east)  (do-attack :west)))\n\
-Now clear these barrels and find the exit!",
+        "Still here? Good.\n\nGlyph doesn't forget — but\nneither do the barrels.",
     );
 }
 

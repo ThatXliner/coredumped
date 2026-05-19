@@ -324,13 +324,15 @@ fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
         format!("pos: ({}, {})", entity.pos.x, entity.pos.y),
     ];
 
-    let tooltip_x = (mx + 2).min(SCREEN_WIDTH - 28);
-    let tooltip_y = my.min(LOG_Y - 4 - tip_lines.len() as i32);
     let tooltip_w = 24;
+    let tooltip_x = (mx + 2).min(SCREEN_WIDTH - tooltip_w - 1);
+    let tooltip_y = my.min(LOG_Y - 4 - tip_lines.len() as i32);
     let tooltip_h = tip_lines.len() as i32 + 2;
 
     let fg = RGB::named(WHITE);
     let bg = RGB::named(BLACK);
+
+    fill_rect(ctx, tooltip_x, tooltip_y, tooltip_w, tooltip_h, bg);
 
     for dx in 0..tooltip_w {
         ctx.set(tooltip_x + dx, tooltip_y, fg, bg, to_cp437('-'));
@@ -367,7 +369,13 @@ fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
 
     for (i, line) in tip_lines.iter().enumerate() {
         let clipped: String = line.chars().take(tooltip_w as usize - 2).collect();
-        ctx.print(tooltip_x + 1, tooltip_y + 1 + i as i32, clipped);
+        ctx.print_color(
+            tooltip_x + 1,
+            tooltip_y + 1 + i as i32,
+            fg,
+            bg,
+            &clipped,
+        );
     }
 }
 
@@ -737,7 +745,7 @@ fn print_clipped(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str) {
     }
 
     let clipped: String = text.chars().take(max_width as usize).collect();
-    ctx.print(x, y, clipped);
+    ctx.print_color(x, y, RGB::named(WHITE), RGB::named(BLACK), &clipped);
 }
 
 fn print_clipped_color(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str, color: RGB) {

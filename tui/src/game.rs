@@ -966,6 +966,7 @@ impl World {
                     if let Err(e) = std::fs::remove_file(&path) {
                         self.event_log.push(format!("Cannot delete save: {}", e));
                     } else {
+                        crate::player_profile::PlayerProfile::delete();
                         self.event_log
                             .push_colored(format!("Save slot {} deleted.", slot), RGB::named(RED));
                         self.quit_countdown = 3;

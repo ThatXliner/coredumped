@@ -27,7 +27,7 @@ pub struct PlayerProfile {
 }
 
 impl PlayerProfile {
-    fn path() -> std::path::PathBuf {
+    pub fn path() -> std::path::PathBuf {
         xlyph_dir().join("profile.json")
     }
 
@@ -78,6 +78,14 @@ impl PlayerProfile {
     }
 
     /// Write profile to disk at `~/.xlyph/profile.json`.
+    /// Delete the profile file from disk.
+    pub fn delete() {
+        let path = Self::path();
+        if path.exists() {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+
     pub fn save(&self) -> Result<(), String> {
         let dir = xlyph_dir();
         std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create xlyph dir: {}", e))?;

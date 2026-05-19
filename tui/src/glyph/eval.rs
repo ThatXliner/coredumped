@@ -566,7 +566,7 @@ fn eval_const_inner(
         opts.descend().ok_or(EvalError::RecursionLimit)?,
         world,
     )?;
-    env.bind(&name, value);
+    env.bind_const(&name, value);
     Ok(Value::Symbol(Symbol::new(&name)))
 }
 

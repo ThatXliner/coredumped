@@ -1,7 +1,7 @@
 //! Environment for Glyph: scope chain with parent links.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use super::value::{EvalError, EvalResult, Value};
@@ -12,6 +12,7 @@ pub struct Env(Rc<RefCell<EnvNode>>);
 #[derive(Debug)]
 struct EnvNode {
     bindings: HashMap<String, Value>,
+    constants: HashSet<String>,
     parent: Option<Env>,
 }
 
@@ -19,6 +20,7 @@ impl Env {
     pub fn new() -> Self {
         Env(Rc::new(RefCell::new(EnvNode {
             bindings: HashMap::new(),
+            constants: HashSet::new(),
             parent: None,
         })))
     }
@@ -27,6 +29,7 @@ impl Env {
     pub fn extend(parent: &Env) -> Self {
         Env(Rc::new(RefCell::new(EnvNode {
             bindings: HashMap::new(),
+            constants: HashSet::new(),
             parent: Some(parent.clone()),
         })))
     }
@@ -34,6 +37,14 @@ impl Env {
     /// Bind a name to a value in the current scope.
     pub fn bind(&self, name: &str, value: Value) {
         self.0.borrow_mut().bindings.insert(name.to_string(), value);
+    }
+
+    /// Bind a constant (immutable) name in the current scope.
+    pub fn bind_const(&self, name: &str, value: Value) {
+        let lower = name.to_lowercase();
+        let mut node = self.0.borrow_mut();
+        node.bindings.insert(lower.clone(), value);
+        node.constants.insert(lower);
     }
 
     /// Look up a name, searching up the parent chain.
@@ -50,11 +61,18 @@ impl Env {
     }
 
     /// Set an existing binding in the innermost scope that has it.
+    /// Rejects constant bindings.
     pub fn set(&self, name: &str, value: Value) -> EvalResult<()> {
         let lower = name.to_lowercase();
         {
             let node = self.0.borrow();
             if node.bindings.contains_key(&lower) {
+                if node.constants.contains(&lower) {
+                    return Err(EvalError::Custom(format!(
+                        "cannot mutate constant binding: {}",
+                        name
+                    )));
+                }
                 // found — drop borrow then mutate
             } else {
                 return match &node.parent {
@@ -75,6 +93,8 @@ impl Env {
     /// Remove a binding from the current scope only (not parents).
     pub fn unbind(&self, name: &str) {
         let lower = name.to_lowercase();
-        self.0.borrow_mut().bindings.remove(&lower);
+        let mut node = self.0.borrow_mut();
+        node.bindings.remove(&lower);
+        node.constants.remove(&lower);
     }
 }

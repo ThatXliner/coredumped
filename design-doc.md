@@ -182,6 +182,200 @@ Each storyline is a complete narrative arc for Xlyph. They share the core concep
 
 ---
 
+### Merged Concept: The Vessel (with The Debt's Ending Mechanic)
+
+*This is the refined merge of the two storylines you selected: The Vessel's narrative framework (dungeon = mind, suppression layers, wizard = Superego) with The Debt's ending mechanic (final choice = reading + modifying a real Glyph program in the console).*
+
+**High concept**: The dungeon is a mind that has locked away traumatic memories. The rules are the suppression mechanisms — Glyph programs that filter, rewrite, and contain the past. To reach the truth, you must read the rules that govern each layer of your own psyche. The final decision is not a cutscene — it is you, in the console, reading the suppression rule at the core of your consciousness, understanding what it does, and deciding whether to change it.
+
+**Core themes**: Identity, repression, self-knowledge vs. self-protection. Is a peaceful lie better than a painful truth? What does it cost to maintain a false self? What does it cost to let it go?
+
+#### Narrative Structure
+
+| Beat | Description |
+|------|-------------|
+| Opening | "Consciousness loaded. Vessel integrity: 98%. Memory suppression active. Running: vessel/suppress — 0x00CORE." The player's boot sequence reports a running process they don't understand. |
+| Early game | Normal roguelike. Tutorial depth (Denial) is clean, structured, safe. The wizard teaches basic mechanics. But signs read like fragments: "You are safe here." "Nothing happened." "Keep moving down." The wizard is warm and protective. |
+| Depth 3 (Anger) | Enemies get aggressive. The wizard becomes terse. Signs shift: "Why are you doing this?" "Some doors are locked for a reason." |
+| Mid-game reveal (Depth 5) | The dungeon is a mind — YOUR mind. The "containment" isn't a prison; it's a psychological suppression system you built. The wizard is the Superego — the part of you that maintains the suppression. They are trying to protect you. "I do this because I love you. Please stop." |
+| Depth 6-7 (Bargaining) | Puzzle levels. The wizard offers deals: "Turn back and I will make the pain stop. I will make you forget this conversation. You will be happy." Accepting a deal locks memory fragments permanently. |
+| Depth 8-9 (Depression) | Empty rooms. Sparse enemies. Long corridors. The event log fills with fragments: "I remember a room with yellow walls." "There was a dog." "I am alone." The wizard is silent. |
+| Depth 10 (Acceptance) | The dungeon opens into a vast, calm space. No enemies. No puzzles. Just a single pedestal with a Glyph program displayed on it. The wizard is waiting at the entrance. "You found it. The rule I wrote to keep you safe. Read it. Understand it. Then choose." |
+
+#### The Core Mechanic: vessel/suppress
+
+The final "boss" is a Glyph rule. It exists in the game's rule registry. The player reaches it, opens the inspector, reads it, and must understand it to make their final choice.
+
+The rule (written in real Glyph that the evaluator could actually run):
+
+```glyph
+(defrule vessel/suppress
+  "Filters memory fragments for emotional safety.
+   The self cannot withstand the full truth.
+   This rule protects the self from itself."
+  {:priority 255
+   :author :self
+   :scope :global
+   :purpose "To keep you functional."
+   :version 481}
+  
+  (for [fragment (in-scope :memories)]
+    (if (traumatic? fragment)
+      (do
+        ;; These fragments are redirected to /dev/null
+        ;; They are not lost. They are waiting.
+        (redirect fragment :unconscious)
+        (emit :flinch (str "You almost remembered "
+          (fragment :hint) ".")))
+      fragment)))
+```
+
+The player must read this rule, understand:
+- `redirect fragment :unconscious` — the suppression mechanism
+- `traumatic?` — the predicate that determines what gets suppressed (defined elsewhere, also readable)
+- The comment `They are not lost. They are waiting.` — a hint from a past version of the self
+
+To reintegrate: modify or delete the `redirect` line in the console.
+To maintain suppression: leave the rule intact and walk away.
+To destroy the self: delete the entire rule (causes the self to lose all structure).
+
+This is not a dialogue wheel. This is you, in the Glyph console, editing a running program. The game evaluates your change and responds.
+
+#### Implementation: How The Console Becomes The Final Boss
+
+**Step-by-step flow**:
+
+1. Player reaches Depth 10. The "Acceptance" layer is a single room with a pedestal.
+2. A message appears: "The core rule is accessible. Open the console to read it."
+3. Player opens console (`` ` `` key — already works).
+4. A new Glyph binding is available: `(inspect-rule :vessel/suppress)` or similar.
+5. Player reads the rule source through the inspector (already exists — extend for overlay display).
+6. Player understands the `redirect` mechanism.
+7. Player types a modification, e.g.:
+   ```
+   ;; Patch: comment out the redirect
+   ;; (redirect fragment :unconscious)
+   ```
+   Or:
+   ```
+   ;; Patch: change redirect to allow
+   (store fragment :consciousness)
+   ```
+   Or:
+   ```
+   ;; Patch: delete the entire rule
+   (unregister-rule :vessel/suppress)
+   ```
+8. The console submits the expression. The game evaluates it. If valid Glyph, the ending triggers. If invalid, the console returns an error and the player must try again — the game does NOT accept gibberish.
+
+**What this requires from the existing codebase**:
+- The `submit_console` function in `game.rs` already evaluates Glyph and returns output. This extends it to accept rule-modifying expressions in the context of the ending.
+- The `binding_env` or `glyph_env` must expose a patch function (`unregister-rule`, `patch-rule`) that's only available in this context (gated by capability).
+- The rule must be real — registered in `RuleRegistry`, readable through the inspector, valid Glyph that a player could (theoretically) evaluate.
+
+#### The twist in practice
+
+A player who hasn't been reading rules all game won't understand what to do here. They might try to attack the pedestal, or wait, or quit. The game doesn't tell them the answer. The wizard (Superego) gives a single hint:
+
+"If you don't know what to do, read the rule. I can't stop you from reading. I can only stop you from reaching it."
+
+This rewards players who have been using the inspector throughout the game. It also creates a moment of genuine intellectual challenge: "I have to figure out what this Glyph program does and how to change it."
+
+#### Ending Matrix
+
+| Ending | Console Action | Narrative Result | Final Text |
+|--------|---------------|------------------|------------|
+| Reintegrate | Modify `redirect` to allow memory passage | Become whole. The pain returns — but so does the joy. The wizard (Superego) fades, their job complete. | "I remember now. The yellow walls. The dog. The reason I locked myself away. It was worth it." (followed by a sunrise rendered in colored glyphs) |
+| Maintain suppression | Leave the rule unchanged, walk away | Exit the dungeon. Return to "normal" life, functional but hollow. You had a chance to know yourself and you chose safety. | "Consciousness stabilized. Suppression maintained. You are safe. You are safe. You are safe." |
+| Destroy the self | `unregister-rule` without replacement | The rule is deleted but nothing fills the void. The self cannot maintain coherence. You dissolve into the system. | "vessel/suppress unregistered. No replacement rule found. Consciousness: terminated." |
+| [Hidden] Rewrite the contract | Modify the rule to change what `traumatic?` means instead of changing `redirect` | The most sophisticated ending. Requires understanding that `traumatic?` is a predicate function defined elsewhere. The player must find it, read it, and modify it. This changes what counts as trauma — some memories are reintegrated, others remain suppressed. Partial healing. | "traumatic? predicate redefined. The self renegotiates its boundaries. Some doors remain closed. You can live with that." |
+
+#### Mechanical Integration (How This Uses What Already Exists)
+
+| System | How it's used | Currently exists? |
+|--------|--------------|-------------------|
+| Console (`submit_console`) | Final choice is console input | Yes — `game.rs` |
+| Inspector | Reading the core rule + predicate | Yes — `render.rs` + `game.rs` |
+| `RuleRegistry` | Stores `vessel/suppress` as a real rule | Yes — `rules.rs` (extend to add this rule) |
+| Capability system | Gating patch commands to Depth 10 context | Partially — SandboxOptions exists, wire to context |
+| `binding_env` | Expose `patch-rule` / `unregister-rule` only in ending | Partially — `glyph_env` exists |
+| Memory fragments | Collectibles throughout dungeon | No — new system needed |
+| Suppression layer themes | Level generation variants | No — extend `levels.rs` |
+
+#### What To Build First (Minimum Viable Vessel)
+
+**Phase 1 — Prove the ending works**:
+1. Add `vessel/suppress` as a real registered rule in `rules.rs`
+2. Add `patch-rule` and `unregister-rule` Glyph builtins gated behind a capability
+3. Create a test-only "ending room" (a simple map with the pedestal)
+4. Wire: player reads rule → player types change → game evaluates → ending text
+5. This proves the core fantasy: "The final boss is a Glyph program you must read and modify."
+
+**Phase 2 — Memory fragments**:
+1. Add `MemoryFragment` item type (just a struct with text + id)
+2. Scatter fragments on signs and as pickup items
+3. Add a "Memories" panel in the UI (new right-side tab)
+4. Fragments assemble into a coherent backstory
+
+**Phase 3 — Suppression layer levels**:
+1. Define 5 layer types (Denial, Anger, Bargaining, Depression, Acceptance)
+2. Each layer has different generation parameters (room shape, enemy count, color palette)
+3. The wizard's dialogue shifts per layer
+4. Each layer contains 1-2 memory fragments
+
+**Phase 4 — The full game loop**:
+1. Player descends through 10 depths
+2. Each depth reveals more of the story
+3. Depth 10: the core rule
+4. Player reads, understands, modifies
+5. Ending
+
+#### Comparison to original Debt mechanic
+
+| Aspect | Original Debt | Merged Vessel |
+|--------|---------------|---------------|
+| What you modify | Debt accounting rule | Memory suppression rule |
+| Context | Debtor's prison economy | Psychological repression |
+| Stakes | Financial freedom vs exploitation | Self-knowledge vs self-protection |
+| Ending types | 4 (self/collective/system/warden) | 4 (reintegrate/maintain/destroy/rewrite) |
+| Meta lesson | "Systems exploit people" | "You can't heal what you won't face" |
+| Difficulty of final puzzle | Read Glyph, find debt variable | Read Glyph, understand `redirect` + `traumatic?` |
+| Hidden ending | None explicitly | Rewrite `traumatic?` predicate instead |
+
+Both share the core principle: **the game's ending is not a cutscene choice**. It's a genuine interaction with the game's code through the console. A player who never learned Glyph will need to experiment. A player who read the documentation (in-game help, rule inspector) will know exactly what to do.
+
+#### Wizard Dialogue Arc
+
+The wizard (Superego) has a specific dialogue arc across the layers:
+
+| Layer | Dialogue Tone | Key Line |
+|-------|---------------|----------|
+| Denial (1-2) | Warm, helpful, normal | "You're safe here. Let me teach you how things work." |
+| Anger (3-4) | Defensive, clipped | "You don't need to go deeper. Everything you need is here." |
+| Bargaining (5-6) | Desperate, offering deals | "I can make the pain stop. I can make you forget you ever wanted this. Just turn around." |
+| Depression (7-8) | Silent, then broken | "...I tried. I tried so hard. Why isn't it enough?" |
+| Acceptance (9) | Resigned, honest | "The rule is at the bottom. I wrote it to protect you. I don't regret it. But I won't stop you from reading it." |
+| Final room (10) | Peaceful | "Read it. Understand it. Then choose. Whatever you decide... I was trying to love you. That's all I ever did." |
+
+#### The Hidden Layer: Rewriting `traumatic?`
+
+For players who dig deeper: the `traumatic?` predicate is a separate rule/function that determines what counts as trauma. It's registered alongside `vessel/suppress`:
+
+```glyph
+(defun traumatic? (fragment)
+  "Returns true if a memory fragment exceeds emotional threshold."
+  ;; The threshold was set during [REDACTED]
+  ;; It was set high enough to block only the unbearable.
+  ;; But thresholds drift. They grow. They protect more than they should.
+  (> (fragment :emotional-weight) 50))
+```
+
+A player who finds this (it's inspectable from the rule registry, hinted at by the core rule's comment) can modify *this* instead of the suppress rule. Changing the threshold to 100 means only the most severe memories are blocked. Changing it to 0 means nothing is blocked (equivalent to reintegrate). The ending text reflects the subtlety: "traumatic? predicate redefined. The self renegotiates its boundaries."
+
+This rewards the deepest engagement with the system.
+
+---
+
 ## 3. Cross-Cutting Game Mechanic Designs
 
 These mechanics can apply across multiple storylines. Each is described generically, with notes on which storylines benefit most.

@@ -81,6 +81,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Move with arrow keys or hjkl.\nYou can fight now — try your\nbound attack key!",
     );
     world.ecs.spawn_slime(Position::new(14, 6));
+    world.ecs.spawn_slime(Position::new(10, 8));
 
     // Room 1: Inspector
     world.ecs.spawn_sign(
@@ -88,6 +89,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Press i to open the inspector.\nHover over things to learn\ntheir names and properties.",
     );
     world.ecs.spawn_slime(Position::new(31, 6));
+    world.ecs.spawn_slime(Position::new(27, 8));
 
     // Room 2: Wizard room
     let wizard_pos = Position::new(38, 6);
@@ -102,6 +104,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Press . to wait. Time passes\nand enemies move too.\nUse (wait!) in bindings.",
     );
     world.ecs.spawn_slime(Position::new(12, 20));
+    world.ecs.spawn_slime(Position::new(7, 18));
 
     // Room 4: Enemy inspection
     world.ecs.spawn_sign(
@@ -109,6 +112,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Each enemy has HP. Inspect\nthem with i to learn their\nstrengths and weaknesses.",
     );
     world.ecs.spawn_slime(Position::new(31, 20));
+    world.ecs.spawn_bat(Position::new(28, 16));
 
     // Room 5: Console
     world.ecs.spawn_sign(
@@ -116,6 +120,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Press ` to open the console.\nTry: (player-facing)\nOr: (bind-key :z (do-attack))",
     );
     world.ecs.spawn_slime(Position::new(48, 20));
+    world.ecs.spawn_slime(Position::new(42, 17));
 
     // Room 6: Help
     world.ecs.spawn_sign(
@@ -123,12 +128,14 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Stairs down are below.\nEach level challenges you\ndifferently. Adapt.",
     );
     world.ecs.spawn_slime(Position::new(14, 29));
+    world.ecs.spawn_goblin(Position::new(7, 26));
 
     // Room 7: "Nothing is wrong"
     world
         .ecs
         .spawn_sign(Position::new(20, 28), "Nothing is wrong.");
     world.ecs.spawn_slime(Position::new(31, 29));
+    world.ecs.spawn_bat(Position::new(26, 26));
 
     // Room 8: Barrel puzzle — fill with barrels, leave 3×3 clear at entrance (left door)
     for y in 24..24 + 9 {

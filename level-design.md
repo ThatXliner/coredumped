@@ -235,7 +235,7 @@ However, `(inspect-fragment :frag-NNN)` performs a corrupt decryption — ghostl
 | frag-042 | "42. The answer. The question. Both lost." |
 
 The hints are deliberately ambiguous — the player fills the gaps with their own interpretation. This mirrors how actual suppressed memories feel: you get flashes, fragments, feelings, but never the full picture.
-
+<!--btw these notes are out of date-->
 | ID | Weight | Notes |
 |----|--------|-------|
 | frag-034 | 95 | Most vulnerable moment |
@@ -258,7 +258,7 @@ The hints are deliberately ambiguous — the player fills the gaps with their ow
 | Aftermath | 024-030 | Isolation, not eating, 3AM walks, the bridge, deleting her number, attachment theory at 2AM. (Found levels 14-16) |
 | Healing | 031-033 | Called a friend, writing again, corrupted warmth. (Found levels 16-17) |
 
-The 9 suppressed fragments (frag-034 through frag-042) are locked not because the game won't show them, but because Adrian's mind judged them too dangerous. Their weights (79-100) far exceed the current threshold of 40. Only by lowering the threshold can they be read.
+The 9 suppressed fragments (frag-034 through frag-042) are locked not because the game won't show them, but because Adrian's mind judged them too dangerous. Their weights (79-100) far exceed the current threshold of 40. Maybe by lowering the threshold can they be read...(they can't, or not fully)
 
 ---
 
@@ -394,7 +394,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 
 ```glyph
 (defun traumatic? (fragment)
-  "Returns true if a memory fragment exceeds emotional threshold.
+  "Returns true if a memory fragment exceeds emotional threshold."
    
    ;; NOTE: This function was replaced by inline threshold logic in v203.
    ;; I've determined that delegating the decision to a function
@@ -402,7 +402,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
    ;; the self could redefine traumatic? and bypass suppression.
    
    ;; This function is preserved for audit purposes only.
-   ;; It is not called from any active rule."
+   ;; It is not called from any active rule.
   (> (fragment :emotional-weight) 75))
 ```
 

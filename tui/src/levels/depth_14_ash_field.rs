@@ -23,10 +23,7 @@ pub(crate) fn build_ash_field(world: &mut World) {
     map.set_tile(player_start, TileType::StairsUp);
     map.set_tile(stairs_down, TileType::StairsDown);
 
-    world.map = map;
-    world.ecs.set_position(world.player_id, player_start);
-
-    // Fire zones — clusters of unwalkable tiles
+    // Fire zones — walkable but damaging (fire/burn rule handles damage)
     let fire_centers = [
         Position::new(20, 10),
         Position::new(40, 18),
@@ -36,15 +33,15 @@ pub(crate) fn build_ash_field(world: &mut World) {
         for dy in -2..=2 {
             for dx in -2..=2 {
                 let pos = Position::new(center.x + dx, center.y + dy);
-                if (dx.abs() + dy.abs()) <= 3 && world.map.tile(pos) == TileType::Floor {
-                    // Mark as special — we use a sign to indicate fire hazard
-                    world
-                        .ecs
-                        .spawn_sign(pos, "FIRE — you take 1 damage crossing here.");
+                if (dx.abs() + dy.abs()) <= 3 && map.tile(pos) == TileType::Floor {
+                    map.set_tile(pos, TileType::Fire);
                 }
             }
         }
     }
+
+    world.map = map;
+    world.ecs.set_position(world.player_id, player_start);
 
     // Fragments scattered across the field
     world.ecs.spawn_fragment(Position::new(30, 14), "frag-019");

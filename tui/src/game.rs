@@ -595,6 +595,28 @@ impl World {
         }
 
         self.ecs.set_position(self.player_id, target);
+        // Evaluate tile-effect rules (e.g. fire/burn)
+        let body_form = self
+            .registry
+            .tile_rule(self.map.tile(target))
+            .map(|r| r.body_form.clone());
+        if let Some(body_form) = body_form {
+            let tile_env = Env::extend(&self.glyph_env);
+            tile_env.bind("*player*", Value::I64(self.player_id.raw() as i64));
+            tile_env.bind(
+                "*pos*",
+                Value::List(vec![
+                    Value::I64(target.x as i64),
+                    Value::I64(target.y as i64),
+                ]),
+            );
+            let _ = glyph::eval_with_opts(
+                &body_form,
+                &tile_env,
+                glyph::SandboxOptions::default(),
+                self,
+            );
+        }
         self.event_log.push_colored(
             format!("You move to {},{}.", target.x, target.y),
             RGB::named(DARK_GRAY),
@@ -1508,6 +1530,16 @@ pub(crate) fn setup_glyph_env() -> Env {
     );
     reg!("heal", "restore HP: (heal N) or (heal :all)", builtin_heal);
     reg!(
+        "log",
+        "push a message to the event log: (log \"message\")",
+        builtin_log
+    );
+    reg!(
+        "damage!",
+        "deal damage to an entity: (damage! entity-id amount)",
+        builtin_damage
+    );
+    reg!(
         "set-level",
         "warp to a dungeon level: (set-level N)",
         builtin_set_level
@@ -2021,6 +2053,58 @@ fn builtin_heal(
             got: args.len(),
         }),
     }
+}
+
+fn builtin_log(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    match args.first() {
+        Some(Value::String(msg)) => {
+            world.event_log.push(msg.clone());
+            Ok(Value::Nil)
+        }
+        _ => Err(glyph::EvalError::Custom(
+            "log expects a string: (log \"message\")".into(),
+        )),
+    }
+}
+
+fn builtin_damage(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 2 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    let entity_id = match &args[0] {
+        Value::I64(id) => EntityId::new(*id as usize),
+        _ => {
+            return Err(glyph::EvalError::Custom(
+                "damage! expects an entity ID integer as first arg".into(),
+            ))
+        }
+    };
+    let amount = match &args[1] {
+        Value::I64(n) => *n as i32,
+        _ => {
+            return Err(glyph::EvalError::Custom(
+                "damage! expects a damage amount integer as second arg".into(),
+            ))
+        }
+    };
+    let hp = world.ecs.damage(entity_id, amount).unwrap();
+    if world.player_id == entity_id && hp.current <= 0 {
+        world.mode = Mode::Dead;
+    }
+    Ok(Value::I64(hp.current as i64))
 }
 
 fn builtin_set_level(

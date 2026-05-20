@@ -25,6 +25,7 @@ pub enum TileType {
     Wall,
     StairsDown,
     StairsUp,
+    Fire,
 }
 
 #[derive(Clone, Debug)]

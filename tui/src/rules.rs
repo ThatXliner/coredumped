@@ -10,6 +10,7 @@ use crate::glyph::{self, Value};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RulePhase {
     EnemyAi,
+    TileEffect,
     Render,
 }
 
@@ -226,6 +227,29 @@ impl RuleRegistry {
                     ]),
                 },
                 Rule {
+                    id: "fire/burn",
+                    name: "fire/burn",
+                    phase: RulePhase::TileEffect,
+                    cost: RuleCost::Tick,
+                    source_lines: &[
+                        "(defrule fire/burn",
+                        "  {:phase :tile-effect :cost :tick}",
+                        "  ;; Fire tiles deal 1 damage when stepped on.",
+                        "  ;; Cache updates at tick start. Mid-tick changes",
+                        "  ;; (like Vapor Canteen) don't invalidate the cache.",
+                        "  (do",
+                        "    (log \"The fire burns you! You take 1 damage.\")",
+                        "    (damage! *player* 1)))",
+                    ],
+                    body_form: parse_rule_body(&[
+                        "(defrule fire/burn",
+                        "  {:phase :tile-effect :cost :tick}",
+                        "  (do",
+                        "    (log \"The fire burns you! You take 1 damage.\")",
+                        "    (damage! *player* 1)))",
+                    ]),
+                },
+                Rule {
                     id: "vessel-suppress",
                     name: "vessel/suppress",
                     phase: RulePhase::Render,
@@ -274,6 +298,13 @@ impl RuleRegistry {
         self.rules.iter().find(|r| r.id == id)
     }
 
+    pub fn tile_rule(&self, tile: crate::map::TileType) -> Option<&Rule> {
+        match tile {
+            crate::map::TileType::Fire => self.get("fire/burn"),
+            _ => None,
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.rules.len()
     }
@@ -294,9 +325,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn core_registry_has_nine_rules() {
+    fn core_registry_has_ten_rules() {
         let registry = RuleRegistry::core();
-        assert_eq!(registry.len(), 9);
+        assert_eq!(registry.len(), 10);
     }
 
     #[test]
@@ -327,9 +358,10 @@ mod tests {
     fn iter_visits_all_rules() {
         let registry = RuleRegistry::core();
         let ids: Vec<&str> = registry.iter().map(|r| r.id).collect();
-        assert_eq!(ids.len(), 9);
+        assert_eq!(ids.len(), 10);
         assert!(ids.contains(&"slime-hunt"));
         assert!(ids.contains(&"flashlight"));
+        assert!(ids.contains(&"fire/burn"));
         assert!(ids.contains(&"shade-follow"));
         assert!(ids.contains(&"rage-impact"));
         assert!(ids.contains(&"sentry-patrol"));

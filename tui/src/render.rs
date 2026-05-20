@@ -91,6 +91,8 @@ fn render_map(ctx: &mut BTerm, world: &World, lit_tiles: &HashSet<Position>) {
                 (TileType::Wall, true) => ('#', RGB::named(LIGHT_YELLOW)),
                 (TileType::Floor, false) => ('.', RGB::named(DARK_GRAY)),
                 (TileType::Wall, false) => ('#', RGB::named(GRAY)),
+                (TileType::Fire, true) => ('^', RGB::named(RED)),
+                (TileType::Fire, false) => ('^', RGB::named(DARK_RED)),
             };
             ctx.set(MAP_X + x, MAP_Y + y, fg, RGB::named(BLACK), to_cp437(glyph));
         }

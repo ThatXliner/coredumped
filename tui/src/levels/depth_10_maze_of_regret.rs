@@ -32,10 +32,4 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
     // Wizard at entrance — uncertain
     let wizard_pos = Position::new(gen.player_start.x + 2, gen.player_start.y - 2);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
-
-    // Hint about the Archive and fire
-    world.ecs.spawn_sign(
-        Position::new(gen.player_start.x + 2, gen.player_start.y + 4),
-        "Deeper still lies the Archive —\nwhere the dungeon keeps what it\ncouldn't bring itself to destroy.\n\nSomething there counters flame.",
-    );
 }

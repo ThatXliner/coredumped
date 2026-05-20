@@ -41,10 +41,4 @@ pub(crate) fn build_long_corridor(world: &mut World) {
     world.ecs.spawn_fragment(Position::new(45, cy), "frag-015");
 
     // No wizard — deliberately alone
-
-    // Scorched sign — foreshadows fire levels ahead
-    world.ecs.spawn_sign(
-        Position::new(15, cy + 2),
-        "The walls here are scorched black.\nHeat radiates from deeper within.\n\nYou'll need more than courage\nto cross what lies ahead.",
-    );
 }

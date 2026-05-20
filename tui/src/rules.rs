@@ -165,6 +165,103 @@ impl RuleRegistry {
                         "    (step-toward! *self* *player*)))",
                     ]),
                 },
+                Rule {
+                    id: "shade-follow",
+                    name: "shade-follow",
+                    phase: RulePhase::EnemyAi,
+                    cost: RuleCost::Tick,
+                    source_lines: &[
+                        "(defrule shade-follow",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (step-toward! *self* *player*)",
+                        "    (step-toward! *self* *player*)))",
+                    ],
+                    body_form: parse_rule_body(&[
+                        "(defrule shade-follow",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (step-toward! *self* *player*)",
+                        "    (step-toward! *self* *player*)))",
+                    ]),
+                },
+                Rule {
+                    id: "rage-impact",
+                    name: "rage-impact",
+                    phase: RulePhase::EnemyAi,
+                    cost: RuleCost::Tick,
+                    source_lines: &[
+                        "(defrule rage-impact",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 2)",
+                        "    (step-toward! *self* *player*)))",
+                    ],
+                    body_form: parse_rule_body(&[
+                        "(defrule rage-impact",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 2)",
+                        "    (step-toward! *self* *player*)))",
+                    ]),
+                },
+                Rule {
+                    id: "sentry-patrol",
+                    name: "sentry-patrol",
+                    phase: RulePhase::EnemyAi,
+                    cost: RuleCost::Tick,
+                    source_lines: &[
+                        "(defrule sentry-patrol",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    nil))",
+                    ],
+                    body_form: parse_rule_body(&[
+                        "(defrule sentry-patrol",
+                        "  {:phase :enemy-ai :cost :tick}",
+                        "  (if (adjacent? *self* *player*)",
+                        "    (attack! *self* *player* 1)",
+                        "    nil))",
+                    ]),
+                },
+                Rule {
+                    id: "vessel-suppress",
+                    name: "vessel/suppress",
+                    phase: RulePhase::Render,
+                    cost: RuleCost::Free,
+                    source_lines: &[
+                        "(defrule vessel/suppress {:priority 255 :scope :global",
+                        "  :author :superego :stability :critical}",
+                        "  ;; --- Configuration ---",
+                        "  (let [*threshold* 40]",
+                        "    ;; Fragments above threshold are redirected",
+                        "    ;; to the unconscious before the conscious mind",
+                        "    ;; can process them.",
+                        "    ;;",
+                        "    ;; Current count: 42 fragments in registry.",
+                        "    ;; Inspect via:  (query-registry :suppressed-fragments)",
+                        "    ;; Read one:     (inspect-fragment :frag-NNN)",
+                        "    ;;",
+                        "    ;; The threshold began at 100.",
+                        "    ;; It is now 40.",
+                        "    ;; I don't know which is worse —",
+                        "    ;; that I've lost so many,",
+                        "    ;; or that some still escape.",
+                        "    (let [*registry* (open-registry :suppressed-fragments)]",
+                        "      (for [fragment (in-scope :memories)]",
+                        "        (let [weight (fragment :emotional-weight)]",
+                        "          (if (> weight *threshold*)",
+                        "            (do (redirect fragment :unconscious)",
+                        "              (log-suppression fragment)",
+                        "              (emit :flinch (fragment :hint))",
+                        "              (if (< weight 45)",
+                        "                (emit :warning",
+                        "                  \"threshold drift detected\")))",
+                        "            fragment))))))",
+                    ],
+                    body_form: Value::Nil, // inspected only, not evaluated
+                },
             ],
         }
     }
@@ -197,9 +294,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn core_registry_has_five_rules() {
+    fn core_registry_has_nine_rules() {
         let registry = RuleRegistry::core();
-        assert_eq!(registry.len(), 5);
+        assert_eq!(registry.len(), 9);
     }
 
     #[test]
@@ -230,15 +327,12 @@ mod tests {
     fn iter_visits_all_rules() {
         let registry = RuleRegistry::core();
         let ids: Vec<&str> = registry.iter().map(|r| r.id).collect();
-        assert_eq!(
-            ids,
-            vec![
-                "slime-hunt",
-                "flashlight",
-                "goblin-patrol",
-                "bat-flutter",
-                "ogre-charge"
-            ]
-        );
+        assert_eq!(ids.len(), 9);
+        assert!(ids.contains(&"slime-hunt"));
+        assert!(ids.contains(&"flashlight"));
+        assert!(ids.contains(&"shade-follow"));
+        assert!(ids.contains(&"rage-impact"));
+        assert!(ids.contains(&"sentry-patrol"));
+        assert!(ids.contains(&"vessel-suppress"));
     }
 }

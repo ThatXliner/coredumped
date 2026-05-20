@@ -43,6 +43,12 @@ pub(crate) fn build_ash_field(world: &mut World) {
     world.map = map;
     world.ecs.set_position(world.player_id, player_start);
 
+    // Reminder about the Vapor Canteen
+    world.ecs.spawn_sign(
+        Position::new(5, 5),
+        "A sea of fire stretches before you.\nIf you found the Vapor Canteen\nin the Archive, now is the time.\n\n  (use-vapor-canteen! (list x y))\n\nDouse one tile by its coordinates,\nstep through, repeat. Fire returns\nafter each tick.",
+    );
+
     // Fragments scattered across the field
     world.ecs.spawn_fragment(Position::new(30, 14), "frag-019");
     world.ecs.spawn_fragment(Position::new(18, 8), "frag-020");

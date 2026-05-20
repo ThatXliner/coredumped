@@ -68,7 +68,7 @@ impl Ecs {
     }
 
     pub fn spawn_rage(&mut self, pos: Position) -> EntityId {
-        self.spawn_actor(EntityKind::Rage, pos, Hp::new(15), true)
+        self.spawn_actor(EntityKind::Rage, pos, Hp::new(25), true)
     }
 
     pub fn spawn_sentry(&mut self, pos: Position) -> EntityId {

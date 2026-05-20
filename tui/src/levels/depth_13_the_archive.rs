@@ -62,6 +62,12 @@ pub(crate) fn build_the_archive(world: &mut World) {
     world.ecs.spawn_shade_echo(Position::new(24, 22));
     world.ecs.spawn_vapor_canteen(Position::new(30, 24));
 
+    // Sign explaining the Vapor Canteen
+    world.ecs.spawn_sign(
+        Position::new(30, 26),
+        "Vapor Canteen — douses one fire\ntile per turn. Use in the console:\n\n  (use-vapor-canteen! (list x y))\n\nwhere x and y are the tile\ncoordinates. Check *pos* to\nfind your own position first.\nFire stays out for one tick.",
+    );
+
     // Archivist journal signs
     world.ecs.spawn_sign(
         Position::new(16, 4),

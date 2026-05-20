@@ -7,9 +7,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use bracket_lib::prelude::{
-    a_star_search, NavigationPath, CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW,
-};
+use bracket_lib::prelude::{CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW};
 use serde::{Deserialize, Serialize};
 
 const KONAMI_CODE: [&str; 8] = ["up", "up", "down", "down", "left", "right", "left", "right"];
@@ -121,6 +119,9 @@ impl World {
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
+            cached_flashlight: HashSet::new(),
+            cached_flashlight_pos: Position::new(-1, -1),
+            cached_flashlight_facing: Direction::East,
             ending: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
@@ -184,6 +185,9 @@ impl World {
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
+            cached_flashlight: HashSet::new(),
+            cached_flashlight_pos: Position::new(-1, -1),
+            cached_flashlight_facing: Direction::East,
             ending: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
@@ -396,19 +400,6 @@ impl World {
 
     pub fn renderable_entities(&self) -> impl Iterator<Item = EntityView> + '_ {
         self.ecs.renderable_entities()
-    }
-
-    pub fn enemy_ai_path(&self, enemy_id: EntityId) -> NavigationPath {
-        let enemy_pos = self
-            .ecs
-            .position(enemy_id)
-            .expect("enemy should always have a Position component");
-
-        a_star_search(
-            self.map.idx(enemy_pos),
-            self.map.idx(self.player_pos()),
-            &self.map,
-        )
     }
 
     /// Spawn a depth-appropriate enemy at the given position.
@@ -896,6 +887,9 @@ impl World {
     }
 
     fn advance_enemies(&mut self) {
+        // Compute Dijkstra map once for all enemies on this tick.
+        self.map.compute_dijkstra(self.player_pos());
+
         let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
 
         let sandbox = glyph::SandboxOptions::default();

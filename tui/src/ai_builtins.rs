@@ -135,11 +135,17 @@ fn builtin_step_toward(
         Some(p) => p,
         None => return Ok(Value::Bool(false)),
     };
-    let path = world.enemy_ai_path(entity);
-    if !path.success || path.steps.len() < 2 {
-        return Ok(Value::Bool(false));
-    }
-    let next_pos = world.map.position_for_idx(path.steps[1]);
+    let entity_pos = match world.ecs.position(entity) {
+        Some(p) => p,
+        None => return Ok(Value::Bool(false)),
+    };
+
+    // Use cached Dijkstra map (computed once per tick in advance_enemies).
+    let next_pos = match world.map.dijkstra_best_step(entity_pos) {
+        Some(p) => p,
+        None => return Ok(Value::Bool(false)),
+    };
+
     if next_pos == target_pos
         || !world.map.is_walkable(next_pos)
         || world.ecs.entity_at_except(next_pos, entity).is_some()

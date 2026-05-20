@@ -33,9 +33,17 @@ const LOG_WIDTH: i32 = 88;
 const LOG_HEIGHT: i32 = 15;
 
 pub fn render(ctx: &mut BTerm, world: &World) {
-    let lit_tiles = world
-        .map
-        .flashlight_tiles(world.player_pos(), world.player_facing);
+    // lit_tiles computed via cache — render takes &World (not &mut) so we can't call
+    // world.lit_tiles() here. The cache is populated by mark_visible_entities in tick().
+    // Fall back to computing directly if cache is stale.
+    let pos = world.player_pos();
+    let facing = world.player_facing;
+    let lit_tiles =
+        if pos == world.cached_flashlight_pos && facing == world.cached_flashlight_facing {
+            world.cached_flashlight.clone()
+        } else {
+            world.map.flashlight_tiles(pos, facing)
+        };
 
     render_map(ctx, world, &lit_tiles);
     render_side_panel(ctx, world);

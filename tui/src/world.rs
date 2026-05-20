@@ -9,7 +9,7 @@ use bracket_lib::prelude::RGB;
 
 use crate::{
     ecs::Ecs,
-    entity::{Direction, EntityId, EntityKind},
+    entity::{Direction, EntityId, EntityKind, Position},
     event_log::EventLog,
     fragment::FragmentRegistry,
     game::Mode,
@@ -76,6 +76,11 @@ pub struct World {
     /// Memory fragment registry — tracks all 42 fragments and collected status.
     pub fragment_registry: FragmentRegistry,
 
+    /// Cached flashlight tiles (invalidated when player position/facing changes).
+    pub(crate) cached_flashlight: HashSet<Position>,
+    pub(crate) cached_flashlight_pos: Position,
+    pub(crate) cached_flashlight_facing: Direction,
+
     /// Ending text — set when the player triggers an ending at the Core.
     pub ending: Option<String>,
 
@@ -123,21 +128,37 @@ impl World {
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
             fragment_registry: FragmentRegistry::new(),
+            cached_flashlight: HashSet::new(),
+            cached_flashlight_pos: Position::new(-1, -1),
+            cached_flashlight_facing: Direction::East,
             ending: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
         }
     }
 
+    /// Ensure flashlight cache is up to date. Call before reading `cached_flashlight`.
+    fn ensure_lit_tiles(&mut self) {
+        let pos = self.player_pos();
+        let facing = self.player_facing;
+        if pos != self.cached_flashlight_pos || facing != self.cached_flashlight_facing {
+            self.cached_flashlight = self.map.flashlight_tiles(pos, facing);
+            self.cached_flashlight_pos = pos;
+            self.cached_flashlight_facing = facing;
+        }
+    }
+
     /// Mark entity kinds in the flashlight cone as seen.
     pub fn mark_visible_entities(&mut self) {
-        let lit = self
-            .map
-            .flashlight_tiles(self.player_pos(), self.player_facing);
+        self.ensure_lit_tiles();
+        let mut newly_seen: Vec<EntityKind> = Vec::new();
         for entity in self.ecs.renderable_entities() {
-            if lit.contains(&entity.pos) || entity.kind == EntityKind::Player {
-                self.seen_entity_kinds.insert(entity.kind);
+            if self.cached_flashlight.contains(&entity.pos) || entity.kind == EntityKind::Player {
+                newly_seen.push(entity.kind);
             }
+        }
+        for kind in newly_seen {
+            self.seen_entity_kinds.insert(kind);
         }
     }
 }

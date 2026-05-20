@@ -32,23 +32,32 @@ pub struct Map {
     pub width: i32,
     pub height: i32,
     tiles: Vec<TileType>,
+    /// Dijkstra distance field from player (cached, recomputed on tick).
+    dijkstra: Vec<i32>,
+    dijkstra_target: Position,
 }
 
 impl Map {
     /// Create a map with every tile set to the given type.
     pub fn new_filled(width: i32, height: i32, tile: TileType) -> Self {
+        let size = (width * height) as usize;
         Self {
             width,
             height,
-            tiles: vec![tile; (width * height) as usize],
+            tiles: vec![tile; size],
+            dijkstra: vec![i32::MAX; size],
+            dijkstra_target: Position::new(-1, -1),
         }
     }
 
     pub fn new_static() -> Self {
+        let size = (MAP_WIDTH * MAP_HEIGHT) as usize;
         let mut map = Self {
             width: MAP_WIDTH,
             height: MAP_HEIGHT,
-            tiles: vec![TileType::Floor; (MAP_WIDTH * MAP_HEIGHT) as usize],
+            tiles: vec![TileType::Floor; size],
+            dijkstra: vec![i32::MAX; size],
+            dijkstra_target: Position::new(-1, -1),
         };
 
         for x in 0..MAP_WIDTH {
@@ -89,6 +98,8 @@ impl Map {
             width,
             height,
             tiles: vec![TileType::Wall; (width * height) as usize],
+            dijkstra: vec![i32::MAX; (width * height) as usize],
+            dijkstra_target: Position::new(-1, -1),
         };
 
         let mut rng = RandomNumberGenerator::new();
@@ -273,6 +284,8 @@ impl Map {
             width,
             height,
             tiles: vec![TileType::Wall; (width * height) as usize],
+            dijkstra: vec![i32::MAX; (width * height) as usize],
+            dijkstra_target: Position::new(-1, -1),
         };
 
         let mut rng = RandomNumberGenerator::new();
@@ -516,6 +529,69 @@ impl Map {
             }
         }
         lit
+    }
+
+    /// Compute Dijkstra distance field from `target` over walkable tiles.
+    /// Cached: no-op if called again with same target on same tick.
+    pub fn compute_dijkstra(&mut self, target: Position) {
+        if target == self.dijkstra_target {
+            return;
+        }
+        self.dijkstra_target = target;
+        self.dijkstra.fill(i32::MAX);
+
+        if !self.contains(target) {
+            return;
+        }
+
+        let target_idx = self.idx(target);
+        self.dijkstra[target_idx] = 0;
+
+        let mut queue = VecDeque::new();
+        queue.push_back(target);
+
+        while let Some(pos) = queue.pop_front() {
+            let idx = self.idx(pos);
+            let dist = self.dijkstra[idx] + 1;
+            for (dx, dy) in &[(0i32, 1i32), (0, -1), (1, 0), (-1, 0)] {
+                let neighbor = Position::new(pos.x + dx, pos.y + dy);
+                if self.is_walkable(neighbor) {
+                    let nidx = self.idx(neighbor);
+                    if self.dijkstra[nidx] > dist {
+                        self.dijkstra[nidx] = dist;
+                        queue.push_back(neighbor);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Best neighbor step toward the current Dijkstra target. Returns `None`
+    /// when unreachable (dijkstra value is i32::MAX) or already at target.
+    pub fn dijkstra_best_step(&self, from: Position) -> Option<Position> {
+        if !self.contains(from) {
+            return None;
+        }
+        let current_dist = self.dijkstra[self.idx(from)];
+        if current_dist == i32::MAX {
+            return None;
+        }
+        let mut best: Option<(Position, i32)> = None;
+        for (dx, dy) in &[(0i32, 1i32), (0, -1), (1, 0), (-1, 0)] {
+            let neighbor = Position::new(from.x + dx, from.y + dy);
+            if !self.contains(neighbor) {
+                continue;
+            }
+            let nd = self.dijkstra[self.idx(neighbor)];
+            if nd < current_dist {
+                match best {
+                    None => best = Some((neighbor, nd)),
+                    Some((_, bd)) if nd < bd => best = Some((neighbor, nd)),
+                    _ => {}
+                }
+            }
+        }
+        best.map(|(pos, _)| pos)
     }
 
     pub(crate) fn set_tile(&mut self, pos: Position, tile: TileType) {

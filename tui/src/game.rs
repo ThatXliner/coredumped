@@ -101,6 +101,7 @@ impl World {
             glyph_env,
             binding_env,
             inspector_selection: 0,
+            player_attacked: Vec::new(),
             blocking: false,
             running: true,
             player_can_attack: false,
@@ -167,6 +168,7 @@ impl World {
             glyph_env,
             binding_env,
             inspector_selection: 0,
+            player_attacked: Vec::new(),
             blocking: false,
             running: true,
             player_can_attack: false,
@@ -493,6 +495,7 @@ impl World {
         self.player_can_attack = false;
         self.wizard_taught = false;
         self.cheat_unlocked = false;
+        self.player_attacked.clear();
         self.blocking = false;
         self.konami_index = 0;
         self.pending_wipe_slot = None;
@@ -637,6 +640,39 @@ impl World {
         } else {
             self.event_log
                 .push_colored("You swing at empty air.", RGB::named(DARK_GRAY));
+        }
+    }
+
+    /// Shove the first entity in the given direction one tile away. Does not move the player.
+    fn shove_in_direction(&mut self, direction: Direction) {
+        let (dx, dy) = direction.delta();
+        let target = self.player_pos().offset(dx, dy);
+
+        if !self.map.is_walkable(target) {
+            self.event_log
+                .push_colored("You shove the wall. Nothing happens.", RGB::named(DARK_GRAY));
+            return;
+        }
+
+        if let Some(target_id) = self.ecs.entity_at(target) {
+            let shove_target = target.offset(dx, dy);
+            let enemy_name = self.ecs.name(target_id);
+            if self.map.is_walkable(shove_target) && self.ecs.entity_at(shove_target).is_none() {
+                self.ecs.set_position(target_id, shove_target);
+                self.event_log.push_colored(
+                    format!("You shove the {} back.", enemy_name),
+                    RGB::named(YELLOW),
+                );
+            } else {
+                self.event_log.push(format!(
+                    "You shove the {}. It doesn't budge.",
+                    enemy_name
+                ));
+            }
+            self.player_attacked.push(target_id);
+        } else {
+            self.event_log
+                .push_colored("You shove at empty air.", RGB::named(DARK_GRAY));
         }
     }
 
@@ -878,6 +914,7 @@ impl World {
     fn finish_tick(&mut self) {
         self.turn += 1;
         self.advance_enemies();
+        self.player_attacked.clear();
         self.blocking = false;
 
         if self.player_hp().current <= 0 {
@@ -896,6 +933,11 @@ impl World {
 
         for enemy_id in enemy_ids {
             if !self.ecs.is_alive(enemy_id) {
+                continue;
+            }
+
+            // Enemy the player struck or shoved this tick doesn't get to act.
+            if self.player_attacked.contains(&enemy_id) {
                 continue;
             }
 
@@ -1401,6 +1443,7 @@ fn default_bindings() -> HashMap<String, String> {
     m.insert("down".into(), "(move! :south)".into());
     m.insert(".".into(), "(wait!)".into());
     m.insert("b".into(), "(block!)".into());
+    m.insert("v".into(), "(shove!)".into());
     m.insert(">".into(), "(descend!)".into());
     m.insert("<".into(), "(ascend!)".into());
     m.insert("i".into(), "(toggle-inspector!)".into());
@@ -1435,7 +1478,8 @@ pub(crate) fn setup_glyph_env() -> Env {
     reg!("quit!", "exit the game entirely", builtin_quit_bang);
     reg!("move!", "move the player: (move! :north)", builtin_move);
     reg!("wait!", "skip a turn", builtin_wait);
-    reg!("block!", "raise your guard (reduces damage)", builtin_block);
+    reg!("block!", "shove adjacent enemies back and guard", builtin_block);
+    reg!("shove!", "shove an enemy (free action): (shove! :east)", builtin_shove);
     reg!(
         "toggle-inspector!",
         "open or close the inspector",
@@ -1571,9 +1615,73 @@ fn builtin_block(
     _opts: &glyph::SandboxOptions,
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
+    let player_pos = world.player_pos();
+    let directions = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+    let mut shoved = false;
+
+    for (dx, dy) in directions {
+        let adj = player_pos.offset(dx, dy);
+        if let Some(enemy_id) = world.ecs.entity_at(adj) {
+            let enemy_name = world.ecs.name(enemy_id);
+            let mut current = adj;
+            let mut distance = 0;
+            for _ in 0..3 {
+                let target = current.offset(dx, dy);
+                if world.map.is_walkable(target) && world.ecs.entity_at(target).is_none() {
+                    current = target;
+                    distance += 1;
+                } else {
+                    break;
+                }
+            }
+            if distance > 0 {
+                world.ecs.set_position(enemy_id, current);
+                world.event_log.push_colored(
+                    format!("You shove the {} back.", enemy_name),
+                    RGB::named(YELLOW),
+                );
+            } else {
+                world.event_log.push(format!(
+                    "You shove the {}. It doesn't budge.",
+                    enemy_name
+                ));
+            }
+            world.player_attacked.push(enemy_id);
+            shoved = true;
+        }
+    }
+
+    if !shoved {
+        world.event_log.push("You raise your guard, but nothing is near.");
+    }
+
     world.blocking = true;
-    world.event_log.push("You raise your guard.");
     world.finish_tick();
+    Ok(Value::Nil)
+}
+
+fn builtin_shove(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let direction = if args.is_empty() {
+        world.player_facing
+    } else if args.len() == 1 {
+        parse_attack_direction(&args[0]).ok_or_else(|| glyph::EvalError::TypeError {
+            expected: "direction keyword (:north, :south, :east, :west)",
+            got: args[0].to_string(),
+        })?
+    } else {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 1,
+            got: args.len(),
+        });
+    };
+
+    world.player_facing = direction;
+    world.shove_in_direction(direction);
     Ok(Value::Nil)
 }
 
@@ -2824,6 +2932,189 @@ mod tests {
         assert!(!world
             .renderable_entities()
             .any(|entity| entity.kind == EntityKind::Barrel));
+    }
+
+    // --- Player-first strike tests ---
+
+    #[test]
+    fn attacking_enemy_trades_damage() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = true;
+
+        world.apply_intent(Intent::Move(Direction::East));
+
+        // Player deals 1 damage, enemy retaliates for 1
+        assert_eq!(single_enemy(&world).hp.current, 2);
+        assert_eq!(world.player_hp().current, 11);
+        assert!(world.event_log.contains("strike the slime"));
+        assert!(world.event_log.contains("attacks you for 1 damage"));
+    }
+
+    #[test]
+    fn unattacked_enemy_still_attacks() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = true;
+
+        // Wait instead of attack — enemy should still attack
+        world.apply_intent(Intent::Wait);
+
+        assert_eq!(world.player_hp().current, 11); // took 1 damage
+        assert!(world.event_log.contains("attacks you for 1 damage"));
+    }
+
+    // --- Block-as-shove tests ---
+
+    fn setup_block_test_env() -> Env {
+        let env = setup_glyph_env();
+        env.bind(
+            "block!",
+            Value::Builtin(glyph::BuiltinFn {
+                name: "block!",
+                doc: "",
+                func: builtin_block,
+            }),
+        );
+        env
+    }
+
+    #[test]
+    fn block_shoves_adjacent_enemy() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = true;
+        let env = setup_block_test_env();
+        let enemy_pos_before = single_enemy(&world).pos;
+
+        let forms = crate::glyph::read_string("(block!)").unwrap();
+        crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        let enemy_after = single_enemy(&world);
+        assert_ne!(enemy_after.pos, enemy_pos_before);
+        assert_eq!(enemy_after.pos, Position::new(9, 5)); // shoved 3 tiles east
+        assert!(world.event_log.contains("shove the slime back"));
+        assert_eq!(world.turn, 1);
+    }
+
+    #[test]
+    fn block_shove_blocked_by_wall() {
+        let mut world = world_with_single_enemy(Position::new(1, 5));
+        world.player_can_attack = true;
+        world.set_player_pos(Position::new(2, 5));
+        let enemy_id = world.living_enemies().next().unwrap().id;
+        world.ecs.set_position(enemy_id, Position::new(1, 5));
+        let env = setup_block_test_env();
+
+        let forms = crate::glyph::read_string("(block!)").unwrap();
+        crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        assert_eq!(single_enemy(&world).pos, Position::new(1, 5)); // didn't move
+        assert!(world.event_log.contains("doesn't budge"));
+    }
+
+    #[test]
+    fn block_with_no_adjacent_enemies() {
+        let mut world = world_with_single_enemy(Position::new(10, 5));
+        world.player_can_attack = true;
+        let env = setup_block_test_env();
+
+        let forms = crate::glyph::read_string("(block!)").unwrap();
+        crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        assert!(world.event_log.contains("nothing is near"));
+        assert_eq!(world.turn, 1);
+    }
+
+    // --- Shove builtin tests ---
+
+    fn setup_shove_test_env() -> Env {
+        let env = setup_glyph_env();
+        env.bind(
+            "shove!",
+            Value::Builtin(glyph::BuiltinFn {
+                name: "shove!",
+                doc: "",
+                func: builtin_shove,
+            }),
+        );
+        env
+    }
+
+    #[test]
+    fn shove_builtin_pushes_enemy() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = true;
+        world.player_facing = Direction::East;
+        let env = setup_shove_test_env();
+
+        let forms = crate::glyph::read_string("(shove! :east)").unwrap();
+        crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        assert_eq!(single_enemy(&world).pos, Position::new(7, 5));
+        assert!(world.event_log.contains("shove the slime back"));
+        assert_eq!(world.turn, 0); // shove costs no tick
+    }
+
+    #[test]
+    fn shove_builtin_uses_facing_when_no_args() {
+        let mut world = world_with_single_enemy(Position::new(6, 5));
+        world.player_can_attack = true;
+        world.player_facing = Direction::East;
+        let env = setup_shove_test_env();
+
+        let forms = crate::glyph::read_string("(shove!)").unwrap();
+        crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        assert_eq!(single_enemy(&world).pos, Position::new(7, 5));
+        assert_eq!(world.turn, 0); // shove costs no tick
+    }
+
+    #[test]
+    fn shove_at_empty_air_logs_message() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.player_can_attack = true;
+        world.player_facing = Direction::North;
+        let env = setup_shove_test_env();
+
+        let forms = crate::glyph::read_string("(shove! :north)").unwrap();
+        crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        assert!(world.event_log.contains("empty air"));
+        assert_eq!(world.turn, 0); // shove costs no tick
     }
 
     #[cfg(feature = "prelude")]

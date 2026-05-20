@@ -35,6 +35,8 @@ pub struct World {
     pub glyph_env: Env,
     pub binding_env: Env,
     pub inspector_selection: usize,
+    /// Enemies the player struck or shoved this tick — skipped during enemy AI.
+    pub player_attacked: Vec<EntityId>,
     pub blocking: bool,
     pub running: bool,
     pub player_can_attack: bool,
@@ -110,6 +112,7 @@ impl World {
             glyph_env: Env::extend(&crate::glyph::default_env()),
             binding_env: Env::extend(&crate::glyph::default_env()),
             inspector_selection: 0,
+            player_attacked: Vec::new(),
             blocking: false,
             running: true,
             player_can_attack: false,

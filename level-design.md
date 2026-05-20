@@ -857,7 +857,7 @@ All assume player has unlocked registry writes (buffer overflow at Level 7).
 
 | Ending | Narrative Result | Final Text |
 |--------|-----------------|------------|
-| **Reintegrate** | Wizard (Superego) fades. Adrian becomes whole — pain returns, but so does joy. He accepts all 42 fragments, including the locked ones. | "I remember now. The yellow walls. The dog. The reason I locked myself away. It was worth it." (glyph-rendered sunrise) |
+| **Reintegrate** | Wizard (Superego) fades. Adrian becomes whole — pain returns, but so does joy. He accepts what he can remember and makes peace with what's permanently lost. | "I remember now. The yellow walls. The dog. The reason I locked myself away. It was worth it." (glyph-rendered sunrise) |
 | **Maintain suppression** | Adrian leaves the rule unchanged. Returns to "normal" life — functional but hollow. He had a chance to know himself and chose safety. The Superego wins. | "Consciousness stabilized. Suppression maintained. You are safe. You are safe. You are safe." |
 | **Destroy the self** | Rule deleted without replacement. No defense. Adrian cannot maintain coherence. He dissolves into the system. | "vessel/suppress unregistered. No replacement rule found. Consciousness: terminated." |
 | **Hidden: threshold precision** | Threshold set to a specific non-binary value. Partial healing — calibrated and deliberate. Some memories return, others stay locked. Adrian chooses exactly how much to feel. | "Threshold set to *N*. The self renegotiates its boundaries. Some doors remain open. Some remain closed. You can live with that." |

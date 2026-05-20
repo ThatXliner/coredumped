@@ -99,6 +99,8 @@ pub enum EntityKind {
     Shade,
     Rage,
     Sentry,
+    ShadeEcho,
+    VaporCanteen,
 }
 
 impl EntityKind {
@@ -116,6 +118,8 @@ impl EntityKind {
             EntityKind::Shade => '~',
             EntityKind::Rage => 'R',
             EntityKind::Sentry => 'T',
+            EntityKind::ShadeEcho => '\u{00A7}',
+            EntityKind::VaporCanteen => '\u{00B0}',
         }
     }
 
@@ -133,6 +137,8 @@ impl EntityKind {
             EntityKind::Shade => "shade",
             EntityKind::Rage => "rage",
             EntityKind::Sentry => "sentry",
+            EntityKind::ShadeEcho => "shade echo",
+            EntityKind::VaporCanteen => "vapor canteen",
         }
     }
 
@@ -149,7 +155,9 @@ impl EntityKind {
             | EntityKind::Wizard
             | EntityKind::Barrel
             | EntityKind::Sign
-            | EntityKind::Fragment => "",
+            | EntityKind::Fragment
+            | EntityKind::ShadeEcho
+            | EntityKind::VaporCanteen => "",
         }
     }
 }

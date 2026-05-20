@@ -129,6 +129,10 @@ fn draw_entity(ctx: &mut BTerm, entity: EntityView, lit_tiles: &HashSet<Position
         (EntityKind::Rage, false) => RGB::named(DARK_RED),
         (EntityKind::Sentry, true) => RGB::named(WHITE),
         (EntityKind::Sentry, false) => RGB::named(GRAY),
+        (EntityKind::ShadeEcho, true) => RGB::named(CYAN),
+        (EntityKind::ShadeEcho, false) => RGB::named(DARK_GRAY),
+        (EntityKind::VaporCanteen, true) => RGB::named(CYAN),
+        (EntityKind::VaporCanteen, false) => RGB::named(DARK_BLUE),
     };
 
     ctx.set(

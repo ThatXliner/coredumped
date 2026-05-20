@@ -58,16 +58,9 @@ pub(crate) fn build_the_archive(world: &mut World) {
     world.ecs.spawn_fragment(Position::new(38, 6), "frag-017");
     world.ecs.spawn_fragment(Position::new(6, 22), "frag-018");
 
-    // Special items: Shade Echo and Vapor Canteen (sign-like items)
-    world.ecs.spawn_sign(
-        Position::new(24, 22),
-        "~ Shade Echo ~\nA fragment of the Shade that shivers\nwhen the Shade is near.\nCarry it. It may confuse the darkness.",
-    );
-
-    world.ecs.spawn_sign(
-        Position::new(30, 24),
-        "~ Vapor Canteen ~\nAn old flask, half-full. The liquid inside\nfeels cold. Pour it on fire and the fire\nmay forget to burn.",
-    );
+    // Special items: Shade Echo and Vapor Canteen (collectible inventory items)
+    world.ecs.spawn_shade_echo(Position::new(24, 22));
+    world.ecs.spawn_vapor_canteen(Position::new(30, 24));
 
     // Archivist journal signs
     world.ecs.spawn_sign(

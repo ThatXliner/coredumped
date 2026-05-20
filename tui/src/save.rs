@@ -141,6 +141,8 @@ fn kind_from_string(s: &str) -> EntityKind {
         "shade" => EntityKind::Shade,
         "rage" => EntityKind::Rage,
         "sentry" => EntityKind::Sentry,
+        "shade echo" => EntityKind::ShadeEcho,
+        "vapor canteen" => EntityKind::VaporCanteen,
         _ => EntityKind::Slime,
     }
 }
@@ -305,6 +307,8 @@ impl World {
                     let frag_id = ent.fragment_id.as_deref().unwrap_or("frag-001");
                     ecs.spawn_fragment(pos, frag_id)
                 }
+                EntityKind::ShadeEcho => ecs.spawn_shade_echo(pos),
+                EntityKind::VaporCanteen => ecs.spawn_vapor_canteen(pos),
             };
 
             // Overwrite with the saved state

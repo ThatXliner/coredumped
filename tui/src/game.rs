@@ -548,6 +548,24 @@ impl World {
                     self.interact_with_fragment(target_id);
                     return ActionCost::Free;
                 }
+                Some(EntityKind::ShadeEcho) => {
+                    self.held_items.push("Shade Echo".to_string());
+                    self.event_log.push_colored(
+                        "You pick up the Shade Echo. It shivers faintly in your hand.",
+                        RGB::named(CYAN),
+                    );
+                    self.ecs.remove(target_id);
+                    return ActionCost::Free;
+                }
+                Some(EntityKind::VaporCanteen) => {
+                    self.held_items.push("Vapor Canteen".to_string());
+                    self.event_log.push_colored(
+                        "You pick up the Vapor Canteen. The liquid inside feels cold.",
+                        RGB::named(CYAN),
+                    );
+                    self.ecs.remove(target_id);
+                    return ActionCost::Free;
+                }
                 Some(EntityKind::Barrel) => {
                     self.bump_barrel(target_id);
                     return ActionCost::Tick;

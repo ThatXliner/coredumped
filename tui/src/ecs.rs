@@ -91,6 +91,14 @@ impl Ecs {
         id
     }
 
+    pub fn spawn_shade_echo(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::ShadeEcho, pos, Hp::new(999), false)
+    }
+
+    pub fn spawn_vapor_canteen(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::VaporCanteen, pos, Hp::new(999), false)
+    }
+
     pub fn fragment_id(&self, id: EntityId) -> Option<&str> {
         self.fragment_ids.get(&id).map(|s| s.as_str())
     }

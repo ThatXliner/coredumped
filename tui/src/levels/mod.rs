@@ -30,7 +30,11 @@ pub use helpers::find_stairs_down;
 #[allow(unused_imports)]
 pub use depth_01_wizard_chamber::generate_wizard_box;
 
-use crate::world::World;
+use crate::{
+    entity::Position,
+    map::TileType,
+    world::World,
+};
 
 /// Dispatch to the appropriate level builder for the given depth.
 pub fn build_level(world: &mut World, depth: u32) {
@@ -56,5 +60,16 @@ pub fn build_level(world: &mut World, depth: u32) {
         16 => depth_16_the_descent::build_the_descent(world),
         17 => depth_17_the_core::build_the_core(world),
         _ => procedural::build_procedural_level(world, depth),
+    }
+
+    // Initialize fire cache so tile-effect rules see correct state
+    world.fire_cache.clear();
+    for y in 0..world.map.height {
+        for x in 0..world.map.width {
+            let pos = Position::new(x, y);
+            if world.map.tile(pos) == TileType::Fire {
+                world.fire_cache.insert(pos);
+            }
+        }
     }
 }

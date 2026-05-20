@@ -127,6 +127,7 @@ impl World {
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
+            fire_cache: HashSet::new(),
         };
 
         world.load_playbook();
@@ -195,6 +196,7 @@ impl World {
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
+            fire_cache: HashSet::new(),
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -486,6 +488,7 @@ impl World {
         }
         self.wizard_id = None;
         self.gauntlet_barrier_locked.clear();
+        self.fire_cache.clear();
     }
 
     fn wipe_player_state(&mut self) {
@@ -957,6 +960,17 @@ impl World {
 
     fn finish_tick(&mut self) {
         self.turn += 1;
+        // Rebuild fire cache at tick start — Vapor Canteen mutations
+        // from the previous tick are now baked in.
+        self.fire_cache.clear();
+        for y in 0..self.map.height {
+            for x in 0..self.map.width {
+                let pos = Position::new(x, y);
+                if self.map.tile(pos) == TileType::Fire {
+                    self.fire_cache.insert(pos);
+                }
+            }
+        }
         self.check_gauntlet_barriers();
         self.advance_enemies();
         self.player_attacked.clear();
@@ -1585,6 +1599,16 @@ pub(crate) fn setup_glyph_env() -> Env {
         builtin_damage
     );
     reg!(
+        "fire?",
+        "check if a tile is in the fire cache: (fire? (list x y))",
+        builtin_fire_p
+    );
+    reg!(
+        "use-vapor-canteen!",
+        "douse a fire tile with the Vapor Canteen, removing it from the fire cache for this tick: (use-vapor-canteen! (list x y))",
+        builtin_use_vapor_canteen
+    );
+    reg!(
         "set-level",
         "warp to a dungeon level: (set-level N)",
         builtin_set_level
@@ -2150,6 +2174,69 @@ fn builtin_damage(
         world.mode = Mode::Dead;
     }
     Ok(Value::I64(hp.current as i64))
+}
+
+fn builtin_fire_p(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let pos = parse_position(args)?;
+    Ok(Value::Bool(world.fire_cache.contains(&pos)))
+}
+
+fn builtin_use_vapor_canteen(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    if !world.held_items.contains(&"Vapor Canteen".to_string()) {
+        return Err(glyph::EvalError::Custom(
+            "You don't have the Vapor Canteen. Find it in the Archive (Level 13).".into(),
+        ));
+    }
+    let pos = parse_position(args)?;
+    if world.fire_cache.remove(&pos) {
+        world.event_log.push_colored(
+            format!("You douse the fire at ({}, {}). The flames sputter but the tile still glows — the cache won't update until next tick.", pos.x, pos.y),
+            RGB::named(CYAN),
+        );
+    } else {
+        world.event_log.push_colored(
+            format!("No fire to douse at ({}, {}).", pos.x, pos.y),
+            RGB::named(DARK_GRAY),
+        );
+    }
+    Ok(Value::Nil)
+}
+
+fn parse_position(args: &[Value]) -> Result<Position, glyph::EvalError> {
+    match args.first() {
+        Some(Value::List(coords)) if coords.len() == 2 => {
+            let x = match &coords[0] {
+                Value::I64(n) => *n as i32,
+                _ => {
+                    return Err(glyph::EvalError::Custom(
+                        "position x must be an integer".into(),
+                    ))
+                }
+            };
+            let y = match &coords[1] {
+                Value::I64(n) => *n as i32,
+                _ => {
+                    return Err(glyph::EvalError::Custom(
+                        "position y must be an integer".into(),
+                    ))
+                }
+            };
+            Ok(Position::new(x, y))
+        }
+        _ => Err(glyph::EvalError::Custom(
+            "expected a position: (list x y)".into(),
+        )),
+    }
 }
 
 fn builtin_set_level(

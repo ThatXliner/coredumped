@@ -94,6 +94,9 @@ pub struct World {
 
     /// Tracks which gauntlet barriers have been locked (Level 6).
     pub gauntlet_barrier_locked: HashSet<i32>,
+
+    /// Fire-tile cache rebuilt at tick start. Vapor Canteen can mutate mid-tick.
+    pub fire_cache: HashSet<Position>,
 }
 
 impl World {
@@ -141,6 +144,7 @@ impl World {
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
+            fire_cache: HashSet::new(),
         }
     }
 

@@ -14,7 +14,7 @@ use crate::{
     fragment::FragmentRegistry,
     game::Mode,
     glyph::Env,
-    map::Map,
+    map::{Map, TileType},
     rules::RuleRegistry,
 };
 
@@ -74,6 +74,16 @@ pub struct World {
 
     /// Entity kinds the player has seen (via flashlight or interaction).
     pub seen_entity_kinds: HashSet<EntityKind>,
+
+    /// Tile types the player has seen (via flashlight).
+    pub seen_tile_types: HashSet<TileType>,
+
+    /// Rule ids that recently became visible but haven't been acknowledged.
+    /// Cleared when the inspector is closed.
+    pub new_rule_ids: HashSet<String>,
+
+    /// All rule ids that have ever been discovered by the player.
+    pub known_rule_ids: HashSet<String>,
 
     /// Memory fragment registry — tracks all 42 fragments and collected status.
     pub fragment_registry: FragmentRegistry,
@@ -136,6 +146,9 @@ impl World {
             pending_wipe_slot: None,
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
+            seen_tile_types: HashSet::new(),
+            new_rule_ids: HashSet::new(),
+            known_rule_ids: HashSet::new(),
             fragment_registry: FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
@@ -170,6 +183,25 @@ impl World {
         }
         for kind in newly_seen {
             self.seen_entity_kinds.insert(kind);
+        }
+    }
+
+    /// Mark tile types in the flashlight cone as seen.
+    pub fn mark_visible_tiles(&mut self) {
+        self.ensure_lit_tiles();
+        for pos in &self.cached_flashlight {
+            self.seen_tile_types.insert(self.map.tile(*pos));
+        }
+    }
+
+    /// Scan currently visible rules and record any newly discovered ones.
+    pub fn refresh_rule_discovery(&mut self) {
+        let visible = self.registry.visible_ids(&self.seen_entity_kinds, &self.seen_tile_types);
+        for id in visible {
+            if !self.known_rule_ids.contains(&id) {
+                self.known_rule_ids.insert(id.clone());
+                self.new_rule_ids.insert(id);
+            }
         }
     }
 }

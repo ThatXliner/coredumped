@@ -81,6 +81,8 @@ impl GameState for State {
         }
 
         self.world.mark_visible_entities();
+        self.world.mark_visible_tiles();
+        self.world.refresh_rule_discovery();
 
         if !self.world.running {
             ctx.quitting = true;

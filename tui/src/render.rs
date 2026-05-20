@@ -15,7 +15,6 @@ use crate::{
     game::Mode,
     glyph::highlight::{self, Span},
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
-    rules::Rule,
     world::World,
 };
 
@@ -271,21 +270,6 @@ fn render_overlay_backdrop(ctx: &mut BTerm) {
     // Re-render is handled by the overlay draw that follows
 }
 
-/// Rules always visible regardless of enemy discovery.
-const ALWAYS_VISIBLE_RULES: &[&str] = &["slime-hunt", "flashlight", "fire/burn"];
-
-fn rule_visible(rule: &Rule, seen: &HashSet<EntityKind>) -> bool {
-    if ALWAYS_VISIBLE_RULES.contains(&rule.id) {
-        return true;
-    }
-    for kind in seen {
-        if kind.rule_name() == rule.id {
-            return true;
-        }
-    }
-    false
-}
-
 fn render_inspector(ctx: &mut BTerm, world: &World) {
     let x = 2;
     let y = 1;
@@ -300,7 +284,7 @@ fn render_inspector(ctx: &mut BTerm, world: &World) {
     let rules: Vec<_> = world
         .registry
         .iter()
-        .filter(|r| rule_visible(r, &world.seen_entity_kinds))
+        .filter(|r| world.known_rule_ids.contains(r.id))
         .collect();
     let selected = world.inspector_selection.min(rules.len().saturating_sub(1));
 
@@ -314,16 +298,25 @@ fn render_inspector(ctx: &mut BTerm, world: &World) {
         );
     }
 
+    let has_new = !world.new_rule_ids.is_empty();
+
     for (i, rule) in rules.iter().enumerate() {
         let expanded = i == selected;
+        let is_new = world.new_rule_ids.contains(rule.id);
         let prefix = if expanded { "v" } else { ">" };
         let hl = if expanded {
             RGB::named(YELLOW)
+        } else if is_new {
+            RGB::named(CYAN)
         } else {
             RGB::named(GRAY)
         };
 
-        let header = format!("{prefix} {}", rule.name);
+        let header = if is_new {
+            format!("{prefix} {} [NEW]", rule.name)
+        } else {
+            format!("{prefix} {}", rule.name)
+        };
         ctx.print_color(x + 2, line_y, hl, RGB::named(BLACK), &header);
         line_y += 1;
 
@@ -349,11 +342,19 @@ fn render_inspector(ctx: &mut BTerm, world: &World) {
         line_y += 1;
     }
 
-    let nav = format!(
-        "j/k select  i/esc close  {}/{} rules",
-        selected.saturating_add(1),
-        rules.len()
-    );
+    let nav = if has_new {
+        format!(
+            "j/k select  i/esc close  {}/{} rules  (new rules highlighted)",
+            selected.saturating_add(1),
+            rules.len()
+        )
+    } else {
+        format!(
+            "j/k select  i/esc close  {}/{} rules",
+            selected.saturating_add(1),
+            rules.len()
+        )
+    };
     print_clipped(ctx, x + 2, y + height - 2, inner_w, &nav);
 }
 

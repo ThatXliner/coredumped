@@ -19,7 +19,7 @@ pub const MAP_HEIGHT: i32 = 33;
 pub const FLASHLIGHT_RADIUS: i32 = 12;
 const FLASHLIGHT_SPREAD_DOT: f32 = 0.70;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TileType {
     Floor,
     Wall,

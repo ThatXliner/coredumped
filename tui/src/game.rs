@@ -119,6 +119,9 @@ impl World {
             pending_wipe_slot: None,
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
+            seen_tile_types: HashSet::new(),
+            new_rule_ids: HashSet::new(),
+            known_rule_ids: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
@@ -188,6 +191,9 @@ impl World {
             pending_wipe_slot: None,
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
+            seen_tile_types: HashSet::new(),
+            new_rule_ids: HashSet::new(),
+            known_rule_ids: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
@@ -508,6 +514,9 @@ impl World {
         self.quit_countdown = 0;
         self.confirming_quit = false;
         self.seen_entity_kinds.clear();
+        self.seen_tile_types.clear();
+        self.new_rule_ids.clear();
+        self.known_rule_ids.clear();
         self.ending = None;
         self.held_keys.clear();
         self.held_items.clear();
@@ -1793,6 +1802,7 @@ fn builtin_toggle_inspector(
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
     world.mode = if world.mode == Mode::Inspector {
+        world.new_rule_ids.clear();
         Mode::Normal
     } else {
         Mode::Inspector

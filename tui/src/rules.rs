@@ -5,7 +5,13 @@
 //! console queries, renderer, and the AI mini-interpreter.
 //! In this phase rules are static; overlays and patching come later.
 
-use crate::glyph::{self, Value};
+use std::collections::HashSet;
+
+use crate::{
+    entity::EntityKind,
+    glyph::{self, Value},
+    map::TileType,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RulePhase {
@@ -305,6 +311,39 @@ impl RuleRegistry {
             crate::map::TileType::Fire => self.get("fire/burn"),
             _ => None,
         }
+    }
+
+    /// Rules always visible in the inspector regardless of discovery.
+    pub const ALWAYS_VISIBLE: &[&str] = &["flashlight"];
+
+    /// Return the set of rule ids currently visible to the player.
+    pub fn visible_ids(
+        &self,
+        seen_entities: &HashSet<EntityKind>,
+        seen_tiles: &HashSet<TileType>,
+    ) -> HashSet<String> {
+        let mut ids = HashSet::new();
+        for rule in &self.rules {
+            if Self::ALWAYS_VISIBLE.contains(&rule.id) {
+                ids.insert(rule.id.to_string());
+                continue;
+            }
+            for kind in seen_entities {
+                if kind.rule_name() == rule.id {
+                    ids.insert(rule.id.to_string());
+                    break;
+                }
+            }
+            for &tile in seen_tiles {
+                if let Some(r) = self.tile_rule(tile) {
+                    if r.id == rule.id {
+                        ids.insert(rule.id.to_string());
+                        break;
+                    }
+                }
+            }
+        }
+        ids
     }
 
     pub fn len(&self) -> usize {

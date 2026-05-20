@@ -408,13 +408,13 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 
 ---
 
-## 5. 17 Levels — Full Spec
+## 5. 18 Levels (0-17) — Full Spec
 
-17 levels across 5 stages of grief + 1 core level.
+18 levels (0-17) across 5 stages of grief + 1 core level.
 
 | Stage | Levels | # | Purpose | Tone |
 |-------|--------|---|---------|------|
-| Denial | 1-3 | 3 | Tutorial / safe introduction | Warm, structured, protective |
+| Denial | 0-3 | 4 | Tutorial — helplessness → binding → first combat | Warm, structured, protective |
 | Anger | 4-7 | 4 | Escalating threat, fragments start at level 6 | Jagged, confrontational |
 | Bargaining | 8-11 | 4 | Puzzles with costs, wizard offers deals | Calculated, transactional |
 | Depression | 12-14 | 3 | Sparse isolation, memory floods | Empty, melancholic |
@@ -608,19 +608,31 @@ Wizard: "You've been rewriting a lot. I felt each one. Some I agreed with.
 
 Turns cheese into intentional expression — game acknowledges player's choices as part of Adrian's character arc, not a developer oversight.
 
-### Level 1: The Foyer (Denial)
+### Level 0: The Foyer (Denial)
 
 | Field | Detail |
 |-------|--------|
 | **Map type** | Hand-authored single room |
 | **Size** | 25×15 |
+| **Enemies** | 1 Slime (`s` HP3 — pushable, cannot be killed) |
+| **Fragments** | None |
+| **Special** | Sign at entrance: "Xlyph runtime booted. If you're reading this, you finally woke up." Sign at stairs: "Move with arrow keys or hjkl. Descend when ready." Player has no attack — bumping slime shoves it back 1 tile (0 damage, no tick cost for shove). |
+| **Wizard** | First meeting — heals player to full. "Ah — you're awake. I was starting to worry. You've been... resting. Come, let me show you how things work here." |
+| **Palette** | Warm amber, soft gray. |
+| **Purpose** | Establish helplessness + shove mechanic. Player learns they can interact without killing. Wizard dialogue: "resting" implies he wasn't always here. |
+
+### Level 1: The Wizard's Chamber (Denial)
+
+| Field | Detail |
+|-------|--------|
+| **Map type** | Single room |
+| **Size** | 12×9 |
 | **Enemies** | None |
 | **Fragments** | None |
-| **Special** | Sign at entrance: "Xlyph runtime booted. Consciousness loaded. Vessel integrity: 98%. Memory suppression active." Sign at stairs: "Move with arrow keys or hjkl. Descend when ready." |
-| **Wizard** | First meeting — heals player to full. "Ah — you're awake. I was starting to worry. You've been... resting. Come, let me show you how things work here." |
-| **Palette** | Warm amber, soft gray. Standard dungeon tones. |
-| **Purpose** | Establish baseline normal roguelike. No hint anything is wrong. Wizard dialogue includes subtle hint: "resting" implies he wasn't always here. |
-| **Subtle hints** | Wizard says "You've been resting" — first hint player was somewhere else before. Boot message mentions "memory suppression active" — meaningless to new player, meaningful on replay. |
+| **Special** | Wizard in center. Teaches `do-attack` and `bind-key`. Sets `player_can_attack = true`. Gate: cannot descend until wizard has taught and player bound an attack. |
+| **Wizard** | "You've wandered far enough. It's time you learned to strike back. Bind your attack: (bind-key :z (do-attack))." |
+| **Palette** | Warm amber. Single torchlit chamber. |
+| **Purpose** | Player gains attack + binding. First exposure to Glyph as tool, not just read-only. |
 
 ### Level 2: The Holding Cells (Denial)
 
@@ -628,13 +640,12 @@ Turns cheese into intentional expression — game acknowledges player's choices 
 |-------|--------|
 | **Map type** | Room-based (3×3 grid, 9 rooms) |
 | **Size** | 55×33 |
-| **Enemies** | 2 Slimes (`s` HP3) |
+| **Enemies** | 2 Slimes (`s` HP3) in combat rooms |
 | **Fragments** | None |
-| **Special** | Each room has a tutorial sign: movement, inspector, console, waiting, enemy inspection, help command, stairs. Room 9 sign: "Nothing is wrong." — first lie. |
+| **Special** | Rooms 1-8: tutorial signs (movement, inspector, console, waiting, enemy inspection, help, combat practice, stairs). Room 9: barrel puzzle finale — smaller barrel field with signs teaching advanced binding: `(repeat N ...)`, `(do ...)` combo chaining, multi-step programs. "Nothing is wrong." sign moved deeper to Anger. |
 | **Wizard** | Room 3: "The inspector lets you read the rules. Try it." Room 6: "The console is powerful. Be careful what you ask for." |
-| **Palette** | Warm amber. Slightly dimmer in room 9. |
-| **Purpose** | Tutorial. Player learns inspector + console. First subtle crack with room 9 sign. |
-| **Subtle hints** | Room 9 sign "Nothing is wrong" is presented as tutorial flavor but reads differently later. Wizard's "Be careful what you ask for" — hints that console can uncover things. |
+| **Palette** | Warm amber. Room 9 slightly dimmer. |
+| **Purpose** | Combat practice + barrel puzzle. Player learns inspector, console, combat, and advanced binding (chaining, repeat) before entering Anger. |
 
 ### Level 3: The Quiet Halls (Denial)
 
@@ -644,11 +655,10 @@ Turns cheese into intentional expression — game acknowledges player's choices 
 | **Size** | 55×33 |
 | **Enemies** | 2 Bats (`b` HP2), 1 Slime (`s` HP3) |
 | **Fragments** | None |
-| **Special** | No attack ability — player shoves only (0 damage). Enemies can be pushed. |
+| **Special** | First proper dungeon after tutorial. Player has full attack + binding. Transition level bridging Denial's safety and Anger's hostility. |
 | **Wizard** | At start: "There are a few creatures wandering the halls. They're more confused than dangerous." At stairs: "You did well. The descent continues." |
 | **Palette** | Warm but dimmer. Halls feel narrower than they are. |
-| **Purpose** | First enemy exposure. Player is helpless (can't kill). Will matter later. |
-| **Subtle hints** | Wizard says enemies are "confused" — they're not evil, they're broken parts of self. Helplessness mechanic teaches that not all problems are solved by fighting — foreshadows that the final boss isn't fought. |
+| **Purpose** | Bridge tutorial and Anger. Player uses attack + binding in a real dungeon. Wizard's "confused" enemies start the thematic thread. |
 
 ### Level 4: The First Scar (Anger)
 
@@ -848,7 +858,7 @@ Turns cheese into intentional expression — game acknowledges player's choices 
 
 | Levels | Fragments | Count | Tone |
 |--------|-----------|-------|------|
-| 1-5 | None (tutorial) | 0 | Subtle hints only |
+| 0-5 | None (tutorial) | 0 | Subtle hints only |
 | 6-7 | frag-001, frag-002 | 2 | First fragments, gentle intro |
 | 8-9 | frag-003 through frag-006 | 4 | Pre-relationship warmth, first dates |
 | 10-11 | frag-007 through frag-012 | 6 | First cracks through full unraveling |
@@ -864,9 +874,9 @@ Turns cheese into intentional expression — game acknowledges player's choices 
 
 | Level | Gained | Source |
 |-------|--------|--------|
-| 1 | Move, wait, descend | Default |
-| 3 | Console (read-only queries) | Tutorial |
-| 7 | `do-attack` | Wizard teaches after Rage boss |
+| 0 | Move, wait, shove, descend | Default |
+| 1 | Console, `do-attack`, `bind-key` | Wizard teaches |
+| 2 | Combo chaining, `(repeat ...)`, `(do ...)` | Barrel puzzle signs |
 | 7 | Registry write access | Buffer overflow exploit on Rage |
 | 16 | `unregister-rule` | Wizard grants at farewell |
 | 17 | Full registry access | Core room |

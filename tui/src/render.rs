@@ -272,7 +272,7 @@ fn render_overlay_backdrop(ctx: &mut BTerm) {
 }
 
 /// Rules always visible regardless of enemy discovery.
-const ALWAYS_VISIBLE_RULES: &[&str] = &["slime-hunt", "flashlight"];
+const ALWAYS_VISIBLE_RULES: &[&str] = &["slime-hunt", "flashlight", "fire/burn"];
 
 fn rule_visible(rule: &Rule, seen: &HashSet<EntityKind>) -> bool {
     if ALWAYS_VISIBLE_RULES.contains(&rule.id) {

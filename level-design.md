@@ -707,7 +707,7 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Symmetrical room grid with central hub |
 | **Size** | 55×33 |
 | **Enemies** | 2 Ogres (`O` HP8), 2 Goblins (`g` HP5), 2 Bats (`b` HP2) |
-| **Fragments** | `frag-005` (center room — admission of love), `frag-006` (side room — first fight) |
+| **Fragments** | `frag-005` (center room — admission of love), `frag-006` (side room — first date at the diner) |
 | **Special** | Two scales in hub room. Place fragments on scale to open doors. Placed fragments are PERMANENTLY LOST. Wizard's offer in center room: give 3 fragments for +5 max HP. |
 | **Wizard** | In center: "Give me the ones that hurt. I'll take them. You won't remember they existed." |
 | **Palette** | Pale gold. Center room blood-red. |
@@ -720,7 +720,7 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 | **Map type** | Shifting maze (walls reconfigure every 50 turns) |
 | **Size** | 55×33 |
 | **Enemies** | 4 Bats (`b` HP2), 2 Goblins (`g` HP5) |
-| **Fragments** | `frag-007` (center — "I need some space"), `frag-008` (side chamber — "nothing" fight), `frag-009` (hidden behind shifting wall — meeting her friends) |
+| **Fragments** | `frag-007` (center — her playlist), `frag-008` (side chamber — farmer's market, first visible crack), `frag-009` (hidden behind shifting wall — meeting her friends) |
 | **Special** | Walls shift every 50 turns. Center pedestal: take fragment (no cost) or leave it for clear exit path. |
 | **Wizard** | At entrance: "I could tell you the way. I think you need to find it yourself." |
 | **Palette** | Faded yellow, burnt edges. |
@@ -830,8 +830,8 @@ The buffer overflow is the KEY exploit — it's the only one that unlocks regist
 |--------|-----------|-------|------|
 | 1-5 | None (tutorial) | 0 | Subtle hints only |
 | 6-7 | frag-001, frag-002 | 2 | First fragments, gentle intro |
-| 8-9 | frag-003 through frag-006 | 4 | Pre-relationship warmth, early dating |
-| 10-11 | frag-007 through frag-012 | 6 | Relationship cracks |
+| 8-9 | frag-003 through frag-006 | 4 | Pre-relationship warmth, first dates |
+| 10-11 | frag-007 through frag-012 | 6 | First cracks through full unraveling |
 | 12-13 | frag-013 through frag-018 | 6 | Letter, breakup |
 | 14 | frag-019 through frag-024 | 6 | Spiral — heaviest concentration in game |
 | 15 | frag-025 through frag-028 | 4 | Lowest point, in safety |

@@ -96,6 +96,9 @@ pub enum EntityKind {
     Barrel,
     Sign,
     Fragment,
+    Shade,
+    Rage,
+    Sentry,
 }
 
 impl EntityKind {
@@ -110,6 +113,9 @@ impl EntityKind {
             EntityKind::Barrel => 'B',
             EntityKind::Sign => '=',
             EntityKind::Fragment => '\u{2666}',
+            EntityKind::Shade => '~',
+            EntityKind::Rage => 'R',
+            EntityKind::Sentry => 'T',
         }
     }
 
@@ -124,6 +130,9 @@ impl EntityKind {
             EntityKind::Barrel => "barrel",
             EntityKind::Sign => "sign",
             EntityKind::Fragment => "memory fragment",
+            EntityKind::Shade => "shade",
+            EntityKind::Rage => "rage",
+            EntityKind::Sentry => "sentry",
         }
     }
 
@@ -133,6 +142,9 @@ impl EntityKind {
             EntityKind::Goblin => "goblin-patrol",
             EntityKind::Bat => "bat-flutter",
             EntityKind::Ogre => "ogre-charge",
+            EntityKind::Shade => "shade-follow",
+            EntityKind::Rage => "rage-impact",
+            EntityKind::Sentry => "sentry-patrol",
             EntityKind::Player
             | EntityKind::Wizard
             | EntityKind::Barrel

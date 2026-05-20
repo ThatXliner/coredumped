@@ -63,6 +63,18 @@ impl Ecs {
         self.spawn_actor(EntityKind::Wizard, pos, Hp::new(20), false)
     }
 
+    pub fn spawn_shade(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::Shade, pos, Hp::new(999), true)
+    }
+
+    pub fn spawn_rage(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::Rage, pos, Hp::new(15), true)
+    }
+
+    pub fn spawn_sentry(&mut self, pos: Position) -> EntityId {
+        self.spawn_actor(EntityKind::Sentry, pos, Hp::new(6), true)
+    }
+
     pub fn spawn_barrel(&mut self, pos: Position) -> EntityId {
         self.spawn_actor(EntityKind::Barrel, pos, Hp::new(1), false)
     }

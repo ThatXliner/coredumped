@@ -1,4 +1,4 @@
-use super::helpers::{apply_map, spawn_wizard_near_player};
+use super::helpers::apply_map;
 use crate::{
     entity::Position,
     map::{Map, MAP_HEIGHT, MAP_WIDTH},
@@ -22,6 +22,7 @@ pub(crate) fn build_first_scar(world: &mut World) {
         "The air down here is different.\nEverything feels... sharper.",
     );
 
-    // Wizard at midpoint, clipped
-    spawn_wizard_near_player(world);
+    // Wizard at midpoint — player alone at start for first time
+    let wizard_pos = Position::new(MAP_WIDTH / 2, MAP_HEIGHT / 2);
+    world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
 }

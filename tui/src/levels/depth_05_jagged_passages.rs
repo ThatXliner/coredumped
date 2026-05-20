@@ -1,4 +1,4 @@
-use super::helpers::apply_map;
+use super::helpers::{apply_map, spawn_wizard_near_player};
 use crate::{
     entity::Position,
     map::Map,
@@ -16,7 +16,9 @@ pub(crate) fn build_jagged_passages(world: &mut World) {
     }
     apply_map(world, &gen);
 
-    // No wizard here — player alone in hostile terrain
+    // Wizard appears but refuses to heal
+    spawn_wizard_near_player(world);
+
     world.ecs.spawn_sign(
         Position::new(gen.player_start.x + 2, gen.player_start.y + 2),
         "The passages twist without reason.\nDead ends. Ambush corners.\nKeep moving.",

@@ -37,6 +37,17 @@ pub fn temp_edit_path() -> PathBuf {
     xlyph_dir().join("tmp").join("console-input.glyph")
 }
 
+/// Delete the auto-save (slot 0) and player profile from disk.
+///
+/// Used by the `--wipe` CLI flag and the in-game `(wipe!)` command.
+pub fn wipe() {
+    let save = save_path(0);
+    if save.exists() {
+        let _ = std::fs::remove_file(&save);
+    }
+    crate::player_profile::PlayerProfile::delete();
+}
+
 // ---------------------------------------------------------------------------
 // Serialisable snapshot types
 // ---------------------------------------------------------------------------

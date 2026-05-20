@@ -588,6 +588,26 @@ If the player triggered the buffer overflow (Level 7), the registry is writable.
 
 The buffer overflow is the KEY exploit — it's the only one that unlocks registry writes. But it's also the hardest to discover (requires reading the rule, understanding `copy-bytes!`, and crafting a charged attack). The other exploits are easier and serve as training wheels: by the time the player reaches Level 7, they've already experienced 0-3 smaller exploits and understand the pattern: *read the rule, find the bug, break the system.*
 
+#### Superego Backlash: Anti-Cheese
+
+Player can modify non-target rules early via registry write (e.g. zeroing enemy HP, removing AI). No mechanical punishment, but **narrative awareness** from wizard on subsequent encounters:
+
+```
+Wizard: "You changed something. I felt it. That rule wasn't meant to be
+        touched, but... it's your mind. Just know: every change leaves a
+        mark. Even the small ones."
+```
+
+If player modifies 3+ rules before Level 17, additional dialogue at Level 17 entrance:
+
+```
+Wizard: "You've been rewriting a lot. I felt each one. Some I agreed with.
+        Some I didn't. But they were yours to change. I never could decide
+        if that was freedom or damage."
+```
+
+Turns cheese into intentional expression — game acknowledges player's choices as part of Adrian's character arc, not a developer oversight.
+
 ### Level 1: The Foyer (Denial)
 
 | Field | Detail |

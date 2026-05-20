@@ -24,7 +24,7 @@
 
 **The final boss is not a monster.** It's a Glyph program called `vessel/suppress`. The player must read it, understand what it does, and decide whether to modify it. The ending is not a cutscene — it's the player typing a change into the console and pressing Enter.
 
-**The story**: A man named Adrian (the player character, called "you" in-game) went through a devastating breakup after a 4-month relationship with someone he'd been friends with for a year. His anxious attachment style, rooted in a dysfunctional family that never taught him how to love, sabotaged the relationship. She ended it cleanly — kindly, with no blame — and asked for no contact. He tells himself she did it because she cares, because she knew he needed to heal. Maybe that's true. Maybe she just wanted to move on. He'll never know. He spiraled. His mind started suppressing memories — first the breakup, then the relationship, then anything that reminded him of what he'd lost. By the time the game begins, 42 memories have been buried. 33 are still findable, leaking through the suppression. 9 are locked so deep they can never be read — not even by modifying the rule.
+**The story**: A man named Adrian (the player character, called "you" in-game) went through a devastating breakup after a 4-month relationship with someone he'd been friends with for a year. His anxious attachment style, rooted in a dysfunctional family that never taught him how to love, sabotaged the relationship. She ended it cleanly — kindly, with no blame — and asked for no contact. He tells himself she did it because she cares, because she knew he needed to heal. Maybe that's true. Maybe she just wanted to move on. He'll never know. He spiraled. His mind started suppressing memories — first the breakup, then the relationship, then anything that reminded him of what he'd lost. By the time the game begins, 42 memories have been buried. 33 are still findable, leaking through the suppression. 9 are locked so deep they can only be glimpsed through corrupt decryption — fragments of fragments, never the full picture.
 
 ---
 
@@ -213,11 +213,28 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 
 ### Permanently Suppressed Fragments (Registry Only)
 
-These 9 fragments are too deep for Adrian's mind to release. Their IDs are visible via `(query-registry :suppressed-fragments)`. Their content is locked behind the suppression threshold — and unlike the 33 findable fragments, **these can never be read**. Not by modifying the rule. Not by lowering the threshold. The suppression was too thorough. The game shows:
+These 9 fragments are too deep for Adrian's mind to release. Their IDs are visible via `(query-registry :suppressed-fragments)`. Their content is locked behind the suppression threshold — and unlike the 33 findable fragments, **these can never be fully recovered**. Not by modifying the rule. Not by lowering the threshold. The suppression was too thorough.
+
+However, `(inspect-fragment :frag-NNN)` performs a corrupt decryption — ghostly fragments of the memory leak through. Enough to hint at what was lost, never enough to know for sure:
 
 > "vessel/suppress: Access Denied. Suppression threshold: 40. Fragment weight: [N]."
 >
-> "(content permanently unrecoverable)"
+> "corrupt decrypt — [2-3 word hint] ... [2-3 word hint] ..."
+
+<!--TODO ACTUALLY WRITE-->
+| ID | Corrupt Decrypt |
+|----|----------------|
+| frag-034 | "her voice ... cracking ..." |
+| frag-035 | "I said ... shouldn't have ..." |
+| frag-036 | "door closing ... dark ..." |
+| frag-037 | "why is she ... another guy ..." |
+| frag-038 | "wanted to ... but she ..." |
+| frag-039 | "railing ... cold ... step forward ..." |
+| frag-040 | "she knew ... before I did ..." |
+| frag-041 | "the worst thing ... still love ..." |
+| frag-042 | "42. The answer. The question. Both lost." |
+
+The hints are deliberately ambiguous — the player fills the gaps with their own interpretation. This mirrors how actual suppressed memories feel: you get flashes, fragments, feelings, but never the full picture.
 
 | ID | Weight | Notes |
 |----|--------|-------|
@@ -369,7 +386,7 @@ The rule below is written in real Glyph that the evaluator could actually run. E
 | Delete the rule | `(let [r (open-registry :rule-registry)] (r :unregister :vessel/suppress))` | No defense. Self dissolves. |
 | Set threshold to N | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* N)))` | Partial healing — ending text varies. |
 | Query registry | `(query-registry :suppressed-fragments)` | Returns list of 42 fragment IDs with weights |
-| Read suppressed fragment | `(inspect-fragment :frag-034)` | "(content permanently unrecoverable)" — regardless of threshold |
+| Read suppressed fragment | `(inspect-fragment :frag-034)` | "corrupt decrypt — her voice ... cracking ..." — regardless of threshold |
 
 ### The Ghost Function: `traumatic?`
 

@@ -117,19 +117,19 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 #### Anger: Relationship, four months, first cracks
 
 **frag-005** — Level 9 (The Scale)
-> After one Friday night football game, we admitted it out loud—or over text. "I know there isn't a homecoming dance this year, but if there was, I would have asked you." "Really? And I would have said yes."
+> After a Friday night football game, we admitted it over text. "I know there isn't a homecoming dance this year, but if there was, I would've asked you." "Really? And I would've said yes." I stared at my phone for ten minutes just smiling. I didn't know a person could feel this warm.
 
 **frag-006** — Level 9 (The Scale)
-> Our first fight. Two weeks in. She said something offhand and I spiraled for hours. I asked her "do you even like me?" and the look on her face — I'll never forget it. Hurt. Confused. The first time she saw the thing inside me that I try to hide. She forgave me. That made it worse.
+> Our first real date. She picked a diner open late. We sat in a booth with sticky menus and she dared me to order the weirdest thing on the menu. I got a tuna melt. She said that was the most boring choice possible. She ordered a milkshake and let me have the first sip. I don't remember what we talked about. I remember thinking "I want this forever" and being too scared to say it out loud.
 
 **frag-007** — Level 10 (Maze of Regret)
-> The first time she said "I need some space." She said it gently. Reasonably. I said "okay" and then spent three hours staring at my phone trying not to text her, then texting her anyway, then apologizing for texting, then apologizing for apologizing. By the time she replied I had convinced myself she hated me. She didn't hate me. She was just at work.
+> She sent me a playlist. Called it "songs that remind me of you." I listened to it on repeat for three days. Each song felt like a message I had to decode. By the third day I realized there was nothing to decode — she just liked me and wanted me to know. I didn't know people did that. I didn't know you could just... tell someone you liked them, without it meaning something else. I still have the playlist.
 
 **frag-008** — Level 10 (Maze of Regret)
-> I asked her what she was thinking. She said "nothing." I said "no really." She said "nothing, I promise." I didn't believe her. I couldn't believe her. No one in my family ever meant "nothing" when they said nothing. I kept pushing until she got quiet. Then I was quiet. Then we watched a movie without touching.
+> We went to a farmer's market on a Saturday morning. She bought strawberries and fed me one. She laughed at my face — too sour. I laughed at her laugh. It was a good day. But on the walk back I went quiet and she noticed. She asked what was wrong. I said nothing. She said "you're doing the thing again." I didn't know what "the thing" was. She said "you go somewhere I can't follow." She wasn't mad. She was just sad. That was worse.
 
 **frag-009** — Level 10 (Maze of Regret)
-> She introduced me to her friends. They were nice. Normal. They asked about my job. They laughed at my jokes. I spent the whole night convinced they could tell there was something wrong with me. Afterward she said "they loved you" and I said "really?" and she said "really" and I pretended to believe her. I think she pretended too.
+> She introduced me to her friends. They were nice. Normal. They asked about my job. They laughed at my jokes. I spent the whole night convinced they could tell something was wrong with me. Afterward she said "they loved you" and I said "really?" and she said "really." I wanted to believe her. I couldn't. Not because of anything she did — because I didn't know how to believe someone could stay.
 
 **frag-010** — Level 11 (The Offer)
 > The first time I thought "she's going to leave me." Not because she did anything. Because I couldn't believe she'd stay. I lay awake next to her and counted all the ways I wasn't enough. I was still counting when the sun came up. She was still asleep. She was still there. She left anyway, eventually.
@@ -253,7 +253,7 @@ The hints are deliberately ambiguous — the player fills the gaps with their ow
 | Stage | Fragments | Story |
 |-------|-----------|-------|
 | Pre-relationship | 001-004 | Friendship forms. She makes him laugh. He sees her family's warmth. (Found levels 6-8) |
-| Relationship | 005-014 | Falling in love, anxious attachment surfaces, eggshells, childhood explanation, her letter, last good night. (Found levels 9-12) |
+| Relationship | 005-014 | First date, playlists, farmer's market — then first cracks Adrian tries to hide. Anxious attachment surfaces, eggshells, childhood explanation, her letter, last good night. (Found levels 9-12) |
 | Breakup | 015-023 | "We need to talk." Clean breakup. No contact. Unsent letter. Imagining her. Mother's call. (Found levels 12-14) |
 | Aftermath | 024-030 | Isolation, not eating, 3AM walks, the bridge, deleting her number, attachment theory at 2AM. (Found levels 14-16) |
 | Healing | 031-033 | Called a friend, writing again, corrupted warmth. (Found levels 16-17) |

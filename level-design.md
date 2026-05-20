@@ -24,7 +24,7 @@
 
 **The final boss is not a monster.** It's a Glyph program called `vessel/suppress`. The player must read it, understand what it does, and decide whether to modify it. The ending is not a cutscene — it's the player typing a change into the console and pressing Enter.
 
-**The story**: A man named Adrian (the player character, called "you" in-game) went through a devastating breakup after a 4-month relationship with someone he'd been friends with for a year. His anxious attachment style, rooted in a dysfunctional family that never taught him how to love, sabotaged the relationship. She ended it cleanly — kindly, with no blame — and asked for no contact. He tells himself she did it because she cares, because she knew he needed to heal. Maybe that's true. Maybe she just wanted to move on. He'll never know. He spiraled. His mind started suppressing memories — first the breakup, then the relationship, then anything that reminded him of what he'd lost. By the time the game begins, 42 memories have been buried. 33 are still findable, leaking through the suppression. 9 are locked so deep they can only be read by modifying the rule.
+**The story**: A man named Adrian (the player character, called "you" in-game) went through a devastating breakup after a 4-month relationship with someone he'd been friends with for a year. His anxious attachment style, rooted in a dysfunctional family that never taught him how to love, sabotaged the relationship. She ended it cleanly — kindly, with no blame — and asked for no contact. He tells himself she did it because she cares, because she knew he needed to heal. Maybe that's true. Maybe she just wanted to move on. He'll never know. He spiraled. His mind started suppressing memories — first the breakup, then the relationship, then anything that reminded him of what he'd lost. By the time the game begins, 42 memories have been buried. 33 are still findable, leaking through the suppression. 9 are locked so deep they can never be read — not even by modifying the rule.
 
 ---
 
@@ -38,21 +38,21 @@ Adrian grew up in a house that was never quiet but never said anything important
 
 His mother was the opposite problem — present, but checked out in a different way. She filled her days with the machinery of the household: cleaning, organizing, meal prep, laundry. She kept the house running perfectly and was too exhausted by the maintenance of it to actually live in it. When Adrian got to high school and could feed himself and get himself to school, she took a job — nothing ambitious, just something to get her out of the house. She had been so bored for so long she'd forgotten she was allowed to want things. After that, Adrian came home to an empty house most days. No one asked about homework. No one made snacks. No one was there.
 
-They did try, once. Family trips — a long weekend at a lake house, a week at the beach. Everyone in the same space. But the kids didn't know what to do with that version of their parents. They sat in separate rooms. They complained about the Wi-Fi. They didn't recognize the value of what they were being given. After the third trip where the tension outlasted the fun, the parents stopped planning them. No one ever said "let's not do this anymore." They just stopped. And the silence was agreement enough.
+To get a family together...they did try, once. Family trips — a long weekend at a lake house, a week at the beach. Everyone in the same space. But the kids didn't appreciate it at the time. They sat in separate rooms. They complained about the Wi-Fi. They didn't recognize the value of what they were being given. After the final trip where the tension outlasted the fun, the parents stopped planning them. No one ever said "let's not do this anymore." They just stopped. And the silence was agreement enough.
 
-His parents didn't do much together either. Separate lives under the same roof. His mother took dance classes twice a week — salsa, then tango, then whatever was offered at the community center. His father played basketball with friends on Saturdays and golf when the weather was good. They orbited the same house without colliding. Sometimes they argued — sharp, quiet fights behind the bedroom door that Adrian could hear the shape of but never the words. They'd emerge in silence and go to separate rooms. He never saw them apologize to each other. He never saw them reconcile. He just saw them reset to a cold equilibrium and wait for the next time someone said the wrong thing.
+His parents didn't do much together either. Separate lives under the same roof. His mother took art classes twice a week — how to dance salsa, then do acrylic painting, then whatever was offered at the community center. His father played basketball with friends on Saturdays and golf when the weather was good. They orbited the same house without colliding. Sometimes they argued — sharp, quiet fights behind the bedroom door that Adrian could hear the shape of but never the words. He never saw them apologize to each other.
 
-No one in his family touched. No one apologized. No one cried where others could see. Problems were not solved — they were waited out until they became someone else's problem. Arguments ended in silence, not resolution. Love was assumed, never expressed. Adrian grew up knowing his parents loved him the same way he knew the sun would rise — as a fact, not a feeling.
+No one in his family touched. No one apologized. No one cried where others could see. Problems were not solved. They were waited out until they became someone else's problem. Arguments ended in silence, not resolution. Love was assumed, never expressed. Adrian grew up knowing his parents loved him the same way he knew the sun would rise—as a fact, not a feeling.
 
 He never learned to ask for what he needed. He never learned to say "I'm scared" without feeling like he was failing. He learned that needing reassurance was weakness, so he needed it secretly and hated himself for needing it.
 
 ### The Relationship
 
-Then he met **Clara**. He didn't know it at the time — thought it was just a random conversation with a stranger somewhere neither of them planned to be. But they clicked. The kind of click you only recognize in hindsight. They finished each other's sentences without trying. She laughed at things he said that no one else laughed at. He caught himself looking for her in rooms. It took him months to admit to himself what that meant.
-
-The summer before they started dating, they spent a month together at the same camp — counselors, both of them, assigned to the same age group. Four weeks of shared sunburn and bug-bitten ankles and late-night conversations on a cabin porch. He learned what she looked like in the morning. She learned that he couldn't whistle. They taught kids how to tie knots and paddle straight. When the month ended, they hugged goodbye and said they should keep in touch, meaning it for once.
+Then he met **Clara**. He didn't know it at the time (as he thought it was just a random conversation with a stranger somewhere neither of them planned to be), but they clicked. They finished each other's sentences without trying. She laughed at things he said that no one else laughed at. He caught himself looking for her in school. It took him months to admit to himself what that meant.
 
 They were friends for a year before anything happened. She was patient. She laughed at his worst jokes. She stayed late talking. He fell in love the way you fall asleep — slowly, then all at once.
+
+The summer before they started dating, they spent a month together at the same camp as counselors where both of them were assigned to the same age group. It was four weeks of shared sunburn and bug-bitten ankles and late-night conversations on a cabin porch. He learned what she looked like in the morning. She learned that he couldn't whistle. They taught kids how to tie knots and paddle straight. When the month ended, they hugged goodbye and said they should keep in touch, meaning it for once.
 
 They dated for four months. The happiest and most terrified four months of his life.
 
@@ -72,19 +72,19 @@ His mind couldn't accept that. So it started building a story where maybe, if he
 
 ### The Aftermath
 
-He didn't fall apart dramatically. He fell apart quietly, the way his family taught him. He stopped going out. He stopped answering texts. He stopped cooking. 
+He fell apart quietly, the way his family taught him. He stopped going out. He stopped answering texts. He stopped cooking. 
 
 If only he had been less needy. If only he had learned to love properly. If only his parents had shown him what a healthy relationship looked like. If only he was raised a better man.
 
-The suppression started small—specific memories of the breakup. Then it spread. Every happy memory of her became painful, so the threshold lowered to suppress those too. Then happier memories before her. Then childhood memories that hurt in a different way. Then everything that reminded him of what he'd lost.
+The suppression started with the small things like specific memories of the breakup. Then it spread. Every happy memory of her became painful, so the threshold lowered to suppress those too. Then happier memories before her. Then childhood memories that hurt in a different way. Then everything that reminded him of what he'd lost.
 
-### The Game World
+### The Game
 
-The dungeon is Adrian's mind. The "wizard" is the Superego — the part of his psyche that built the suppression system to protect him. It genuinely loves him. It genuinely believes it's helping. It has been maintaining the suppression for so long that it can no longer tell whether it's protecting Adrian or imprisoning him.
+The dungeon is Adrian's mind. The "wizard" is the Superego, the part of his psyche that built the suppression system to protect him. It genuinely loves him. It genuinely believes it's helping. It has been maintaining the suppression for so long that it can no longer tell whether it's protecting Adrian or imprisoning him.
 
-The enemies are defense mechanisms — fragments of the self that have taken on aggressive forms. The Rage in the Anger layer isn't a monster; it's Adrian's own suppressed anger at himself, given form. The Shade that follows him through the Depression layer isn't an enemy; it's the part of him that's always watching, always judging.
+The enemies are defense mechanisms, fragments of the self that have taken on aggressive forms. The Rage in the Anger layer isn't a monster; it's Adrian's own suppressed anger at himself, given form. The Shade that follows him through the Depression layer isn't an enemy; it's the part of him that's always watching, always judging.
 
-The deeper you go, the more personal it gets. The signs aren't signs — they're memories. The rooms aren't rooms — they're moments. The dungeon doesn't generate randomly. It generates from Adrian's own mind, shaped by the grief stages he's been trapped in.
+The deeper you go, the more personal it gets. The dungeon doesn't generate randomly. It generates from Adrian's own mind, shaped by the grief stages he's been trapped in.
 
 ---
 
@@ -103,21 +103,21 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 #### Denial: Pre-relationship, early friendship
 
 **frag-001** — Level 6 (Gauntlet)
-> I don't remember the first conversation we ever had. Just some random place where two people started talking and neither of them knew yet. But I remember the first time she laughed at something stupid I said. We were sitting on a bench outside a coffee shop. We'd only known each other a few months — still in that phase where everything the other person said felt like a discovery. I don't remember what I said. I remember the sound she made — this surprised wheeze like I'd caught her off guard. I wanted to make her do that forever.
+> I don't remember the first conversation we ever had. Just some random place where two people started talking and neither of them knew yet. But I remember the first time she laughed at something stupid I said. We were sitting on a bench outside a coffee shop. We'd only known each other a few months, still in that phase where everything the other person said felt like a discovery. I don't remember what I said but I remember the sound she made: this surprised wheeze like I'd caught her off guard. I wanted to make her do that forever.
 
 **frag-002** — Level 7 (Boiling Heart)
-> She stayed late after a party to help me clean. Just the two of us, picking up plastic cups in the dark. She said "this is the best part of the night" and I pretended not to hear because if I heard it I'd have to admit I felt it too. I heard it. I felt it.
+> She stayed late after a party to help me clean. Just the two of us, picking up plastic cups in the dark. She said "this is the best part of the night" and I pretended not to hear because if I heard it I'd have to admit I felt it too. But I did heard it. I also felt it.
 
 **frag-003** — Level 8 (Counting Room)
-> The first time she told me about her family. How close they were. How they called each other every Sunday. How they still took family trips — not out of obligation, but because they genuinely liked being together. I nodded and smiled and felt something crack open in my chest. I didn't know families did that. I still don't.
+> The first time she told me about her family. How close they were. How they called each other every Sunday. How they still took family trips, not out of obligation, but because they genuinely liked being together. I nodded and smiled and felt something crack open in my chest. I didn't know families did that. I still don't.
 
 **frag-004** — Level 8 (Counting Room)
-> She texted me a picture of a dog in a sweater. Just randomly. No reason. I realized someone was thinking about me when I wasn't in the room. I didn't know that was something people did. I saved the picture. I still have it.
+> She texted me a picture of a dog in a sweater. Just randomly. No reason. I realized someone was thinking about me when I wasn't in the room. I did not know that was something people did. I have the picture saved, and even to this day.
 
 #### Anger: Relationship, four months, first cracks
 
 **frag-005** — Level 9 (The Scale)
-> After one Friday night football game, we admitted it out loud, over text. "I know there isn't a homecoming dance this year, but if there was, I would have asked you." "Really? And I would have said yes"
+> After one Friday night football game, we admitted it out loud—or over text. "I know there isn't a homecoming dance this year, but if there was, I would have asked you." "Really? And I would have said yes."
 
 **frag-006** — Level 9 (The Scale)
 > Our first fight. Two weeks in. She said something offhand and I spiraled for hours. I asked her "do you even like me?" and the look on her face — I'll never forget it. Hurt. Confused. The first time she saw the thing inside me that I try to hide. She forgave me. That made it worse.
@@ -213,9 +213,11 @@ The fragment IDs (`frag-001` through `frag-033`) are sequential by story chronol
 
 ### Permanently Suppressed Fragments (Registry Only)
 
-These 9 fragments are too deep for Adrian's mind to release. Their IDs are visible via `(query-registry :suppressed-fragments)`. Their content is locked behind the suppression threshold. The game shows:
+These 9 fragments are too deep for Adrian's mind to release. Their IDs are visible via `(query-registry :suppressed-fragments)`. Their content is locked behind the suppression threshold — and unlike the 33 findable fragments, **these can never be read**. Not by modifying the rule. Not by lowering the threshold. The suppression was too thorough. The game shows:
 
 > "vessel/suppress: Access Denied. Suppression threshold: 40. Fragment weight: [N]."
+>
+> "(content permanently unrecoverable)"
 
 | ID | Weight | Notes |
 |----|--------|-------|
@@ -361,13 +363,13 @@ The rule below is written in real Glyph that the evaluator could actually run. E
 |--------|-------------------|--------|
 | Read the rule | `(inspect :vessel/suppress)` | See full rule with comments |
 | Check threshold | `(get-var :vessel/suppress *threshold*)` | Returns "40" |
-| Lower threshold to 0 | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* 0)))` | Nothing suppressed. All memories return. |
-| Remove threshold check | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(remove-check fragment :emotional-weight)))` | All memories pass through. |
-| Disable redirect | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(disable :redirect)))` | Suppression stops. |
+| Lower threshold to 0 | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* 0)))` | 33 findable fragments return. 9 permanently suppressed remain lost. |
+| Remove threshold check | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(remove-check fragment :emotional-weight)))` | All passable memories return. Permanently suppressed still gone. |
+| Disable redirect | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(disable :redirect)))` | Suppression stops. Same caveat. |
 | Delete the rule | `(let [r (open-registry :rule-registry)] (r :unregister :vessel/suppress))` | No defense. Self dissolves. |
 | Set threshold to N | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* N)))` | Partial healing — ending text varies. |
 | Query registry | `(query-registry :suppressed-fragments)` | Returns list of 42 fragment IDs with weights |
-| Read suppressed fragment | `(inspect-fragment :frag-034)` | "Insufficient emotional weight..." unless threshold lowered |
+| Read suppressed fragment | `(inspect-fragment :frag-034)` | "(content permanently unrecoverable)" — regardless of threshold |
 
 ### The Ghost Function: `traumatic?`
 

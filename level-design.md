@@ -608,15 +608,51 @@ Wizard: "You've been rewriting a lot. I felt each one. Some I agreed with.
 
 Turns cheese into intentional expression — game acknowledges player's choices as part of Adrian's character arc, not a developer oversight.
 
+#### Shove Mechanic
+
+When player has no attack (`player_can_attack = false`), bumping an enemy triggers a shove instead of combat. This is the only non-hostile interaction with enemies in the game and serves as the tutorial's core tactile lesson.
+
+| Property | Value |
+|----------|-------|
+| **Trigger** | Player moves into enemy-occupied tile while `player_can_attack = false` |
+| **Effect** | Enemy pushed 1 tile away from player (direction of player's move vector) |
+| **Damage** | 0 |
+| **Tick cost** | Free — no time passes, enemies don't act |
+| **Player movement** | None — player stays in original tile |
+| **Message** | "You shove the {name} back." (was "helplessly shove") |
+
+**Edge cases:**
+
+| Condition | Behavior |
+|-----------|----------|
+| Push destination is a wall | Shove fails. Message: "You helplessly shove the {name}. It doesn't budge." No tick, no movement. |
+| Push destination has another entity | Shove fails (same as wall). No stacking. |
+| Push destination has stairs | Enemy pushed onto stairs tile. Stairs remain functional — player can stand on them later. |
+| Push destination outside map | Treated as wall — shove fails. |
+| Multiple pushes (chain) | Each shove is Free. Player can follow-and-shove repeatedly, pushing enemy across room. No cumulative penalty. |
+| Enemy was already pushed this turn | No special handling — shove again normally. No tick cost means enemy never acts between shoves. |
+| Player bumps wall (no enemy) | Wall bump is NOT a shove. Costs 1 tick. Message: "You bump into a wall. Time still moves." |
+| Player bumps barrel | Barrel bump is NOT a shove. Barrel is destroyed (current behavior). Requires attack or armed bump. |
+| Player bumps wizard | Wizard interaction (current behavior). Not a shove. |
+| Player has attack | Not a shove — armed bump deals damage (current behavior). |
+
+**Design notes:**
+
+- Shove is purely a tutorial mechanic. Player never needs it after gaining attack. But it remains available (`player_can_attack` gates it, so `do-attack` learning implicitly removes it).
+- Free tick cost means player can experiment without pressure — push enemy around, learn collision rules, understand bump interactions.
+- No damage means no accidental kills. The enemy is an obstacle and a toy, not a threat.
+- Blocked push (wall/entity) teaches that enemies have physical presence — they block paths, need to be worked around.
+- Shove replaces the old "helplessly shove" message. The current message implies frustration; shove as Free action implies curiosity.
+
 ### Level 0: The Foyer (Denial)
 
 | Field | Detail |
 |-------|--------|
 | **Map type** | Hand-authored single room |
 | **Size** | 25×15 |
-| **Enemies** | 1 Slime (`s` HP3 — pushable, cannot be killed) |
+| **Enemies** | 1 Slime (`s` HP3 — pushable, [see Shove Mechanic](#shove-mechanic)) |
 | **Fragments** | None |
-| **Special** | Sign at entrance: "Xlyph runtime booted. If you're reading this, you finally woke up." Sign at stairs: "Move with arrow keys or hjkl. Descend when ready." Player has no attack — bumping slime shoves it back 1 tile (0 damage, no tick cost for shove). |
+| **Special** | Sign at entrance: "Xlyph runtime booted. If you're reading this, you finally woke up." Sign at stairs: "Move with arrow keys or hjkl. Descend when ready." Player has no attack. |
 | **Wizard** | First meeting — heals player to full. "Ah — you're awake. I was starting to worry. You've been... resting. Come, let me show you how things work here." |
 | **Palette** | Warm amber, soft gray. |
 | **Purpose** | Establish helplessness + shove mechanic. Player learns they can interact without killing. Wizard dialogue: "resting" implies he wasn't always here. |
@@ -943,9 +979,10 @@ All assume player has unlocked registry writes (buffer overflow at Level 7).
 
 ### Phase 3 — Level Implementation
 
-- [ ] Level 1-3: Denial (hand-authored intro, tutorial rooms, corridor maze)
+- [ ] Level 0-3: Denial (helpless tutorial, wizard chamber, holding cells + barrels, quiet halls)
+- [ ] Shove mechanic: full spec (push 1 tile, free action, wall/entity blocking, chain pushes, message updates)
 - [ ] Level 4-7: Anger (cave gen, gauntlet, Rage boss)
-- [ ] Level 7: `do-attack` unlock + buffer overflow exploit (rag/impact)
+- [ ] Level 7: buffer overflow exploit on Rage (rag/impact)
 - [ ] Level 8-11: Bargaining (locked doors with logic bypass, scale sacrifice, shifting maze with injection, offer)
 - [ ] Level 12-14: Depression (long corridor, archive, ash field)
 - [ ] Level 15-16: Acceptance (clearing, spiral descent)

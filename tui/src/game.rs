@@ -126,6 +126,7 @@ impl World {
             ending: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
+            gauntlet_barrier_locked: HashSet::new(),
         };
 
         world.load_playbook();
@@ -193,6 +194,7 @@ impl World {
             ending: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
+            gauntlet_barrier_locked: HashSet::new(),
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -483,6 +485,7 @@ impl World {
             self.ecs.remove(id);
         }
         self.wizard_id = None;
+        self.gauntlet_barrier_locked.clear();
     }
 
     fn wipe_player_state(&mut self) {
@@ -505,6 +508,7 @@ impl World {
         self.ending = None;
         self.held_keys.clear();
         self.held_items.clear();
+        self.gauntlet_barrier_locked.clear();
         crate::player_profile::PlayerProfile::delete();
     }
 
@@ -953,6 +957,7 @@ impl World {
 
     fn finish_tick(&mut self) {
         self.turn += 1;
+        self.check_gauntlet_barriers();
         self.advance_enemies();
         self.player_attacked.clear();
         self.blocking = false;
@@ -960,6 +965,28 @@ impl World {
         if self.player_hp().current <= 0 {
             self.mode = Mode::Dead;
             self.event_log.push("You have perished!");
+        }
+    }
+
+    fn check_gauntlet_barriers(&mut self) {
+        if self.depth != 6 {
+            return;
+        }
+        let barrier_xs = [7, 13, 19, 25, 31, 37, 43, 49];
+        let corridor_y = crate::map::MAP_HEIGHT / 2;
+        let player_x = self.player_pos().x;
+
+        for &bx in &barrier_xs {
+            if player_x > bx && self.gauntlet_barrier_locked.insert(bx) {
+                for dy in -2..=2 {
+                    self.map
+                        .set_tile(Position::new(bx, corridor_y + dy), TileType::Wall);
+                }
+                self.event_log.push_colored(
+                    "A barrier slams shut behind you!",
+                    RGB::named(RED),
+                );
+            }
         }
     }
 

@@ -91,6 +91,9 @@ pub struct World {
 
     /// Tracks special items found (Shade Echo, Vapor Canteen).
     pub held_items: Vec<String>,
+
+    /// Tracks which gauntlet barriers have been locked (Level 6).
+    pub gauntlet_barrier_locked: HashSet<i32>,
 }
 
 impl World {
@@ -137,6 +140,7 @@ impl World {
             ending: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
+            gauntlet_barrier_locked: HashSet::new(),
         }
     }
 

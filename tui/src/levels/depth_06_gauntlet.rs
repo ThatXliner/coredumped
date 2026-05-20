@@ -11,20 +11,16 @@ use crate::{
 pub(crate) fn build_gauntlet(world: &mut World) {
     let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Wall);
 
-    // A long horizontal corridor with occasional wider segments
+    // A long horizontal corridor with 8 segments. Barriers lock behind player.
     let corridor_y = MAP_HEIGHT / 2;
     for x in 2..MAP_WIDTH - 2 {
         map.set_tile(Position::new(x, corridor_y), TileType::Floor);
     }
-    // Widen at segments
-    for seg in &[8, 18, 28, 38, 48] {
+    // Widen at barrier positions so player can't skirt around
+    for barrier_x in &[7, 13, 19, 25, 31, 37, 43, 49] {
         for dy in -2..=2 {
-            map.set_tile(Position::new(*seg, corridor_y + dy), TileType::Floor);
+            map.set_tile(Position::new(*barrier_x, corridor_y + dy), TileType::Floor);
         }
-    }
-    // Make corridor 2 tiles wide in some areas
-    for x in [5, 6, 15, 16, 25, 26, 35, 36, 45, 46] {
-        map.set_tile(Position::new(x, corridor_y - 1), TileType::Floor);
     }
 
     let player_start = Position::new(3, corridor_y);
@@ -35,18 +31,18 @@ pub(crate) fn build_gauntlet(world: &mut World) {
     world.map = map;
     world.ecs.set_position(world.player_id, player_start);
 
-    // Enemies in segments
-    world.ecs.spawn_slime(Position::new(12, corridor_y));
+    // Enemies spread across 8 segments
+    world.ecs.spawn_slime(Position::new(10, corridor_y));
     world.ecs.spawn_goblin(Position::new(22, corridor_y));
-    world.ecs.spawn_bat(Position::new(27, corridor_y - 1));
-    world.ecs.spawn_slime(Position::new(32, corridor_y));
-    world.ecs.spawn_goblin(Position::new(42, corridor_y));
-    world.ecs.spawn_ogre(Position::new(50, corridor_y));
+    world.ecs.spawn_bat(Position::new(28, corridor_y - 1));
+    world.ecs.spawn_slime(Position::new(34, corridor_y));
+    world.ecs.spawn_goblin(Position::new(40, corridor_y));
+    world.ecs.spawn_ogre(Position::new(46, corridor_y));
 
-    // frag-001 in segment 2
+    // frag-001 in segment 3
     world
         .ecs
-        .spawn_fragment(Position::new(18, corridor_y - 2), "frag-001");
+        .spawn_fragment(Position::new(16, corridor_y - 2), "frag-001");
 
     // Wizard at start
     let wizard_pos = Position::new(5, corridor_y - 1);

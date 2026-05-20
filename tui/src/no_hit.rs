@@ -246,6 +246,7 @@ mod tests {
             ending: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
+            gauntlet_barrier_locked: HashSet::new(),
         }
     }
 

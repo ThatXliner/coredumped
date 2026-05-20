@@ -75,6 +75,7 @@ pub struct SaveData {
     pub ending: Option<String>,
     pub held_keys: Vec<String>,
     pub held_items: Vec<String>,
+    pub gauntlet_barrier_locked: Vec<i32>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -243,6 +244,7 @@ impl World {
             ending: self.ending.clone(),
             held_keys: self.held_keys.clone(),
             held_items: self.held_items.clone(),
+            gauntlet_barrier_locked: self.gauntlet_barrier_locked.iter().copied().collect(),
         }
     }
 }
@@ -383,6 +385,7 @@ impl World {
         world.ending = data.ending.clone();
         world.held_keys = data.held_keys.clone();
         world.held_items = data.held_items.clone();
+        world.gauntlet_barrier_locked = data.gauntlet_barrier_locked.iter().copied().collect();
 
         // --- Rebuild Glyph envs on top of minimal env ---
         world.glyph_env = crate::game::setup_glyph_env();

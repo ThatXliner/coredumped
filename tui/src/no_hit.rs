@@ -238,6 +238,7 @@ mod tests {
             pending_wipe_slot: None,
             quit_countdown: 0,
             seen_entity_kinds: std::collections::HashSet::new(),
+            fragment_registry: crate::fragment::FragmentRegistry::new(),
         }
     }
 

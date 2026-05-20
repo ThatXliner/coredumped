@@ -11,6 +11,7 @@ use crate::{
     ecs::Ecs,
     entity::{Direction, EntityId, EntityKind},
     event_log::EventLog,
+    fragment::FragmentRegistry,
     game::Mode,
     glyph::Env,
     map::Map,
@@ -71,6 +72,9 @@ pub struct World {
 
     /// Entity kinds the player has seen (via flashlight or interaction).
     pub seen_entity_kinds: HashSet<EntityKind>,
+
+    /// Memory fragment registry — tracks all 42 fragments and collected status.
+    pub fragment_registry: FragmentRegistry,
 }
 
 impl World {
@@ -109,14 +113,15 @@ impl World {
             pending_wipe_slot: None,
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
+            fragment_registry: FragmentRegistry::new(),
         }
     }
 
     /// Mark entity kinds in the flashlight cone as seen.
     pub fn mark_visible_entities(&mut self) {
-        let lit =
-            self.map
-                .flashlight_tiles(self.player_pos(), self.player_facing);
+        let lit = self
+            .map
+            .flashlight_tiles(self.player_pos(), self.player_facing);
         for entity in self.ecs.renderable_entities() {
             if lit.contains(&entity.pos) || entity.kind == EntityKind::Player {
                 self.seen_entity_kinds.insert(entity.kind);

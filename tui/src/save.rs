@@ -60,6 +60,7 @@ pub struct SaveData {
     pub event_log: Vec<SavedLogEntry>,
     pub bindings: Vec<(String, String)>,
     pub user_source: Vec<String>,
+    pub fragment_registry: crate::fragment::FragmentRegistry,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -74,6 +75,7 @@ pub struct EntitySnapshot {
     pub has_enemy_ai: bool,
     pub glyph: char,
     pub sign_message: Option<String>,
+    pub fragment_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -121,6 +123,7 @@ fn kind_from_string(s: &str) -> EntityKind {
         "wizard" => EntityKind::Wizard,
         "barrel" => EntityKind::Barrel,
         "sign" => EntityKind::Sign,
+        "memory fragment" => EntityKind::Fragment,
         _ => EntityKind::Slime,
     }
 }
@@ -162,6 +165,7 @@ impl World {
                     has_enemy_ai,
                     glyph: view.glyph(),
                     sign_message: self.ecs.sign_message(id).map(|s| s.to_string()),
+                    fragment_id: self.ecs.fragment_id(id).map(|s| s.to_string()),
                 })
             })
             .collect();
@@ -209,6 +213,7 @@ impl World {
             event_log,
             bindings,
             user_source: self.user_source.clone(),
+            fragment_registry: self.fragment_registry.clone(),
         }
     }
 }
@@ -264,6 +269,10 @@ impl World {
                 EntityKind::Sign => {
                     let msg = ent.sign_message.as_deref().unwrap_or("");
                     ecs.spawn_sign(pos, msg)
+                }
+                EntityKind::Fragment => {
+                    let frag_id = ent.fragment_id.as_deref().unwrap_or("frag-001");
+                    ecs.spawn_fragment(pos, frag_id)
                 }
             };
 
@@ -333,6 +342,9 @@ impl World {
 
         // --- User source ---
         world.user_source = data.user_source.clone();
+
+        // --- Fragment registry ---
+        world.fragment_registry = data.fragment_registry.clone();
 
         // --- Rebuild Glyph envs on top of minimal env ---
         world.glyph_env = crate::game::setup_glyph_env();

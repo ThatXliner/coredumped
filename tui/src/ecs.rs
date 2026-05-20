@@ -20,6 +20,7 @@ pub struct Ecs {
     enemy_ai: BTreeSet<EntityId>,
     render_glyphs: BTreeMap<EntityId, RenderGlyph>,
     sign_messages: BTreeMap<EntityId, String>,
+    fragment_ids: BTreeMap<EntityId, String>,
 }
 
 impl Ecs {
@@ -34,6 +35,7 @@ impl Ecs {
             enemy_ai: BTreeSet::new(),
             render_glyphs: BTreeMap::new(),
             sign_messages: BTreeMap::new(),
+            fragment_ids: BTreeMap::new(),
         }
     }
 
@@ -71,6 +73,16 @@ impl Ecs {
         id
     }
 
+    pub fn spawn_fragment(&mut self, pos: Position, fragment_id: &str) -> EntityId {
+        let id = self.spawn_actor(EntityKind::Fragment, pos, Hp::new(999), false);
+        self.fragment_ids.insert(id, fragment_id.to_string());
+        id
+    }
+
+    pub fn fragment_id(&self, id: EntityId) -> Option<&str> {
+        self.fragment_ids.get(&id).map(|s| s.as_str())
+    }
+
     pub fn remove(&mut self, id: EntityId) {
         self.entities.remove(&id);
         self.kinds.remove(&id);
@@ -80,6 +92,7 @@ impl Ecs {
         self.enemy_ai.remove(&id);
         self.render_glyphs.remove(&id);
         self.sign_messages.remove(&id);
+        self.fragment_ids.remove(&id);
     }
 
     pub fn entity_ids(&self) -> impl Iterator<Item = EntityId> + '_ {

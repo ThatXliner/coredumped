@@ -62,5 +62,4 @@ impl PlayerProfile {
         std::fs::write(Self::path(), &json).map_err(|e| format!("write profile: {}", e))?;
         Ok(())
     }
-
 }

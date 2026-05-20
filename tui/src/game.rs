@@ -5,7 +5,7 @@
 //! systems that read or mutate those components: player intent handling,
 //! enemy AI, ticking, console state, and inspector state.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use bracket_lib::prelude::{
     a_star_search, NavigationPath, CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW,
@@ -120,6 +120,7 @@ impl World {
             pending_wipe_slot: None,
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
+            fragment_registry: crate::fragment::FragmentRegistry::new(),
         };
 
         world.load_playbook();
@@ -179,6 +180,7 @@ impl World {
             pending_wipe_slot: None,
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
+            fragment_registry: crate::fragment::FragmentRegistry::new(),
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -200,9 +202,11 @@ impl World {
         match intent {
             Intent::Move(direction) => {
                 self.player_facing = direction;
-                self.apply_player_move(direction);
-                self.finish_tick();
-                ActionCost::Tick
+                let cost = self.apply_player_move(direction);
+                if cost == ActionCost::Tick {
+                    self.finish_tick();
+                }
+                cost
             }
             Intent::Wait => {
                 self.finish_tick();
@@ -509,29 +513,33 @@ impl World {
         *self = World::new_game();
     }
 
-    fn apply_player_move(&mut self, direction: Direction) {
+    fn apply_player_move(&mut self, direction: Direction) -> ActionCost {
         let (dx, dy) = direction.delta();
         let target = self.player_pos().offset(dx, dy);
 
         if !self.map.is_walkable(target) {
             self.event_log
                 .push("You bump into a wall. Time still moves.");
-            return;
+            return ActionCost::Tick;
         }
 
         if let Some(target_id) = self.ecs.entity_at(target) {
             match self.ecs.kind(target_id) {
                 Some(EntityKind::Wizard) => {
                     self.interact_with_wizard(target_id);
-                    return;
+                    return ActionCost::Tick;
                 }
                 Some(EntityKind::Sign) => {
                     self.interact_with_sign(target_id);
-                    return;
+                    return ActionCost::Tick;
+                }
+                Some(EntityKind::Fragment) => {
+                    self.interact_with_fragment(target_id);
+                    return ActionCost::Free;
                 }
                 Some(EntityKind::Barrel) => {
                     self.bump_barrel(target_id);
-                    return;
+                    return ActionCost::Tick;
                 }
                 _ => {}
             }
@@ -539,24 +547,20 @@ impl World {
             if !self.player_can_attack {
                 let enemy_pos = self.ecs.position(target_id).unwrap();
                 let shove_target = enemy_pos.offset(dx, dy);
-                if self.map.is_walkable(shove_target)
-                    && self.ecs.entity_at(shove_target).is_none()
+                if self.map.is_walkable(shove_target) && self.ecs.entity_at(shove_target).is_none()
                 {
                     self.ecs.set_position(target_id, shove_target);
                     self.event_log.push_colored(
-                        format!(
-                            "You shove the {} backward!",
-                            self.ecs.name(target_id)
-                        ),
+                        format!("You shove the {} back.", self.ecs.name(target_id)),
                         RGB::named(YELLOW),
                     );
                 } else {
                     self.event_log.push(format!(
-                        "You helplessly shove the {}. Find the wizard to learn how to fight!",
+                        "You shove the {}. It doesn't budge.",
                         self.ecs.name(target_id)
                     ));
                 }
-                return;
+                return ActionCost::Free;
             }
 
             let target_name = self.ecs.name(target_id);
@@ -576,7 +580,7 @@ impl World {
                     RGB::named(ORANGE),
                 );
             }
-            return;
+            return ActionCost::Tick;
         }
 
         self.ecs.set_position(self.player_id, target);
@@ -584,6 +588,7 @@ impl World {
             format!("You move to {},{}.", target.x, target.y),
             RGB::named(DARK_GRAY),
         );
+        ActionCost::Tick
     }
 
     /// Deal 1 damage to the first entity in the given direction. Does not move the player.
@@ -644,6 +649,31 @@ impl World {
 
         let max_hp = self.player_hp().max;
         self.ecs.set_hp(self.player_id, Hp::new(max_hp));
+
+        if self.depth == 0 {
+            // First meeting — heal and brief intro, don't teach attack yet
+            self.event_log
+                .push_colored("The wizard looks at you with tired eyes.", RGB::named(CYAN));
+            self.event_log.push_colored(
+                "\"Ah — you're awake. I was starting to worry.\"",
+                RGB::named(CYAN),
+            );
+            self.event_log.push_colored(
+                "\"You've been... resting. Come, let me show you how things work here.\"",
+                RGB::named(CYAN),
+            );
+            self.event_log.push_colored(
+                "The wizard taps your shoulder. Your wounds fade.",
+                RGB::named(CYAN),
+            );
+            self.event_log.push_colored(
+                "\"Try moving around. Get a feel for this place. Descend when you're ready.\"",
+                RGB::named(CYAN),
+            );
+            // wizard_taught stays false — real teaching happens at depth 1
+            return;
+        }
+
         self.player_can_attack = true;
         self.wizard_taught = true;
 
@@ -653,15 +683,11 @@ impl World {
         self.event_log
             .push_colored("The wizard raises a glowing hand...", RGB::named(CYAN));
         self.event_log.push_colored(
-            "\"Ah, a lost soul! Let me mend your wounds.\"",
+            "\"You've wandered far enough. It's time you learned to strike back.\"",
             RGB::named(CYAN),
         );
         self.event_log.push_colored(
             "Warmth spreads through your body. HP fully restored.",
-            RGB::named(CYAN),
-        );
-        self.event_log.push_colored(
-            "\"Now — you are not helpless. I teach you the art of striking.\"",
             RGB::named(CYAN),
         );
         self.event_log.push_colored(
@@ -695,6 +721,35 @@ impl World {
             } else {
                 self.event_log
                     .push_colored(line.to_string(), RGB::named(CYAN));
+            }
+        }
+    }
+
+    fn interact_with_fragment(&mut self, fragment_id: EntityId) {
+        if let Some(frag_id) = self.ecs.fragment_id(fragment_id).map(|s| s.to_string()) {
+            if self.fragment_registry.collect(&frag_id) {
+                if let Some(frag) = self.fragment_registry.get(&frag_id) {
+                    self.event_log.push("===================================");
+                    self.event_log
+                        .push_colored(format!("         MEMORY: {}", frag.id), RGB::named(GREEN));
+                    self.event_log.push("===================================");
+                    for line in frag.text.lines() {
+                        if line.is_empty() {
+                            self.event_log.push("");
+                        } else {
+                            self.event_log
+                                .push_colored(line.to_string(), RGB::named(GREEN));
+                        }
+                    }
+                    self.event_log.push_colored(
+                        format!(
+                            "Collected {} of 33 findable memories.",
+                            self.fragment_registry.collected_count()
+                        ),
+                        RGB::named(CYAN),
+                    );
+                }
+                self.ecs.remove(fragment_id);
             }
         }
     }
@@ -1294,6 +1349,16 @@ pub(crate) fn setup_glyph_env() -> Env {
         builtin_load
     );
     reg!("wipe!", "delete a save: (wipe! slot-number)", builtin_wipe);
+    reg!(
+        "query-registry",
+        "query fragment registry: (query-registry :suppressed-fragments) or :all",
+        builtin_query_registry
+    );
+    reg!(
+        "inspect-fragment",
+        "read a memory fragment: (inspect-fragment :frag-001)",
+        builtin_inspect_fragment
+    );
 
     ai_builtins::register_all(&env);
 
@@ -1357,8 +1422,10 @@ fn builtin_move(
         got: args.first().map(|v| v.to_string()).unwrap_or_default(),
     })?;
     world.player_facing = dir;
-    world.apply_player_move(dir);
-    world.finish_tick();
+    let cost = world.apply_player_move(dir);
+    if cost == ActionCost::Tick {
+        world.finish_tick();
+    }
     Ok(Value::Nil)
 }
 
@@ -1851,6 +1918,104 @@ fn builtin_wipe(
     Ok(Value::Nil)
 }
 
+fn builtin_query_registry(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let mode = args.first().cloned().unwrap_or(glyph::kw("all"));
+    match mode {
+        Value::Keyword(ref kw) if kw.name == "suppressed-fragments" => {
+            let suppressed = world.fragment_registry.suppressed();
+            let list: Vec<Value> = suppressed
+                .into_iter()
+                .map(|f| {
+                    let mut m: BTreeMap<Value, Value> = BTreeMap::new();
+                    m.insert(Value::String("id".into()), Value::String(f.id.clone()));
+                    m.insert(Value::String("weight".into()), Value::I64(f.weight as i64));
+                    Value::Map(m)
+                })
+                .collect();
+            Ok(Value::List(list))
+        }
+        Value::Keyword(ref kw) if kw.name == "all" => {
+            let fragments = world.fragment_registry.all();
+            let list: Vec<Value> = fragments
+                .iter()
+                .map(|f| {
+                    let mut m: BTreeMap<Value, Value> = BTreeMap::new();
+                    m.insert(Value::String("id".into()), Value::String(f.id.clone()));
+                    m.insert(Value::String("weight".into()), Value::I64(f.weight as i64));
+                    m.insert(
+                        Value::String("collected".into()),
+                        Value::Bool(f.status == crate::fragment::FragmentStatus::Collected),
+                    );
+                    m.insert(
+                        Value::String("suppressed".into()),
+                        Value::Bool(f.status == crate::fragment::FragmentStatus::Suppressed),
+                    );
+                    Value::Map(m)
+                })
+                .collect();
+            Ok(Value::List(list))
+        }
+        _ => Err(glyph::EvalError::Custom(
+            "usage: (query-registry :suppressed-fragments) or (query-registry :all)".into(),
+        )),
+    }
+}
+
+fn builtin_inspect_fragment(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let fragment_id = match args.first() {
+        Some(Value::Keyword(kw)) => format!("frag-{:03}", {
+            let s = &kw.name;
+            s.parse::<u32>()
+                .map_err(|_| glyph::EvalError::Custom(format!("invalid fragment id: {}", s)))?
+        }),
+        Some(Value::String(s)) => s.clone(),
+        _ => {
+            return Err(glyph::EvalError::Custom(
+                "usage: (inspect-fragment :frag-001) or (inspect-fragment \"frag-001\")".into(),
+            ))
+        }
+    };
+
+    match world.fragment_registry.get(&fragment_id) {
+        Some(frag) => {
+            let mut m: BTreeMap<Value, Value> = BTreeMap::new();
+            m.insert(Value::String("id".into()), Value::String(frag.id.clone()));
+            m.insert(
+                Value::String("text".into()),
+                Value::String(frag.text.clone()),
+            );
+            m.insert(
+                Value::String("weight".into()),
+                Value::I64(frag.weight as i64),
+            );
+            let status = match frag.status {
+                crate::fragment::FragmentStatus::Suppressed => "suppressed",
+                crate::fragment::FragmentStatus::Hidden => "hidden",
+                crate::fragment::FragmentStatus::Collected => "collected",
+            };
+            m.insert(
+                Value::String("status".into()),
+                Value::String(status.to_string()),
+            );
+            Ok(Value::Map(m))
+        }
+        None => Err(glyph::EvalError::Custom(format!(
+            "no fragment with id: {}",
+            fragment_id
+        ))),
+    }
+}
+
 impl Default for World {
     fn default() -> Self {
         Self::new()
@@ -2109,11 +2274,13 @@ mod tests {
         let enemy = single_enemy(&world);
         let initial_hp = enemy.hp.current;
 
-        world.apply_intent(Intent::Move(Direction::East));
+        let cost = world.apply_intent(Intent::Move(Direction::East));
 
         let enemy_after = single_enemy(&world);
         assert_eq!(enemy_after.hp.current, initial_hp);
         assert!(world.event_log.contains("shove the slime"));
+        assert_eq!(cost, ActionCost::Free);
+        assert_eq!(world.turn, 0);
     }
 
     #[test]
@@ -2121,31 +2288,31 @@ mod tests {
         let mut world = world_with_single_enemy(Position::new(6, 5));
         world.player_can_attack = false;
 
-        world.apply_intent(Intent::Move(Direction::East));
+        let cost = world.apply_intent(Intent::Move(Direction::East));
 
-        // Enemy pushed off original tile (AI may move it further after shove)
+        // Enemy pushed off original tile (AI doesn't act on Free shove)
         let enemy = single_enemy(&world);
         assert_ne!(enemy.pos, Position::new(6, 5));
         assert!(world.event_log.contains("shove the slime"));
+        assert_eq!(cost, ActionCost::Free);
     }
 
     #[test]
     fn helpless_shove_blocked_by_wall() {
         let mut world = world_with_single_enemy(Position::new(1, 5));
         world.player_can_attack = false;
-        // Player at (5,5), enemy at (1,5) — not adjacent
-        // Move player to (2,5) first
         world.set_player_pos(Position::new(2, 5));
-        // Enemy at (1,5), player at (2,5), move west to shove
         let enemy_id = world.living_enemies().next().unwrap().id;
         world.ecs.set_position(enemy_id, Position::new(1, 5));
 
-        world.apply_intent(Intent::Move(Direction::West));
+        let cost = world.apply_intent(Intent::Move(Direction::West));
 
         // Enemy can't move further west (map border), shove blocked
         let enemy = single_enemy(&world);
         assert_eq!(enemy.pos, Position::new(1, 5));
-        assert!(world.event_log.contains("helplessly shove"));
+        assert!(world.event_log.contains("doesn't budge"));
+        assert_eq!(cost, ActionCost::Free);
+        assert_eq!(world.turn, 0);
     }
 
     #[test]
@@ -2220,13 +2387,14 @@ mod tests {
         );
         world.player_can_attack = false;
         world.wizard_taught = false;
+        world.depth = 1; // wizard teaches attack at depth 1+
 
         world.apply_intent(Intent::Move(Direction::East));
 
         assert!(world.player_can_attack);
         assert!(world.wizard_taught);
         assert_eq!(world.player_hp().current, 12);
-        assert!(world.event_log.contains("art of striking"));
+        assert!(world.event_log.contains("strike back"));
     }
 
     #[test]
@@ -2249,6 +2417,22 @@ mod tests {
         assert!(world.ecs.is_alive(wizard_id));
         assert_eq!(world.player_hp().current, 12);
         assert!(world.event_log.contains("already know"));
+    }
+
+    #[test]
+    fn wizard_at_depth_0_intros_but_does_not_teach_attack() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        let wizard_id = world.ecs.spawn_wizard(Position::new(6, 5));
+        world.wizard_id = Some(wizard_id);
+        world.player_can_attack = false;
+        world.wizard_taught = false;
+        world.depth = 0;
+
+        world.apply_intent(Intent::Move(Direction::East));
+
+        assert!(!world.player_can_attack); // not taught yet
+        assert!(!world.wizard_taught); // depth 0 doesn't set this
+        assert!(world.event_log.contains("you're awake"));
     }
 
     #[test]
@@ -2485,12 +2669,12 @@ mod tests {
     }
 
     #[test]
-    fn descending_from_barrel_depth_clears_barrels_and_signs() {
+    fn descending_from_level_2_clears_barrels_and_signs() {
         let mut world = World::new_game();
-        world.depth = 3;
+        world.depth = 2;
         world.wizard_taught = true;
         world.bindings.insert("z".into(), "(do-attack)".into());
-        crate::levels::build_level(&mut world, 3);
+        crate::levels::build_level(&mut world, 2);
 
         let barrel_depth_entities = world.renderable_entities().count();
         assert!(world
@@ -2509,14 +2693,11 @@ mod tests {
         let cost = world.apply_intent(Intent::ExecuteBinding(">".into()));
 
         assert_eq!(cost, ActionCost::Tick);
-        assert_eq!(world.depth, 4);
+        assert_eq!(world.depth, 3);
         assert!(world.renderable_entities().count() < barrel_depth_entities);
         assert!(!world
             .renderable_entities()
             .any(|entity| entity.kind == EntityKind::Barrel));
-        assert!(!world
-            .renderable_entities()
-            .any(|entity| entity.kind == EntityKind::Sign));
     }
 
     #[cfg(feature = "prelude")]

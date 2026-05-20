@@ -11,11 +11,11 @@ use bracket_lib::prelude::*;
 
 use crate::{
     entity::{EntityKind, EntityView, Position},
-    rules::Rule,
     event_log::LogEntry,
     game::Mode,
     glyph::highlight::{self, Span},
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
+    rules::Rule,
     world::World,
 };
 
@@ -111,6 +111,8 @@ fn draw_entity(ctx: &mut BTerm, entity: EntityView, lit_tiles: &HashSet<Position
         (EntityKind::Barrel, false) => RGB::from_u8(80, 50, 20),
         (EntityKind::Sign, true) => RGB::from_u8(200, 200, 100),
         (EntityKind::Sign, false) => RGB::from_u8(120, 120, 60),
+        (EntityKind::Fragment, true) => RGB::named(GREEN),
+        (EntityKind::Fragment, false) => RGB::named(DARK_GREEN),
     };
 
     ctx.set(
@@ -389,13 +391,7 @@ fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
 
     for (i, line) in tip_lines.iter().enumerate() {
         let clipped: String = line.chars().take(tooltip_w as usize - 2).collect();
-        ctx.print_color(
-            tooltip_x + 1,
-            tooltip_y + 1 + i as i32,
-            fg,
-            bg,
-            &clipped,
-        );
+        ctx.print_color(tooltip_x + 1, tooltip_y + 1 + i as i32, fg, bg, &clipped);
     }
 }
 

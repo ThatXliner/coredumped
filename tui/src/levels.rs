@@ -4,10 +4,8 @@
 //! the player, and spawns entities. Adding a new hand-crafted level means
 //! writing one builder function and adding a match arm in [`build_level`].
 
-use bracket_lib::prelude::RandomNumberGenerator;
-
 use crate::{
-    entity::Position,
+    entity::{Direction, Position},
     map::{Map, MapGenOutput, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
 };
@@ -17,35 +15,34 @@ pub fn build_level(world: &mut World, depth: u32) {
     world.clear_level_entities();
 
     match depth {
-        0 => build_helpless_tutorial(world),
+        0 => build_foyer(world),
         1 => build_wizard_chamber(world),
         2 => build_tutorial_grid(world),
-        3 => build_barrel_depths(world),
-        7 => build_barrel_horde(world),
+        3 => build_quiet_halls(world),
         _ => build_procedural_level(world, depth),
     }
 }
 
 // ---------------------------------------------------------------------------
-// Depth 0 — Helpless Tutorial
+// Depth 0 — Foyer (Denial: first room, helpless tutorial)
 // ---------------------------------------------------------------------------
 
-fn build_helpless_tutorial(world: &mut World) {
+fn build_foyer(world: &mut World) {
     let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Wall);
 
-    // Small 18x10 room
-    let rx = 18;
-    let ry = 10;
-    let rw = 18;
-    let rh = 10;
+    // A 25x15 room centered
+    let rx = 15;
+    let ry = 9;
+    let rw = 25;
+    let rh = 15;
     for y in ry..ry + rh {
         for x in rx..rx + rw {
             map.set_tile(Position::new(x, y), TileType::Floor);
         }
     }
 
-    let player_start = Position::new(rx + 1, ry + 1);
-    let stairs_down = Position::new(rx + rw - 2, ry + rh - 2);
+    let player_start = Position::new(rx + 2, ry + 2);
+    let stairs_down = Position::new(rx + rw - 3, ry + rh - 3);
 
     map.set_tile(player_start, TileType::StairsUp);
     map.set_tile(stairs_down, TileType::StairsDown);
@@ -53,14 +50,117 @@ fn build_helpless_tutorial(world: &mut World) {
     world.map = map;
     world.ecs.set_position(world.player_id, player_start);
 
-    // Sign: waking up message
+    // Sign at entrance
     world.ecs.spawn_sign(
-        Position::new(rx + rw / 2, ry + rh / 2),
-        "Hey. You're awake.\n\nThe air is cold. You don't\nremember how you got here.\nTry moving. Explore.\n\n...be careful.",
+        Position::new(rx + 1, ry + 2),
+        "Xlyph runtime booted.\nIf you're reading this, you finally woke up.",
+    );
+
+    // Sign at stairs
+    world.ecs.spawn_sign(
+        Position::new(rx + rw - 4, ry + rh - 2),
+        "Move with arrow keys or hjkl.\nDescend when ready.",
     );
 
     // One pushable slime
-    world.ecs.spawn_slime(Position::new(rx + rw - 5, ry + 3));
+    world.ecs.spawn_slime(Position::new(rx + rw - 8, ry + 3));
+
+    // Wizard first meeting — heals, brief intro, does not teach attack yet
+    let wizard_pos = Position::new(rx + rw / 2, ry + rh / 2 - 1);
+    world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+}
+
+// ---------------------------------------------------------------------------
+// Depth 3 — Quiet Halls (Denial: corridor maze, bridge to Anger)
+// ---------------------------------------------------------------------------
+
+fn build_quiet_halls(world: &mut World) {
+    let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Wall);
+
+    // Carve a corridor-based maze with alcoves. Vertical main corridors,
+    // horizontal cross corridors, no dead ends.
+    //
+    // Layout (map is 55×33):
+    //   - Three north-south corridors at x=5, x=27, x=49
+    //   - Three east-west corridors at y=5, y=16, y=27
+    //   - Alcoves branching off the corridors
+    let v_corridors = [5, 27, 49];
+    let h_corridors = [5, 16, 27];
+
+    // Carve main corridors
+    for &vx in &v_corridors {
+        for y in 1..MAP_HEIGHT - 1 {
+            map.set_tile(Position::new(vx, y), TileType::Floor);
+            map.set_tile(Position::new(vx + 1, y), TileType::Floor);
+        }
+    }
+    for &hy in &h_corridors {
+        for x in 1..MAP_WIDTH - 1 {
+            map.set_tile(Position::new(x, hy), TileType::Floor);
+            map.set_tile(Position::new(x, hy + 1), TileType::Floor);
+        }
+    }
+
+    // Carve alcoves (short dead-end branches off corridors)
+    let alcoves: [(i32, i32, Direction); 8] = [
+        (8, 3, Direction::South),   // top-left alcove (south from north corridor)
+        (25, 3, Direction::South),  // top-center alcove
+        (51, 3, Direction::South),  // top-right alcove
+        (3, 14, Direction::East),   // mid-left alcove
+        (51, 14, Direction::West),  // mid-right alcove
+        (3, 25, Direction::East),   // bottom-left alcove
+        (25, 29, Direction::North), // bottom-center alcove
+        (51, 25, Direction::West),  // bottom-right alcove
+    ];
+
+    for &(ax, ay, dir) in &alcoves {
+        let (dx, dy) = match dir {
+            Direction::North => (0, -1),
+            Direction::South => (0, 1),
+            Direction::East => (1, 0),
+            Direction::West => (-1, 0),
+        };
+        let mut cx = ax;
+        let mut cy = ay;
+        for _ in 0..4 {
+            map.set_tile(Position::new(cx, cy), TileType::Floor);
+            map.set_tile(Position::new(cx + 1, cy), TileType::Floor);
+            map.set_tile(Position::new(cx, cy + 1), TileType::Floor);
+            map.set_tile(Position::new(cx + 1, cy + 1), TileType::Floor);
+            cx += dx;
+            cy += dy;
+        }
+    }
+
+    let player_start = Position::new(6, 6);
+    let stairs_down = Position::new(50, 28);
+
+    map.set_tile(player_start, TileType::StairsUp);
+    map.set_tile(stairs_down, TileType::StairsDown);
+
+    world.map = map;
+    world.ecs.set_position(world.player_id, player_start);
+
+    // Wizard at start
+    let wizard_pos = Position::new(8, 5);
+    world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+
+    // Enemies: 2 Bats, 1 Slime
+    world.ecs.spawn_bat(Position::new(28, 8));
+    world.ecs.spawn_slime(Position::new(50, 18));
+    world.ecs.spawn_bat(Position::new(26, 25));
+
+    // Sign near wizard
+    world.ecs.spawn_sign(
+        Position::new(10, 5),
+        "There are a few creatures wandering\nthe halls. They're more confused\nthan dangerous.\n\n  — the wizard",
+    );
+
+    // Sign near stairs
+    world.ecs.spawn_sign(
+        Position::new(48, 27),
+        "You did well. The descent continues.\n\n  — the wizard",
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -175,7 +275,9 @@ fn build_tutorial_grid(world: &mut World) {
     world.ecs.spawn_slime(Position::new(14, 29));
 
     // Room 7: "Nothing is wrong"
-    world.ecs.spawn_sign(Position::new(20, 28), "Nothing is wrong.");
+    world
+        .ecs
+        .spawn_sign(Position::new(20, 28), "Nothing is wrong.");
     world.ecs.spawn_slime(Position::new(31, 29));
 
     // Room 8: Barrel puzzle — fill with barrels, leave 3×3 clear at entrance (left door)
@@ -278,227 +380,6 @@ pub fn generate_wizard_box() -> MapGenOutput {
 }
 
 // ---------------------------------------------------------------------------
-// Depth 4 — Barrel Depths
-// ---------------------------------------------------------------------------
-
-/// Build the map for the barrel depths: a floor room smaller than the full
-/// map, surrounded by walls. The room is then filled with 1-HP barrels.
-pub fn generate_barrel_depths() -> MapGenOutput {
-    let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Wall);
-
-    let rx = 5;
-    let ry = 4;
-    let rw = 45;
-    let rh = 25;
-
-    for y in ry..ry + rh {
-        for x in rx..rx + rw {
-            map.set_tile(Position::new(x, y), TileType::Floor);
-        }
-    }
-
-    let mut rng = RandomNumberGenerator::new();
-    let player_start = Position::new(rx + 1, ry + 1);
-
-    // Pick a random floor tile for stairs down, not too close to player start.
-    let mut floor_tiles: Vec<Position> = Vec::new();
-    for y in ry..ry + rh {
-        for x in rx..rx + rw {
-            let pos = Position::new(x, y);
-            if pos != player_start {
-                floor_tiles.push(pos);
-            }
-        }
-    }
-    let stairs_down = floor_tiles[rng.range(0, floor_tiles.len() as i32) as usize];
-
-    map.set_tile(player_start, TileType::StairsUp);
-    map.set_tile(stairs_down, TileType::StairsDown);
-
-    MapGenOutput {
-        map,
-        player_start,
-        stairs_up: player_start,
-        stairs_down,
-        combat_spawns: vec![],
-        boss_spawns: vec![],
-    }
-}
-
-fn build_barrel_depths(world: &mut World) {
-    let gen = generate_barrel_depths();
-    apply_map(world, &gen);
-
-    let stairs = find_stairs_down(&world.map);
-    let player_start = world.player_pos();
-
-    // Fill every Floor tile in the room with a 1-HP barrel
-    for y in 1..MAP_HEIGHT - 1 {
-        for x in 1..MAP_WIDTH - 1 {
-            let pos = Position::new(x, y);
-            if world.map.tile(pos) == TileType::Floor && pos != player_start {
-                world.ecs.spawn_barrel(pos);
-            }
-        }
-    }
-
-    // Remove barrel from the exit stairs and re-hide it
-    if let Some(barrel) = world.ecs.entity_at(stairs) {
-        world.ecs.remove(barrel);
-    }
-    world.ecs.spawn_barrel(stairs);
-
-    // Clear a 3×3 zone around the player start so they have room to move
-    let px = player_start.x;
-    let py = player_start.y;
-    for x in px..=px + 2 {
-        for y in py..=py + 2 {
-            if Position::new(x, y) != player_start {
-                if let Some(barrel) = world.ecs.entity_at(Position::new(x, y)) {
-                    world.ecs.remove(barrel);
-                }
-            }
-        }
-    }
-
-    // Place signs (remove the barrel underneath first)
-    let place_sign = |world: &mut World, pos: Position, msg: &str| {
-        if let Some(barrel) = world.ecs.entity_at(pos) {
-            world.ecs.remove(barrel);
-        }
-        world.ecs.spawn_sign(pos, msg);
-    };
-
-    place_sign(
-        world,
-        Position::new(8, 6),
-        "This is a lot of barrels...\nThink about rebinding your keys.\nOne key can (do) what many cannot.",
-    );
-
-    place_sign(
-        world,
-        Position::new(20, 14),
-        "Program your character with Glyph commands:\n  (move! :east)  (move! :south)  (move! :north)\nChain moves and attacks in (do ...):\n  (do (move! :east) (do-attack :east) (move! :east) (do-attack :east))\nBind to one key and your character does the work!",
-    );
-
-    place_sign(
-        world,
-        Position::new(46, 16),
-        "\
-Welcome to the Barrel Depths!\n\n\
-Each (do-attack) costs 1 tick. But\nyou can chain them with (do ...):\n  \
-(do (do-attack :north) (do-attack :south))\n\
-That attacks twice — 2 ticks total.\n\
-Bind the full combo to ONE key:\n  \
-(bind-key :x (do (do-attack :north) (do-attack :south)\n  \
-                  (do-attack :east)  (do-attack :west)))\n\
-Now clear these barrels and find the exit!",
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Depth 8 — Barrel Horde
-// ---------------------------------------------------------------------------
-
-/// Build the map for the barrel horde: the entire map floor filled with barrels.
-/// A harder, larger version of the Barrel Depths for later in the run.
-pub fn generate_barrel_horde() -> MapGenOutput {
-    let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Floor);
-
-    // Walls around the entire border
-    for x in 0..MAP_WIDTH {
-        map.set_tile(Position::new(x, 0), TileType::Wall);
-        map.set_tile(Position::new(x, MAP_HEIGHT - 1), TileType::Wall);
-    }
-    for y in 0..MAP_HEIGHT {
-        map.set_tile(Position::new(0, y), TileType::Wall);
-        map.set_tile(Position::new(MAP_WIDTH - 1, y), TileType::Wall);
-    }
-
-    let mut rng = RandomNumberGenerator::new();
-    let player_start = Position::new(2, 2);
-
-    // Pick a random floor tile for stairs down, not too close to player start.
-    let mut floor_tiles: Vec<Position> = Vec::new();
-    for y in 1..MAP_HEIGHT - 1 {
-        for x in 1..MAP_WIDTH - 1 {
-            let pos = Position::new(x, y);
-            if pos != player_start {
-                floor_tiles.push(pos);
-            }
-        }
-    }
-    let stairs_down = floor_tiles[rng.range(0, floor_tiles.len() as i32) as usize];
-
-    map.set_tile(player_start, TileType::StairsUp);
-    map.set_tile(stairs_down, TileType::StairsDown);
-
-    MapGenOutput {
-        map,
-        player_start,
-        stairs_up: player_start,
-        stairs_down,
-        combat_spawns: vec![],
-        boss_spawns: vec![],
-    }
-}
-
-fn build_barrel_horde(world: &mut World) {
-    let gen = generate_barrel_horde();
-    apply_map(world, &gen);
-
-    let stairs = find_stairs_down(&world.map);
-    let player_start = world.player_pos();
-
-    // Fill every Floor tile with a barrel
-    for y in 1..MAP_HEIGHT - 1 {
-        for x in 1..MAP_WIDTH - 1 {
-            let pos = Position::new(x, y);
-            if world.map.tile(pos) == TileType::Floor && pos != player_start {
-                world.ecs.spawn_barrel(pos);
-            }
-        }
-    }
-
-    // Remove barrel from the exit stairs and re-hide it
-    if let Some(barrel) = world.ecs.entity_at(stairs) {
-        world.ecs.remove(barrel);
-    }
-    world.ecs.spawn_barrel(stairs);
-
-    // Clear a 4×3 zone at the top-left so the player has room to move
-    for x in 2..=5 {
-        for y in 2..=4 {
-            if Position::new(x, y) != player_start {
-                if let Some(barrel) = world.ecs.entity_at(Position::new(x, y)) {
-                    world.ecs.remove(barrel);
-                }
-            }
-        }
-    }
-
-    // Place signs (remove the barrel underneath first)
-    let place_sign = |world: &mut World, pos: Position, msg: &str| {
-        if let Some(barrel) = world.ecs.entity_at(pos) {
-            world.ecs.remove(barrel);
-        }
-        world.ecs.spawn_sign(pos, msg);
-    };
-
-    place_sign(
-        world,
-        Position::new(5, 3),
-        "The Barrel Horde.\n\nYou know the drill.",
-    );
-
-    place_sign(
-        world,
-        Position::new(MAP_WIDTH - 5, MAP_HEIGHT / 2),
-        "Still here? Good.\n\nGlyph doesn't forget — but\nneither do the barrels.",
-    );
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -527,6 +408,7 @@ fn spawn_wizard_near_player(world: &mut World) {
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
 }
 
+#[allow(dead_code)]
 pub fn find_stairs_down(map: &Map) -> Position {
     for y in 0..map.height {
         for x in 0..map.width {

@@ -61,6 +61,9 @@ pub struct SaveData {
     pub bindings: Vec<(String, String)>,
     pub user_source: Vec<String>,
     pub fragment_registry: crate::fragment::FragmentRegistry,
+    pub ending: Option<String>,
+    pub held_keys: Vec<String>,
+    pub held_items: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -124,6 +127,9 @@ fn kind_from_string(s: &str) -> EntityKind {
         "barrel" => EntityKind::Barrel,
         "sign" => EntityKind::Sign,
         "memory fragment" => EntityKind::Fragment,
+        "shade" => EntityKind::Shade,
+        "rage" => EntityKind::Rage,
+        "sentry" => EntityKind::Sentry,
         _ => EntityKind::Slime,
     }
 }
@@ -152,7 +158,13 @@ impl World {
                 let view = self.ecs.view(id)?;
                 let has_enemy_ai = matches!(
                     view.kind,
-                    EntityKind::Slime | EntityKind::Goblin | EntityKind::Bat | EntityKind::Ogre
+                    EntityKind::Slime
+                        | EntityKind::Goblin
+                        | EntityKind::Bat
+                        | EntityKind::Ogre
+                        | EntityKind::Shade
+                        | EntityKind::Rage
+                        | EntityKind::Sentry
                 );
                 Some(EntitySnapshot {
                     id: id.raw(),
@@ -214,6 +226,9 @@ impl World {
             bindings,
             user_source: self.user_source.clone(),
             fragment_registry: self.fragment_registry.clone(),
+            ending: self.ending.clone(),
+            held_keys: self.held_keys.clone(),
+            held_items: self.held_items.clone(),
         }
     }
 }
@@ -266,6 +281,9 @@ impl World {
                 EntityKind::Ogre => ecs.spawn_ogre(pos),
                 EntityKind::Wizard => ecs.spawn_wizard(pos),
                 EntityKind::Barrel => ecs.spawn_barrel(pos),
+                EntityKind::Shade => ecs.spawn_shade(pos),
+                EntityKind::Rage => ecs.spawn_rage(pos),
+                EntityKind::Sentry => ecs.spawn_sentry(pos),
                 EntityKind::Sign => {
                     let msg = ent.sign_message.as_deref().unwrap_or("");
                     ecs.spawn_sign(pos, msg)
@@ -345,6 +363,9 @@ impl World {
 
         // --- Fragment registry ---
         world.fragment_registry = data.fragment_registry.clone();
+        world.ending = data.ending.clone();
+        world.held_keys = data.held_keys.clone();
+        world.held_items = data.held_items.clone();
 
         // --- Rebuild Glyph envs on top of minimal env ---
         world.glyph_env = crate::game::setup_glyph_env();

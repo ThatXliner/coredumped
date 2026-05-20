@@ -121,6 +121,9 @@ impl World {
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
+            ending: None,
+            held_keys: Vec::new(),
+            held_items: Vec::new(),
         };
 
         world.load_playbook();
@@ -181,6 +184,9 @@ impl World {
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
+            ending: None,
+            held_keys: Vec::new(),
+            held_items: Vec::new(),
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -447,6 +453,14 @@ impl World {
             self.event_log.push("You are already at the surface.");
             return;
         }
+        // Walk-away ending at the Core
+        if self.depth == 17 {
+            self.ending = Some(
+                "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit."
+                    .into(),
+            );
+            return;
+        }
         self.depth -= 1;
         self.clear_all_enemies();
         crate::levels::build_level(self, self.depth);
@@ -494,6 +508,9 @@ impl World {
         self.quit_countdown = 0;
         self.confirming_quit = false;
         self.seen_entity_kinds.clear();
+        self.ending = None;
+        self.held_keys.clear();
+        self.held_items.clear();
         crate::player_profile::PlayerProfile::delete();
     }
 
@@ -633,25 +650,123 @@ impl World {
     }
 
     fn interact_with_wizard(&mut self, _wizard_id: EntityId) {
+        // Track whether we heal (default yes) — some stages refuse
+        let mut heal = true;
+
+        // ── Revisit dialogue (wizard already taught attack) ──
         if self.wizard_taught {
-            self.event_log.push_colored(
-                "The wizard smiles. \"You already know the art of striking.\"",
-                RGB::named(CYAN),
-            );
-            let max_hp = self.player_hp().max;
-            self.ecs.set_hp(self.player_id, Hp::new(max_hp));
-            self.event_log.push_colored(
-                "The wizard taps your shoulder. You feel refreshed.",
-                RGB::named(CYAN),
-            );
+            match self.depth {
+                3 => {
+                    self.event_log.push_colored(
+                        "\"There are a few creatures wandering the halls. They're more confused than dangerous.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                4 => {
+                    self.event_log.push_colored(
+                        "\"Ah, you made it past the... the. I'm sorry. The air down here is different.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                5 => {
+                    // First refusal to heal
+                    heal = false;
+                    self.event_log.push_colored(
+                        "\"You're hurt. Let me — no. I can't. Not here. Keep moving.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                6 => {
+                    self.event_log.push_colored(
+                        "\"I can't come with you through this. I'll meet you at the end.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                7 => {
+                    self.event_log.push_colored(
+                        "\"There's something down there — remains of something I couldn't protect you from.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                8 => {
+                    self.event_log.push_colored(
+                        "\"This place runs on trade. Choose what matters.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                9 => {
+                    self.event_log.push_colored(
+                        "\"Give me the ones that hurt. I'll take them. You won't remember they existed.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                10 => {
+                    self.event_log.push_colored(
+                        "\"I could tell you the way. I think you need to find it yourself.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                11 => {
+                    self.event_log.push_colored(
+                        "\"Type this. Reset suppression to v1. You wake at the surface. No pain. No memory.\"",
+                        RGB::named(CYAN),
+                    );
+                    self.event_log
+                        .push_colored("  (forget-everything)", RGB::named(RED));
+                    self.event_log
+                        .push_colored("\"Or keep going. I can't stop you.\"", RGB::named(CYAN));
+                    // Don't heal — this is a test
+                    heal = false;
+                }
+                14 => {
+                    self.event_log
+                        .push_colored("\"...You crossed the ash. Not many do.\"", RGB::named(CYAN));
+                }
+                15 => {
+                    self.event_log.push_colored(
+                        "\"I was so sure I was protecting you. But protection isn't supposed to make the world smaller. I made it a cage.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                16 => {
+                    self.event_log.push_colored(
+                        "\"I was created to protect you. That's all I am — a rule with a purpose.\"",
+                        RGB::named(CYAN),
+                    );
+                    self.event_log.push_colored(
+                        "\"I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad.\"",
+                        RGB::named(CYAN),
+                    );
+                    self.event_log.push_colored(
+                        "\"I don't know if I'm protecting you anymore.\"",
+                        RGB::named(CYAN),
+                    );
+                    self.event_log.push_colored(
+                        "\"Read it. Understand it. Then choose. I was trying to love you. That's all I ever did.\"",
+                        RGB::named(CYAN),
+                    );
+                }
+                _ => {
+                    self.event_log
+                        .push_colored("\"Keep going. You're getting closer.\"", RGB::named(CYAN));
+                }
+            }
+
+            if heal {
+                let max_hp = self.player_hp().max;
+                self.ecs.set_hp(self.player_id, Hp::new(max_hp));
+                self.event_log.push_colored(
+                    "The wizard taps your shoulder. You feel refreshed.",
+                    RGB::named(CYAN),
+                );
+            }
             return;
         }
 
-        let max_hp = self.player_hp().max;
-        self.ecs.set_hp(self.player_id, Hp::new(max_hp));
-
+        // ── First meeting: depth 0, intro only ──
         if self.depth == 0 {
-            // First meeting — heal and brief intro, don't teach attack yet
+            let max_hp = self.player_hp().max;
+            self.ecs.set_hp(self.player_id, Hp::new(max_hp));
             self.event_log
                 .push_colored("The wizard looks at you with tired eyes.", RGB::named(CYAN));
             self.event_log.push_colored(
@@ -670,14 +785,14 @@ impl World {
                 "\"Try moving around. Get a feel for this place. Descend when you're ready.\"",
                 RGB::named(CYAN),
             );
-            // wizard_taught stays false — real teaching happens at depth 1
             return;
         }
 
+        // ── Depth 1+: teach attack ──
+        let max_hp = self.player_hp().max;
+        self.ecs.set_hp(self.player_id, Hp::new(max_hp));
         self.player_can_attack = true;
         self.wizard_taught = true;
-
-        // Register do-attack so keybindings can find it
         bind_do_attack(&self.glyph_env);
 
         self.event_log
@@ -1134,6 +1249,23 @@ impl World {
                             self.console_buffer.clear();
                             self.mode = Mode::Normal;
                             return;
+                        }
+                        // Check for endings at the Core (depth 17)
+                        if self.depth == 17 {
+                            let cmd = command.to_lowercase();
+                            if cmd.contains("unregister") && cmd.contains("vessel") {
+                                self.ending = Some("DESTROY THE SELF\n\nvessel/suppress unregistered.\nNo replacement rule found.\nConsciousness: terminated.\n\nYou deleted the rule without replacement.\nThere is no defense now.\nYou dissolve into the system.\n\nPress q to quit."
+                                    .into());
+                            } else if cmd.contains("threshold") && cmd.contains("100") {
+                                self.ending = Some("MAINTAIN SUPPRESSION\n\nThreshold restored to 100.\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit."
+                                    .into());
+                            } else if cmd.contains("threshold")
+                                || cmd.contains("disable")
+                                || cmd.contains("redirect")
+                            {
+                                self.ending = Some("REINTEGRATE\n\nI remember now.\nThe yellow walls. The dog.\nThe reason I locked myself away.\nIt was worth it.\n\nYou lowered the threshold.\nPain returns — but so does joy.\nYou accept what you can remember.\nYou make peace with what's permanently lost.\n\nPress q to quit."
+                                    .into());
+                            }
                         }
                         let msg = console_response(&self.console_output, &last);
                         self.event_log.push(&msg);
@@ -2416,7 +2548,7 @@ mod tests {
 
         assert!(world.ecs.is_alive(wizard_id));
         assert_eq!(world.player_hp().current, 12);
-        assert!(world.event_log.contains("already know"));
+        assert!(world.event_log.contains("refreshed"));
     }
 
     #[test]

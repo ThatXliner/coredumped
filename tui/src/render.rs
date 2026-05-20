@@ -113,6 +113,12 @@ fn draw_entity(ctx: &mut BTerm, entity: EntityView, lit_tiles: &HashSet<Position
         (EntityKind::Sign, false) => RGB::from_u8(120, 120, 60),
         (EntityKind::Fragment, true) => RGB::named(GREEN),
         (EntityKind::Fragment, false) => RGB::named(DARK_GREEN),
+        (EntityKind::Shade, true) => RGB::named(GRAY),
+        (EntityKind::Shade, false) => RGB::named(DARK_GRAY),
+        (EntityKind::Rage, true) => RGB::named(RED),
+        (EntityKind::Rage, false) => RGB::named(DARK_RED),
+        (EntityKind::Sentry, true) => RGB::named(WHITE),
+        (EntityKind::Sentry, false) => RGB::named(GRAY),
     };
 
     ctx.set(
@@ -216,6 +222,26 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
         if !key.is_empty() {
             print_clipped(ctx, c1, y, 8, label);
             print_clipped(ctx, c1 + 9, y, w - 9, key);
+            y += 1;
+        }
+    }
+
+    // Fragment count
+    let collected = world.fragment_registry.collected_count();
+    if collected > 0 {
+        y += 1;
+        print_clipped(ctx, c1, y, w, &format!("memories {}/33", collected));
+    }
+
+    // Ending display
+    if let Some(ref ending) = world.ending {
+        y += 2;
+        print_clipped_color(ctx, c1, y, w, "--- ENDING ---", RGB::named(YELLOW));
+        y += 1;
+        for line in ending.lines() {
+            if y < PANEL_Y + PANEL_HEIGHT - 2 {
+                print_clipped(ctx, c1, y, w, line);
+            }
             y += 1;
         }
     }

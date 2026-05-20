@@ -75,6 +75,15 @@ pub struct World {
 
     /// Memory fragment registry — tracks all 42 fragments and collected status.
     pub fragment_registry: FragmentRegistry,
+
+    /// Ending text — set when the player triggers an ending at the Core.
+    pub ending: Option<String>,
+
+    /// Tracks which key IDs the player holds (from killing key-goblins in Level 8).
+    pub held_keys: Vec<String>,
+
+    /// Tracks special items found (Shade Echo, Vapor Canteen).
+    pub held_items: Vec<String>,
 }
 
 impl World {
@@ -114,6 +123,9 @@ impl World {
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
             fragment_registry: FragmentRegistry::new(),
+            ending: None,
+            held_keys: Vec::new(),
+            held_items: Vec::new(),
         }
     }
 

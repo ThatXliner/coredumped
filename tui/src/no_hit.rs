@@ -239,6 +239,9 @@ mod tests {
             quit_countdown: 0,
             seen_entity_kinds: std::collections::HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
+            ending: None,
+            held_keys: Vec::new(),
+            held_items: Vec::new(),
         }
     }
 

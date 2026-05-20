@@ -208,20 +208,29 @@ fn build_tutorial_grid(world: &mut World) {
         }
     }
 
-    // Horizontal doorways
-    for x in 0..3 {
-        for y in 0..3 {
-            if x < 2 {
-                let door_x = 18 + x * 17;
-                let door_y = 2 + y * 11 + 4;
-                map.set_tile(Position::new(door_x, door_y), TileType::Floor);
-                map.set_tile(Position::new(door_x, door_y + 1), TileType::Floor);
-            }
-            if y < 2 {
-                let door_x = 2 + x * 17 + 7;
-                let door_y = 11 + y * 11;
-                map.set_tile(Position::new(door_x, door_y), TileType::Floor);
-                map.set_tile(Position::new(door_x + 1, door_y), TileType::Floor);
+    // Snake path: 0→1→2→5→4→3→6→7→8
+    // Horizontal doors: all rows, all cols (0-1, 1-2, 3-4, 4-5, 6-7, 7-8)
+    for row in 0..3 {
+        for col in 0..2 {
+            let door_x = 18 + col * 17;
+            let door_y = 2 + row * 11 + 4;
+            map.set_tile(Position::new(door_x, door_y), TileType::Floor);
+            map.set_tile(Position::new(door_x, door_y + 1), TileType::Floor);
+        }
+    }
+
+    // Vertical doors: only 2→5 (col 2, row 0→1) and 3→6 (col 0, row 1→2)
+    // Carve both wall rows between rooms (2 tiles, not 1)
+    let vdoors: [(i32, i32); 2] = [
+        (2, 0), // room 2→5: col 2, between row 0 and 1
+        (0, 1), // room 3→6: col 0, between row 1 and 2
+    ];
+    for &(col, row) in &vdoors {
+        let door_x = 2 + col * 17 + 7;
+        let door_y = 11 + row * 11;
+        for dy in 0..2 {
+            for dx in 0..2 {
+                map.set_tile(Position::new(door_x + dx, door_y + dy), TileType::Floor);
             }
         }
     }

@@ -8,6 +8,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::entity::{EntityId, EntityKind, EntityView, Hp, Position, RenderGlyph};
+use crate::map::{MAP_HEIGHT, MAP_WIDTH};
 
 #[derive(Clone, Debug)]
 pub struct Ecs {
@@ -224,6 +225,7 @@ impl Ecs {
         hp: Hp,
         has_enemy_ai: bool,
     ) -> EntityId {
+        let pos = self.resolve_spawn_pos(pos);
         let id = self.allocate();
         self.kinds.insert(id, kind);
         self.positions.insert(id, pos);
@@ -243,6 +245,38 @@ impl Ecs {
         self.next_id += 1;
         self.entities.insert(id);
         id
+    }
+
+    /// Reserve desired tile for new entity. If occupied, find nearest free tile.
+    fn resolve_spawn_pos(&self, desired: Position) -> Position {
+        if self.entity_at(desired).is_some() {
+            self.find_unoccupied_near(desired).unwrap_or(desired)
+        } else {
+            desired
+        }
+    }
+
+    /// Expanding diamond search for an unoccupied tile within map bounds.
+    fn find_unoccupied_near(&self, pos: Position) -> Option<Position> {
+        for r in 1..MAP_WIDTH.max(MAP_HEIGHT) {
+            for dx in -r..=r {
+                let dy_outer = r - dx.abs();
+                for dy in [dy_outer, -dy_outer] {
+                    let candidate = Position::new(pos.x + dx, pos.y + dy);
+                    if candidate.x < 0
+                        || candidate.x >= MAP_WIDTH
+                        || candidate.y < 0
+                        || candidate.y >= MAP_HEIGHT
+                    {
+                        continue;
+                    }
+                    if self.entity_at(candidate).is_none() {
+                        return Some(candidate);
+                    }
+                }
+            }
+        }
+        None
     }
 }
 

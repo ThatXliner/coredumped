@@ -3364,18 +3364,33 @@ mod tests {
     }
 
     #[test]
-    fn enemy_overlap_with_wizard_is_repaired_even_when_ai_is_skipped() {
+    fn goblin_pathing_cannot_step_onto_wizard_tile() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        let old_enemy_id = world.living_enemies().next().unwrap().id;
+        world.ecs.remove(old_enemy_id);
+        world.set_player_pos(Position::new(8, 5));
+        let goblin_id = world.ecs.spawn_goblin(Position::new(5, 5));
+        let wizard_pos = Position::new(6, 5);
+        let wizard_id = world.ecs.spawn_wizard(wizard_pos);
+        world.wizard_id = Some(wizard_id);
+
+        world.apply_intent(Intent::Wait);
+
+        assert_eq!(world.ecs.position(goblin_id), Some(Position::new(5, 5)));
+        assert_eq!(world.ecs.position(wizard_id), Some(wizard_pos));
+        assert_eq!(world.ecs.entity_at(wizard_pos), Some(wizard_id));
+    }
+
+    #[test]
+    fn enemy_position_write_cannot_take_wizard_tile() {
         let mut world = world_with_single_enemy(Position::new(20, 5));
         world.set_player_pos(Position::new(8, 5));
         let enemy_id = world.living_enemies().next().unwrap().id;
         let wizard_pos = Position::new(6, 5);
         let wizard_id = world.ecs.spawn_wizard(wizard_pos);
         world.wizard_id = Some(wizard_id);
-        world.ecs.set_position(enemy_id, wizard_pos);
-        world.player_attacked.push(enemy_id);
 
-        world.apply_intent(Intent::Wait);
-
+        assert!(!world.ecs.set_position(enemy_id, wizard_pos));
         assert_eq!(world.ecs.position(wizard_id), Some(wizard_pos));
         assert_ne!(world.ecs.position(enemy_id), Some(wizard_pos));
         assert_eq!(world.ecs.entity_at(wizard_pos), Some(wizard_id));

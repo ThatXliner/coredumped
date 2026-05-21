@@ -124,10 +124,13 @@ impl Ecs {
         self.positions.get(&id).copied()
     }
 
-    pub fn set_position(&mut self, id: EntityId, pos: Position) {
-        if self.entities.contains(&id) {
-            self.positions.insert(id, pos);
+    pub fn set_position(&mut self, id: EntityId, pos: Position) -> bool {
+        if !self.entities.contains(&id) || self.entity_at_except(pos, id).is_some() {
+            return false;
         }
+
+        self.positions.insert(id, pos);
+        true
     }
 
     pub fn hp(&self, id: EntityId) -> Option<Hp> {
@@ -283,5 +286,30 @@ impl Ecs {
 impl Default for Ecs {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn set_position_rejects_living_entity_overlap() {
+        let mut ecs = Ecs::new();
+        let player_id = ecs.spawn_player(Position::new(5, 5));
+        let wizard_id = ecs.spawn_wizard(Position::new(6, 5));
+
+        assert!(!ecs.set_position(player_id, Position::new(6, 5)));
+        assert_eq!(ecs.position(player_id), Some(Position::new(5, 5)));
+        assert_eq!(ecs.position(wizard_id), Some(Position::new(6, 5)));
+    }
+
+    #[test]
+    fn set_position_allows_entity_to_stay_put() {
+        let mut ecs = Ecs::new();
+        let player_id = ecs.spawn_player(Position::new(5, 5));
+
+        assert!(ecs.set_position(player_id, Position::new(5, 5)));
+        assert_eq!(ecs.position(player_id), Some(Position::new(5, 5)));
     }
 }

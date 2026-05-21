@@ -11,6 +11,10 @@ struct Args {
     /// Delete the auto-save (slot 0) and player profile before starting
     #[arg(long)]
     wipe: bool,
+
+    /// Force ASCII entity glyphs even when emoji rendering is available
+    #[arg(long, visible_alias = "ascii")]
+    ascii_only: bool,
 }
 
 fn main() -> crossterm::Result<()> {
@@ -18,5 +22,7 @@ fn main() -> crossterm::Result<()> {
     if args.wipe {
         xlyph_tui::save::wipe();
     }
-    xlyph_tui::app::run()
+    xlyph_tui::app::run_with_options(xlyph_tui::app::RunOptions {
+        ascii_only: args.ascii_only,
+    })
 }

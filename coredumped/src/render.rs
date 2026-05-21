@@ -24,6 +24,7 @@ const MAP_Y: i32 = 1;
 const MAP_BOX_WIDTH: i32 = MAP_WIDTH + 2;
 const MAP_BOX_HEIGHT: i32 = MAP_HEIGHT + 2;
 const PANEL_MIN_WIDTH: i32 = 18;
+const MIN_BOTTOM_LOG_HEIGHT: i32 = 10;
 
 pub fn render(ctx: &mut Frame, world: &World) {
     // lit_tiles computed via cache — render takes &World (not &mut) so we can't call
@@ -40,7 +41,9 @@ pub fn render(ctx: &mut Frame, world: &World) {
 
     render_map(ctx, world, &lit_tiles);
     render_side_panel(ctx, world);
-    render_event_log(ctx, world);
+    if !event_log_uses_side_panel(ctx) {
+        render_event_log(ctx, world);
+    }
 
     if world.mode == Mode::Normal {
         render_entity_tooltip(ctx, world);
@@ -52,7 +55,10 @@ pub fn render(ctx: &mut Frame, world: &World) {
         return;
     }
 
-    let needs_overlay = matches!(world.mode, Mode::Inspector | Mode::Keybindings);
+    let needs_overlay = matches!(
+        world.mode,
+        Mode::Inspector | Mode::Keybindings | Mode::Console
+    );
     if needs_overlay {
         render_overlay_backdrop(ctx);
     }
@@ -123,13 +129,31 @@ fn draw_entity(ctx: &mut Frame, entity: EntityView, lit_tiles: &HashSet<Position
         (EntityKind::VaporCanteen, false) => RGB::named(DARK_BLUE),
     };
 
-    ctx.set(
-        MAP_X + entity.pos.x,
-        MAP_Y + entity.pos.y,
-        color,
-        RGB::named(BLACK),
-        entity.glyph(),
-    );
+    let x = MAP_X + entity.pos.x;
+    let y = MAP_Y + entity.pos.y;
+    if ctx.emoji_enabled() {
+        if let Some(emoji) = entity_emoji(entity.kind) {
+            if ctx.set_text(x, y, color, RGB::named(BLACK), emoji) {
+                return;
+            }
+        }
+    }
+
+    ctx.set(x, y, color, RGB::named(BLACK), entity.glyph());
+}
+
+fn entity_emoji(kind: EntityKind) -> Option<&'static str> {
+    match kind {
+        EntityKind::Slime => Some("🟢"),
+        EntityKind::Goblin => Some("👺"),
+        EntityKind::Bat => Some("🦇"),
+        EntityKind::Ogre => Some("👹"),
+        EntityKind::Wizard => Some("🧙"),
+        EntityKind::Shade => Some("👤"),
+        EntityKind::Rage => Some("😡"),
+        EntityKind::Sentry => Some("🛡️"),
+        _ => None,
+    }
 }
 
 fn render_side_panel(ctx: &mut Frame, world: &World) {
@@ -273,6 +297,12 @@ fn render_side_panel(ctx: &mut Frame, world: &World) {
             }
             y += 1;
         }
+    }
+
+    if event_log_uses_side_panel(ctx) {
+        y += 2;
+        let log_height = panel_y + panel_height - 1 - y;
+        render_event_log_panel(ctx, world, c1, y, w, log_height);
     }
 }
 
@@ -450,18 +480,42 @@ fn render_event_log(ctx: &mut Frame, world: &World) {
 
     draw_box(ctx, 0, log_y, log_width, log_height, " event log ");
 
-    let visible_lines = (log_height - 2).max(0) as usize;
     let text_width = (log_width - 4).max(1);
-    let lines = wrapped_log_lines(world.event_log.entries(), text_width as usize);
+    render_event_log_lines(
+        ctx,
+        world,
+        1,
+        log_y + 1,
+        text_width,
+        (log_height - 2).max(0),
+    );
+}
+
+fn render_event_log_panel(ctx: &mut Frame, world: &World, x: i32, y: i32, width: i32, height: i32) {
+    if width < 4 || height < 2 {
+        return;
+    }
+
+    print_section_header(ctx, x, y, width, "event log");
+    render_event_log_lines(ctx, world, x, y + 1, width, height - 1);
+}
+
+fn render_event_log_lines(ctx: &mut Frame, world: &World, x: i32, y: i32, width: i32, height: i32) {
+    if width <= 0 || height <= 0 {
+        return;
+    }
+
+    let visible_lines = height as usize;
+    let lines = wrapped_log_lines(world.event_log.entries(), width as usize);
     let max_start = lines.len().saturating_sub(visible_lines);
     let start = max_start.saturating_sub(world.event_log_scroll);
 
     for (line_index, line) in lines[start..].iter().take(visible_lines).enumerate() {
-        let y = log_y + 1 + line_index as i32;
+        let y = y + line_index as i32;
         if let Some(color) = line.color {
-            print_clipped_color(ctx, 1, y, text_width, &line.text, color);
+            print_clipped_color(ctx, x, y, width, &line.text, color);
         } else {
-            print_clipped(ctx, 1, y, text_width, &line.text);
+            print_clipped(ctx, x, y, width, &line.text);
         }
     }
 }
@@ -481,10 +535,10 @@ fn wrapped_log_lines(entries: &[LogEntry], max_width: usize) -> Vec<LogEntry> {
 }
 
 fn render_console(ctx: &mut Frame, world: &World) {
-    let x = if ctx.width() > 20 { 3 } else { 0 };
-    let y = if ctx.height() > 18 { 4 } else { 0 };
+    let x = if ctx.width() > 4 { 2 } else { 0 };
+    let y = if ctx.height() > 3 { 1 } else { 0 };
     let width = (ctx.width() - x * 2).max(1);
-    let height = (ctx.height() - y * 2).max(1);
+    let height = (ctx.height() - y - 1).max(1);
     let inner_width = (width - 4).max(1);
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " glyph console ");
@@ -842,7 +896,11 @@ fn print_clipped_color(ctx: &mut Frame, x: i32, y: i32, max_width: i32, text: &s
 }
 
 fn top_panel_height(ctx: &Frame) -> i32 {
-    (log_box_y(ctx) + 1).max(1)
+    if event_log_uses_side_panel(ctx) {
+        ctx.height().max(1)
+    } else {
+        (log_box_y(ctx) + 1).max(1)
+    }
 }
 
 fn log_box_y(ctx: &Frame) -> i32 {
@@ -855,6 +913,19 @@ fn log_box_y(ctx: &Frame) -> i32 {
 
 fn log_box_height(ctx: &Frame) -> i32 {
     (ctx.height() - log_box_y(ctx)).max(0)
+}
+
+fn event_log_uses_side_panel(ctx: &Frame) -> bool {
+    let panel_width = (ctx.width() - MAP_BOX_WIDTH).max(0);
+    panel_width >= PANEL_MIN_WIDTH && bottom_log_height(ctx) < MIN_BOTTOM_LOG_HEIGHT
+}
+
+fn bottom_log_height(ctx: &Frame) -> i32 {
+    if ctx.height() > MAP_BOX_HEIGHT {
+        ctx.height() - (MAP_BOX_HEIGHT - 1)
+    } else {
+        0
+    }
 }
 
 /// Maps a binding key to a clearer display string.
@@ -901,6 +972,26 @@ mod tests {
     }
 
     #[test]
+    fn short_terminals_move_event_log_into_side_panel() {
+        let short = Frame::new(MAP_BOX_WIDTH + PANEL_MIN_WIDTH, MAP_BOX_HEIGHT + 3);
+        assert!(event_log_uses_side_panel(&short));
+        assert_eq!(top_panel_height(&short), short.height());
+
+        let tall = Frame::new(
+            MAP_BOX_WIDTH + PANEL_MIN_WIDTH,
+            MAP_BOX_HEIGHT + MIN_BOTTOM_LOG_HEIGHT,
+        );
+        assert!(!event_log_uses_side_panel(&tall));
+    }
+
+    #[test]
+    fn narrow_terminals_keep_event_log_below_map() {
+        let narrow = Frame::new(MAP_BOX_WIDTH + PANEL_MIN_WIDTH - 1, MAP_BOX_HEIGHT + 3);
+
+        assert!(!event_log_uses_side_panel(&narrow));
+    }
+
+    #[test]
     fn diagnostic_lines_are_clipped_without_reflowing() {
         let report = "Error: syntax error\n   +-[glyph:1:17]\n 1 | (bind-key :z (do";
 
@@ -913,5 +1004,13 @@ mod tests {
                 " 1 | (bind-key :z (do",
             ]
         );
+    }
+
+    #[test]
+    fn emoji_entities_cover_enemies_and_wizard() {
+        assert_eq!(entity_emoji(EntityKind::Wizard), Some("🧙"));
+        assert_eq!(entity_emoji(EntityKind::Slime), Some("🟢"));
+        assert_eq!(entity_emoji(EntityKind::Goblin), Some("👺"));
+        assert_eq!(entity_emoji(EntityKind::Player), None);
     }
 }

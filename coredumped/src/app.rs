@@ -215,7 +215,7 @@ impl TerminalSession {
             stdout,
             EnterAlternateScreen,
             EnableMouseCapture,
-            SetTitle("Xlyph"),
+            SetTitle("CoreDumped"),
             Clear(ClearType::All),
             Hide
         )?;

@@ -46,7 +46,9 @@ pub(crate) fn build_foyer(world: &mut World) {
     // One pushable slime
     world.ecs.spawn_slime(Position::new(rx + rw - 8, ry + 3));
 
-    // Wizard first meeting — heals, brief intro, does not teach attack yet
-    let wizard_pos = Position::new(rx + rw / 2, ry + rh / 2 - 1);
-    world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    // Sign where wizard would be — he arrives depth 1
+    world.ecs.spawn_sign(
+        Position::new(rx + rw / 2, ry + rh / 2 - 1),
+        "You are alone here.\nThe wizard has not yet come.",
+    );
 }

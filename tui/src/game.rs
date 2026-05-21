@@ -324,6 +324,7 @@ impl World {
                 ActionCost::Free
             }
             Intent::CloseOverlay => {
+                self.new_rule_ids.clear();
                 self.mode = Mode::Normal;
                 ActionCost::Free
             }
@@ -705,8 +706,10 @@ impl World {
         let target = self.player_pos().offset(dx, dy);
 
         if !self.map.is_walkable(target) {
-            self.event_log
-                .push_colored("You shove the wall. Nothing happens.", RGB::named(DARK_GRAY));
+            self.event_log.push_colored(
+                "You shove the wall. Nothing happens.",
+                RGB::named(DARK_GRAY),
+            );
             return;
         }
 
@@ -720,10 +723,8 @@ impl World {
                     RGB::named(YELLOW),
                 );
             } else {
-                self.event_log.push(format!(
-                    "You shove the {}. It doesn't budge.",
-                    enemy_name
-                ));
+                self.event_log
+                    .push(format!("You shove the {}. It doesn't budge.", enemy_name));
             }
             self.player_attacked.push(target_id);
         } else {
@@ -846,32 +847,7 @@ impl World {
             return;
         }
 
-        // ── First meeting: depth 0, intro only ──
-        if self.depth == 0 {
-            let max_hp = self.player_hp().max;
-            self.ecs.set_hp(self.player_id, Hp::new(max_hp));
-            self.event_log
-                .push_colored("The wizard looks at you with tired eyes.", RGB::named(CYAN));
-            self.event_log.push_colored(
-                "\"Ah — you're awake. I was starting to worry.\"",
-                RGB::named(CYAN),
-            );
-            self.event_log.push_colored(
-                "\"You've been... resting. Come, let me show you how things work here.\"",
-                RGB::named(CYAN),
-            );
-            self.event_log.push_colored(
-                "The wizard taps your shoulder. Your wounds fade.",
-                RGB::named(CYAN),
-            );
-            self.event_log.push_colored(
-                "\"Try moving around. Get a feel for this place. Descend when you're ready.\"",
-                RGB::named(CYAN),
-            );
-            return;
-        }
-
-        // ── Depth 1+: teach attack ──
+        // ── First meeting: teach attack ──
         let max_hp = self.player_hp().max;
         self.ecs.set_hp(self.player_id, Hp::new(max_hp));
         self.player_can_attack = true;
@@ -1005,10 +981,8 @@ impl World {
                     self.map
                         .set_tile(Position::new(bx, corridor_y + dy), TileType::Wall);
                 }
-                self.event_log.push_colored(
-                    "A barrier slams shut behind you!",
-                    RGB::named(RED),
-                );
+                self.event_log
+                    .push_colored("A barrier slams shut behind you!", RGB::named(RED));
             }
         }
     }
@@ -1568,8 +1542,16 @@ pub(crate) fn setup_glyph_env() -> Env {
     reg!("quit!", "exit the game entirely", builtin_quit_bang);
     reg!("move!", "move the player: (move! :north)", builtin_move);
     reg!("wait!", "skip a turn", builtin_wait);
-    reg!("block!", "shove adjacent enemies back and guard", builtin_block);
-    reg!("shove!", "shove an enemy (free action): (shove! :east)", builtin_shove);
+    reg!(
+        "block!",
+        "shove adjacent enemies back and guard",
+        builtin_block
+    );
+    reg!(
+        "shove!",
+        "shove an enemy (free action): (shove! :east)",
+        builtin_shove
+    );
     reg!(
         "toggle-inspector!",
         "open or close the inspector",
@@ -1751,10 +1733,9 @@ fn builtin_block(
                     RGB::named(YELLOW),
                 );
             } else {
-                world.event_log.push(format!(
-                    "You shove the {}. It doesn't budge.",
-                    enemy_name
-                ));
+                world
+                    .event_log
+                    .push(format!("You shove the {}. It doesn't budge.", enemy_name));
             }
             world.player_attacked.push(enemy_id);
             shoved = true;
@@ -1762,7 +1743,9 @@ fn builtin_block(
     }
 
     if !shoved {
-        world.event_log.push("You raise your guard, but nothing is near.");
+        world
+            .event_log
+            .push("You raise your guard, but nothing is near.");
     }
 
     world.blocking = true;

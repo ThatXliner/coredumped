@@ -1,8 +1,10 @@
 # CoreDumped: Level Design — The Vessel
 
-**Status**: Final design spec
+**Status**: Living design spec — current code plus intended direction
 **Based on**: game-architecture.md, current codebase (Rust + Glyph Lisp embed + crossterm)
 **Storyline**: Merged Vessel (dungeon = mind) + Debt ending mechanic (final choice = real Glyph patch)
+
+**Current implementation note**: Early memory fragments are intentionally seeded before the original Level 6 start point so the tutorial/Denial stretch has emotional texture. Some later placements act as fallback duplicates; the fragment registry only allows a memory to be collected once. The currently playable systems are the Rage registry unlock, Counting Room key choices, Vapor Canteen fire-cache bypass, and Core registry edits. Other exploit writeups below are design targets unless marked as implemented.
 
 ---
 
@@ -380,12 +382,12 @@ The rule below is written in real Glyph that the evaluator could actually run. E
 |--------|-------------------|--------|
 | Read the rule | `(inspect :vessel/suppress)` | See full rule with comments |
 | Check threshold | `(get-var :vessel/suppress *threshold*)` | Returns "40" |
-| Lower threshold to 0 | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* 0)))` | 33 findable fragments return. 9 permanently suppressed remain lost. |
-| Remove threshold check | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(remove-check fragment :emotional-weight)))` | All passable memories return. Permanently suppressed still gone. |
-| Disable redirect | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(disable :redirect)))` | Suppression stops. Same caveat. |
-| Delete the rule | `(let [r (open-registry :rule-registry)] (r :unregister :vessel/suppress))` | No defense. Self dissolves. |
-| Set threshold to N | `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* N)))` | Partial healing — ending text varies. |
-| Query registry | `(query-registry :suppressed-fragments)` | Returns list of 42 fragment IDs with weights |
+| Lower threshold to 0 | `(let r (open-registry :rule-registry) (r :write :vessel/suppress '(set! *threshold* 0)))` | 33 findable fragments return. 9 permanently suppressed remain lost. |
+| Remove threshold check | `(let r (open-registry :rule-registry) (r :write :vessel/suppress '(remove-check fragment :emotional-weight)))` | All passable memories return. Permanently suppressed still gone. |
+| Disable redirect | `(let r (open-registry :rule-registry) (r :write :vessel/suppress '(disable :redirect)))` | Suppression stops. Same caveat. |
+| Delete the rule | `(let r (open-registry :rule-registry) (r :unregister :vessel/suppress))` | No defense. Self dissolves. |
+| Set threshold to N | `(let r (open-registry :rule-registry) (r :write :vessel/suppress '(set! *threshold* N)))` | Partial healing — ending text varies. |
+| Query registry | `(query-registry :suppressed-fragments)` or `(query-registry :all)` | Returns suppressed fragments or all 42 fragment IDs with weights |
 | Read suppressed fragment | `(inspect-fragment :frag-034)` | "corrupt decrypt — her voice ... cracking ..." — regardless of threshold |
 
 ### The Ghost Function: `traumatic?`
@@ -415,7 +417,7 @@ The old `traumatic?` function was replaced by inline threshold logic in v203. It
 | Stage | Levels | # | Purpose | Tone |
 |-------|--------|---|---------|------|
 | Denial | 0-3 | 4 | Tutorial — helplessness → binding → first combat | Warm, structured, protective |
-| Anger | 4-7 | 4 | Escalating threat, fragments start at level 6 | Jagged, confrontational |
+| Anger | 4-7 | 4 | Escalating threat, with fallback fragments after early Denial leaks | Jagged, confrontational |
 | Bargaining | 8-11 | 4 | Puzzles with costs, wizard offers deals | Calculated, transactional |
 | Depression | 12-14 | 3 | Sparse isolation, memory floods | Empty, melancholic |
 | Acceptance | 15-16 | 2 | Calm reflection, preparation for truth | Open, still, resigning |
@@ -439,16 +441,16 @@ Gating: `(open-registry :rule-registry)` is callable before the overflow but ret
 
 **Syntax plant**: The `rage/impact` rule (Level 7) calls `(open-registry :spawn-log)` to record spawn events. This is the player's first exposure to the pattern. They read the rule, see it, try `(open-registry :rule-registry)` on a hunch. Before overflow: error. After overflow: unlocked.
 
-**Exploit types across levels:**
+**Exploit and choice types across levels:**
 
-| Level | Class | Technique | Requires |
-|-------|-------|-----------|----------|
-| 7 | **Buffer overflow** | Overrun a fixed buffer to corrupt memory | Charged attack on Rage |
-| 8 | **Logic bypass** | Abuse a flawed predicate check | Knowledge of `has-key?` internals |
-| 10 | **Console injection** | Exploit unsanitized eval in wall logic | Typing a specific expression |
-| 12 | **Item confusion** | Exploit type-check bug via carried item | Shade Echo item from Level 13 |
-| 14 | **State corruption** | Apply unexpected state to bypass cached check | Water bucket item from Level 13 |
-| 17 | **Registry write** | Directly modify the suppression rule | Registry unlock from any prior exploit |
+| Level | Status | Class | Technique | Requires |
+|-------|--------|-------|-----------|----------|
+| 7 | Implemented | **Buffer overflow model** | Charged attack flips registry write-protect | `(do-attack :dir 13)` on Rage |
+| 8 | Implemented | **Costed choice** | Four locked rooms, three consumable keys | Kill key-goblins, spend keys |
+| 10 | Planned | **Console injection** | Exploit unsanitized eval in wall logic | Typing a specific expression |
+| 12 | Planned | **Item confusion** | Exploit type-check bug via carried item | Shade Echo item from Level 13 |
+| 14 | Implemented | **State corruption** | Mutate fire cache mid-tick | Vapor Canteen item from Level 13 |
+| 17 | Implemented | **Registry write** | Directly modify the suppression rule | Rage registry unlock |
 
 **Key rule**: The game never tells the player about exploit types. The player reads a rule, spots a vulnerability pattern, and experiments. If it works, they've learned something about how the system can be broken.
 
@@ -458,7 +460,7 @@ Gating: `(open-registry :rule-registry)` is callable before the overflow but ret
 
 **Class**: Memory corruption. **Difficulty**: Medium.
 
-The Rage boss's AI rule uses `copy-bytes!` to process collision impact data. The buffer is 64 bytes. The payload can be up to 256 bytes. `copy-bytes!` uses the payload length, not the buffer length.
+The playable implementation models the overflow through charged attack force. Rage's inspected source plants the `(open-registry ...)` pattern and shows a 64-byte impact buffer. When the player hits Rage with force greater than 12, the simulated payload overruns the adjacent registry write-protect flag.
 
 ```glyph
 ;; rage/impact — processes collision data
@@ -479,7 +481,7 @@ The Rage boss's AI rule uses `copy-bytes!` to process collision impact data. The
 1. **Syntax plant**: The rule calls `(open-registry :spawn-log)` — this is the player's first exposure to the `(open-registry ...)` pattern. They learn that registries exist and can be opened by name. This plants the idea: "can I call `(open-registry :rule-registry)`?"
 2. **The bug**: 64-byte buffer, payload up to 256 bytes, `copy-bytes!` uses payload length. Adjacent memory can be overwritten.
 
-**Trigger**: Player bumps Rage with a charged attack where force > 12 (the shockwave threshold). The collision payload includes impact data. If payload > 64 bytes, the excess bytes overflow into the registry write-protect flag.
+**Trigger**: Player binds or runs a charged attack such as `(do-attack :east 13)` while facing Rage. Force > 12 is the shockwave threshold. The excess payload flips the registry write-protect flag.
 
 **Before the overflow**: `(open-registry :rule-registry)` returns error: "Registry access denied: write-protect flag is set." The player discovered the syntax by reading `rage/impact` (which uses `(open-registry :spawn-log)`), tried it with `:rule-registry` on a hunch, and hit a locked door. This tells them TWO things: the function exists, AND it's currently blocked. The overflow flip unlocks it.
 
@@ -489,19 +491,17 @@ The Rage boss's AI rule uses `copy-bytes!` to process collision impact data. The
 
 ---
 
-#### Exploit 2: Logic Bypass (Level 8 — Counting Room)
+#### Choice 2: Locked Doors (Level 8 — Counting Room)
 
-**Class**: Predicate abuse. **Difficulty**: Easy.
+**Class**: Costed choice. **Status**: Implemented.
 
-The locked doors each check `(has-key? player :key-N)`. The `has-key?` function iterates the player's inventory looking for an item whose `:key` attribute matches `:key-N`. But `has-key?` has a bug: it doesn't validate that the item's `:key` attribute was *authorized* — it just checks if the attribute exists and matches.
+The Counting Room has four locked doors and only three obtainable keys. Each key-goblin drops one memory-key when defeated. Walking into a locked doorway spends one held key and opens that door permanently.
 
-**Discovery**: Player reads `door/lock` — notices `has-key?` doesn't verify key authenticity. Then reads `has-key?` definition — notices it only checks `(item :key) == requested-key`. Any item with a matching `:key` tag passes.
+**Discovery**: The central sign explains the constraint: four doors, three keys. This is not currently an exploit puzzle; it is a direct Bargaining-layer cost.
 
-**Trigger**: Player finds any item in their inventory (a fragment, a rock, anything). Uses console to attach a key tag: `(set! my-item :key :key-01)`. Walks through door 1. Repeats for remaining doors.
+**Trigger**: Kill key-goblins, then walk into the doors you care about. Every opened room consumes one key.
 
-**Effect**: All doors open without collecting any keys. Player accesses all rooms without sacrifice. Rewards reading the predicate's source code instead of just the door rule.
-
-**Console actions**: No registry write needed. Just `(set! item :key :key-N)` on any inventory item.
+**Effect**: The player cannot open all four rooms in a normal run. The layer now asks for a real choice rather than only saying the word "trade."
 
 ---
 
@@ -553,7 +553,7 @@ The fire rule caches tile states for performance: `(fire? tile)` checks a cached
 
 ---
 
-**Note on syntax**: Throughout these examples, `r` is a variable name the player chooses for the registry handle. In Glyph: `(let [r (open-registry :rule-registry)] ...)` — `r` could be anything (`db`, `reg`, `handle`, etc.). The builtin is `(open-registry :rule-registry)`, which returns a handle object. The handle has `:read`, `:write`, and `:unregister` methods called as `(handle :method args)`.
+**Note on syntax**: Throughout these examples, `r` is a variable name the player chooses for the registry handle. In current Glyph: `(let r (open-registry :rule-registry) ...)` — `r` could be anything (`db`, `reg`, `handle`, etc.). The builtin is `(open-registry :rule-registry)`, which returns a callable handle. The handle has `:read`, `:write`, and `:unregister` methods called as `(handle :method args)`.
 
 #### Exploit 6: Registry Write (Level 17 — The Core)
 
@@ -562,7 +562,7 @@ The fire rule caches tile states for performance: `(fire? tile)` checks a cached
 If the player triggered the buffer overflow (Level 7), the registry is writable. They can now modify `vessel/suppress` directly. This is the final exploit — the one that matters.
 
 ```glyph
-(let [r (open-registry :rule-registry)]
+(let r (open-registry :rule-registry)
   ;; Modify the threshold
   (r :write :vessel/suppress '(set! *threshold* 0))
   ;; Or disable redirect
@@ -580,13 +580,13 @@ If the player triggered the buffer overflow (Level 7), the registry is writable.
 | Exploit | Requires registry write? | Can player discover it without prior exploits? |
 |---------|------------------------|------------------------------------------------|
 | Buffer overflow (Level 7) | No (IT unlocks it) | Yes — first exploit possible |
-| Logic bypass (Level 8) | No | Yes — independent discovery |
-| Console injection (Level 10) | No | Yes — independent discovery |
-| Item confusion (Level 12) | No | Yes — but requires item from Level 13 |
-| State corruption (Level 14) | No | Yes — but requires item from Level 13 |
+| Locked-door choice (Level 8) | No | Yes — implemented as costed choice, not exploit |
+| Console injection (Level 10) | No | Planned |
+| Item confusion (Level 12) | No | Planned — requires item from Level 13 |
+| State corruption (Level 14) | No | Yes — requires item from Level 13 |
 | Registry write (Level 17) | Yes | No — requires Level 7 overflow |
 
-The buffer overflow is the KEY exploit — it's the only one that unlocks registry writes. But it's also the hardest to discover (requires reading the rule, understanding `copy-bytes!`, and crafting a charged attack). The other exploits are easier and serve as training wheels: by the time the player reaches Level 7, they've already experienced 0-3 smaller exploits and understand the pattern: *read the rule, find the bug, break the system.*
+The buffer overflow is the KEY exploit — it's the only one that unlocks registry writes. In the current build, discovery is intentionally lightweight: read the `rage-impact` clue, infer a charged strike, and use a force greater than 12. Future exploit layers can still serve as training wheels for the same pattern: *read the rule, find the bug, break the system.*
 
 #### Superego Backlash: Anti-Cheese
 
@@ -651,7 +651,7 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Map type** | Hand-authored single room |
 | **Size** | 25×15 |
 | **Enemies** | 1 Slime (`s` HP3 — pushable, [see Shove Mechanic](#shove-mechanic)) |
-| **Fragments** | None |
+| **Fragments** | `frag-001` (early memory leak / tutorial reward) |
 | **Special** | Sign at entrance: "CoreDumped runtime booted. If you're reading this, you finally woke up." Sign at stairs: "Move with arrow keys or hjkl. Descend when ready." Player has no attack. |
 | **Wizard** | First meeting — heals player to full. "Ah — you're awake. I was starting to worry. You've been... resting. Come, let me show you how things work here." |
 | **Palette** | Warm amber, soft gray. |
@@ -681,20 +681,20 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Special** | Rooms 1-8: tutorial signs (movement, inspector, console, waiting, enemy inspection, help, combat practice, stairs). Room 9: barrel puzzle finale — smaller barrel field with signs teaching advanced binding: `(repeat N ...)`, `(do ...)` combo chaining, multi-step programs. "Nothing is wrong." sign moved deeper to Anger. |
 | **Wizard** | Room 3: "The inspector lets you read the rules. Try it." Room 6: "The console is powerful. Be careful what you ask for." |
 | **Palette** | Warm amber. Room 9 slightly dimmer. |
-| **Purpose** | Combat practice + barrel puzzle. Player learns inspector, console, combat, and advanced binding (chaining, repeat) before entering Anger. |
+| **Purpose** | Combat practice + barrel puzzle. Player learns inspector, console, combat, and advanced binding (chaining, repeat) before entering Anger. The early fragment keeps Denial from becoming purely mechanical. |
 
 ### Level 3: The Quiet Halls (Denial)
 
 | Field | Detail |
 |-------|--------|
-| **Map type** | Corridor-based maze (long halls with alcoves, no dead ends) |
+| **Map type** | Organic cave with alcoves and rock formations |
 | **Size** | 55×33 |
 | **Enemies** | 2 Bats (`b` HP2), 1 Slime (`s` HP3) |
-| **Fragments** | None |
+| **Fragments** | `frag-010`, `frag-011`, `frag-012` (early emotional leaks; also appear later as fallbacks if missed) |
 | **Special** | First proper dungeon after tutorial. Player has full attack + binding. Transition level bridging Denial's safety and Anger's hostility. |
 | **Wizard** | At start: "There are a few creatures wandering the halls. They're more confused than dangerous." At stairs: "You did well. The descent continues." |
 | **Palette** | Warm but dimmer. Halls feel narrower than they are. |
-| **Purpose** | Bridge tutorial and Anger. Player uses attack + binding in a real dungeon. Wizard's "confused" enemies start the thematic thread. |
+| **Purpose** | Bridge tutorial and Anger. Player uses attack + binding in a real dungeon while the first out-of-order painful memories leak through. |
 
 ### Level 4: The First Scar (Anger)
 
@@ -731,7 +731,7 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Map type** | Linear corridor — 8 segments, barriers lock behind |
 | **Size** | 55×20 |
 | **Enemies** | Waves: 2 Slimes, 1 Goblin, 2 Bats, 1 Slime+1 Goblin, 1 Ogre, 3 mixed waves |
-| **Fragments** | `frag-001` (segment 2) |
+| **Fragments** | `frag-001` fallback (segment 2, if missed in Level 2) |
 | **Special** | No backtracking. Each segment locks behind player. |
 | **Wizard** | Before: "I can't come with you through this. I'll meet you at the end." After: "...You're still standing." |
 | **Palette** | Dark red. Tight. Claustrophobic. |
@@ -749,8 +749,8 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Wizard** | Before: "There's something down there — remains of something I couldn't protect you from." After: "You did it. I don't know whether to be relieved or terrified." |
 | **Palette** | Deep red, pulsing (walls alternate each turn). |
 | **Purpose** | First boss. Rage is suppressed anger given form. Single fragment near exit — brief pause before moving on. |
-| **Unlock** | `do-attack` — wizard teaches after boss. "Bind it: `(bind-key :z (do-attack))`." |
-| **Exploit** | **Buffer overflow**: Read `rage/impact` — 64-byte buffer, `copy-bytes!` uses payload length. Bump Rage with a charged attack (force > 12, payload > 64 bytes). Overflow flips registry write-protect flag. **This is the only exploit that unlocks registry writes for Level 17.** |
+| **Unlock** | Registry write-protect can be disabled with a charged attack. |
+| **Exploit** | **Buffer overflow model**: Read `rage/impact`, see the 64-byte impact buffer and `(open-registry :spawn-log)` syntax plant, then strike Rage with force > 12, e.g. `(do-attack :east 13)`. This unlocks registry writes for Level 17. |
 
 ### Level 8: The Counting Room (Bargaining)
 
@@ -760,11 +760,11 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Size** | 55×33 |
 | **Enemies** | 3 Goblins (`g` HP5 — each holds a key), 2 Bats (`b` HP2) |
 | **Fragments** | `frag-003` (behind first locked door — her family), `frag-004` (hidden room — dog picture) |
-| **Special** | Doors require keys. Keys held by specific enemies (visible via inspection). Not all doors openable. Player must choose. |
+| **Special** | Four locked doors, three keys. Key-goblins drop memory-keys; walking into a locked doorway spends one key. Not all rooms are openable in a normal run. |
 | **Wizard** | At entrance: "This place runs on trade. Choose what matters." |
 | **Palette** | Desaturated gold. Faded opulence. |
 | **Purpose** | First explicit choice with cost. Cannot get everything. |
-| **Exploit** | **Logic bypass**: Read `door/lock` — predicate calls `(has-key? player :key-N)`. Read `has-key?` — it only checks `(item :key) == requested-key` with no authorization validation. Console: `(set! item :key :key-01)` on any inventory item. Walks through. Repeat with `:key-02`, `:key-03`. Every door opens. |
+| **Choice** | Implemented as a costed branch, not currently an exploit. |
 
 ### Level 9: The Scale (Bargaining)
 
@@ -774,24 +774,24 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Size** | 55×33 |
 | **Enemies** | 2 Ogres (`O` HP8), 2 Goblins (`g` HP5), 2 Bats (`b` HP2) |
 | **Fragments** | `frag-005` (center room — admission of love), `frag-006` (side room — first date at the diner) |
-| **Special** | Two scales in hub room. Place fragments on scale to open doors. Placed fragments are PERMANENTLY LOST. Wizard's offer in center room: give 3 fragments for +5 max HP. |
-| **Wizard** | In center: "Give me the ones that hurt. I'll take them. You won't remember they existed." |
+| **Special** | Two inert scales in the hub. The side rooms are optional emotional/combat risk; there is no sacrifice mechanic in the current build. |
+| **Wizard** | In center: "I would take the ones that hurt if I could. But that bargain is getting harder to believe." |
 | **Palette** | Pale gold. Center room blood-red. |
-| **Purpose** | Superego makes first explicit deal. Memories traded for comfort. |
+| **Purpose** | Bargaining theme without a fake interaction prompt; the real costed choice is currently concentrated in Level 8. |
 
 ### Level 10: The Maze of Regret (Bargaining)
 
 | Field | Detail |
 |-------|--------|
-| **Map type** | Shifting maze (walls reconfigure every 50 turns) |
+| **Map type** | Procedural room-based maze |
 | **Size** | 55×33 |
 | **Enemies** | 4 Bats (`b` HP2), 2 Goblins (`g` HP5) |
 | **Fragments** | `frag-007` (center — her playlist), `frag-008` (side chamber — farmer's market, first visible crack), `frag-009` (hidden behind shifting wall — meeting her friends) |
-| **Special** | Walls shift every 50 turns. Center pedestal: take fragment (no cost) or leave it for clear exit path. |
+| **Special** | Current implementation is a static procedural maze with three fragments near entrance/exit pressure points. Wall shifting is planned. |
 | **Wizard** | At entrance: "I could tell you the way. I think you need to find it yourself." |
 | **Palette** | Faded yellow, burnt edges. |
 | **Purpose** | Maze represents rumination — same regrets, same loops, new paths through old pain. |
-| **Exploit** | **Console injection**: Read `maze/shift` — notices `(eval (player :last-input))` in wall-configuration logic. Type `(quote :still)` in console (don't press Enter — the rule reads the buffer). Eval interprets as `:still`, shift handler treats as "don't change." Walls stop. |
+| **Exploit** | Planned: console injection via `maze/shift`. Not implemented in current code. |
 
 ### Level 11: The Offer (Bargaining Boss)
 
@@ -800,9 +800,9 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Map type** | Single room with 4 sub-chambers |
 | **Size** | 55×33 |
 | **Enemies** | 4 Sentries (`T` HP6 — stationary, ranged every 2 turns) |
-| **Fragments** | `frag-010` (chamber 2 — fear of abandonment), `frag-011` (chamber 3 — eggshells), `frag-012` (chamber 4 — childhood explanation) |
-| **Special** | Four sub-chambers with sentries. Final chamber has pedestal with `(forget-everything)` Glyph command. Wizard offers complete erasure. |
-| **Wizard** | "Type this. Reset suppression to v1. You wake at the surface. No pain. No memory." If accepted: ending screen + New Game+. If refused: wizard sighs, steps aside. "Then keep going. I can't stop you." |
+| **Fragments** | `frag-010`, `frag-011`, `frag-012` fallbacks if missed during the early Level 3 leak |
+| **Special** | Four sub-chambers with sentries. Wizard offers complete erasure textually; `(forget-everything)` is not implemented as a real ending command yet. |
+| **Wizard** | "Type this. Reset suppression to v1. You wake at the surface. No pain. No memory." / `(forget-everything)` / "Or keep going. I can't stop you." |
 | **Palette** | Pale gold with red. Final chamber stark white. |
 | **Purpose** | Biggest test. Erasure vs. truth. The wizard has no more cards to play. |
 | **Exploit hint** | If player hasn't discovered any exploits by this point: "Look at the rules. Not just what they do — how they do it. The ones with buffers. The ones that trust too easily. The ones that read what you type. Every rule has a seam. Find it." |
@@ -874,7 +874,7 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Wizard** | Walks alongside. Dialogue fragments: "I was created to protect you. That's all I am — a rule with a purpose." / "I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad." / "I don't know if I'm protecting you anymore." At final door: "Read it. Understand it. Then choose. I was trying to love you. That's all I ever did." |
 | **Palette** | Deep blue to indigo. Final door black. |
 | **Purpose** | Wizard's farewell. Summary of all 5 layers. Four fragments here span the full arc — from deleting her number, through understanding, to reaching out and creating again. The player sees how far they've come. |
-| **Unlock** | Wizard grants `(unregister-rule)` if not already acquired. |
+| **Unlock** | No separate unlock. Core registry `:unregister` is available only through the Level 7 registry-write unlock. |
 
 ### Level 17: The Core
 
@@ -887,17 +887,18 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Special** | Black floor. White walls. Center: pedestal with `vessel/suppress` rule in inspector. Console cursor active at bottom. Event log empty. No sounds. Just the rule and the cursor. |
 | **Wizard** | Does not enter. |
 | **Palette** | Black and white. Nothing else. |
-| **Console** | `(open-registry :rule-registry)`, `(unregister-rule)`, `(inspect)`, `(query-registry)`, `(inspect-fragment)` — all enabled. Registry handle's `:write` method available if buffer overflow was triggered. |
+| **Console** | `(open-registry :rule-registry)`, `(query-registry)`, and `(inspect-fragment)` are enabled. The registry handle's `:write` and `:unregister` methods work only if Rage's charged-impact overflow was triggered. |
 | **Purpose** | Final choice. Nothing to fight. Nothing to solve except the rule. |
 
 ### Fragment Distribution Summary
 
 | Levels | Fragments | Count | Tone |
 |--------|-----------|-------|------|
-| 0-5 | None (tutorial) | 0 | Subtle hints only |
-| 6-7 | frag-001, frag-002 | 2 | First fragments, gentle intro |
+| 0-3 | frag-001, frag-010 through frag-012 | 4 | Early memory leaks to keep Denial emotionally alive |
+| 4-5 | None | 0 | Tonal shift and combat pressure |
+| 6-7 | frag-001 fallback, frag-002 | 2 placements, 1 new if Level 2 was collected | First boss reward |
 | 8-9 | frag-003 through frag-006 | 4 | Pre-relationship warmth, first dates |
-| 10-11 | frag-007 through frag-012 | 6 | First cracks through full unraveling |
+| 10-11 | frag-007 through frag-012 | 6 placements, 3-6 new depending on Level 3 | First cracks through full unraveling |
 | 12-13 | frag-013 through frag-018 | 6 | Letter, breakup |
 | 14 | frag-019 through frag-024 | 6 | Spiral — heaviest concentration in game |
 | 15 | frag-025 through frag-028 | 4 | Lowest point, in safety |
@@ -914,8 +915,7 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | 1 | Console, `do-attack`, `bind-key` | Wizard teaches |
 | 2 | Combo chaining, `(repeat ...)`, `(do ...)` | Barrel puzzle signs |
 | 7 | Registry write access | Buffer overflow exploit on Rage |
-| 16 | `unregister-rule` | Wizard grants at farewell |
-| 17 | Full registry access | Core room |
+| 17 | Core rule read/write/unregister through registry handle | Core room, if Level 7 unlock happened |
 
 ---
 
@@ -927,14 +927,14 @@ All assume player has unlocked registry writes (buffer overflow at Level 7).
 
 | Player Action | Detection | Ending |
 |--------------|-----------|--------|
-| `(let [r (open-registry :rule-registry)] (r :unregister :vessel/suppress))` | Console unregisters rule | **Destroy the self** |
-| `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(disable :redirect)))` | Console writes rule | **Reintegrate** |
-| `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* 0)))` | Console writes rule | **Reintegrate** (variant text) |
-| `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* N)))` with N 1-99 | Console writes threshold | **Hidden: precision threshold** (text varies with N) |
-| `(let [r (open-registry :rule-registry)] (r :write :vessel/suppress '(set! *threshold* 100)))` | Console writes threshold | **Maintain suppression** (restore original) |
+| `(let r (open-registry :rule-registry) (r :unregister :vessel/suppress))` | Console unregisters rule | **Destroy the self** |
+| `(let r (open-registry :rule-registry) (r :write :vessel/suppress '(disable :redirect)))` | Console writes rule | **Reintegrate** |
+| `(let r (open-registry :rule-registry) (r :write :vessel/suppress '(set! *threshold* 0)))` | Console writes rule | **Reintegrate** (variant text) |
+| `(let r (open-registry :rule-registry) (r :write :vessel/suppress '(set! *threshold* N)))` with N 1-99 | Console writes threshold | **Reintegrate** in current build; precision variants are future polish |
+| `(let r (open-registry :rule-registry) (r :write :vessel/suppress '(set! *threshold* 100)))` | Console writes threshold | **Maintain suppression** (restore original) |
 | Walk to stairs up without modifying rule | Player moves to (0,0) | **Maintain suppression** (walk away) |
 | `(query-registry :suppressed-fragments)` without modifying | Console query | Nothing — "42 fragments waiting." |
-| `(let [r (open-registry :rule-registry)] (r :write :vessel/traumatic? ...))` | Console writes ghost function | **Hidden:** old threshold acknowledged |
+| `(let r (open-registry :rule-registry) (r :write :vessel/traumatic? ...))` | Console writes ghost function | Planned hidden ending |
 
 ### Ending Descriptions
 
@@ -952,42 +952,42 @@ All assume player has unlocked registry writes (buffer overflow at Level 7).
 
 ### Phase 1 — Core Systems (Prove the ending works)
 
-- [ ] Add `vessel/suppress` as a real registered rule in `rules.rs`
+- [x] Add `vessel/suppress` as a real registered rule in `rules.rs`
 - [ ] Add `copy-bytes!` Glyph builtin with unchecked length (buffer overflow vector)
-- [ ] Add registry write-protect flag (boolean, adjacent to buffer in memory model)
-- [ ] Add `rage/impact` rule with 64-byte buffer + unsafe `copy-bytes!` call
-- [ ] Implement buffer overflow mechanic: payload > 64 bytes corrupts adjacent write-protect flag
-- [ ] `(open-registry :rule-registry)` returns read-only proxy by default, writable after overflow
-- [ ] Add `has-key?` predicate with inventory trust bug (no authorization check)
+- [x] Add registry write-protect flag
+- [x] Add `rage/impact` rule source with 64-byte buffer clue
+- [x] Implement buffer overflow model: charged Rage attack corrupts write-protect flag
+- [x] `(open-registry :rule-registry)` returns a writable handle after overflow and denies access before it
+- [x] Add implemented Level 8 locked-door key economy
+- [ ] Add optional `has-key?` predicate with inventory trust bug (future exploit variant)
 - [ ] Add `maze/shift` eval injection through `(player :last-input)` buffer
-- [ ] Add Shade Echo item type with `:entity-id` attribute for type confusion
-- [ ] Add Vapor Canteen item for tile-state cache poisoning
-- [ ] Add tile-state caching system with per-tick cache (exploitable mid-tick)
-- [ ] Add `unregister-rule` Glyph builtin (needed for destroy-self ending)
-- [ ] Add fragment registry system (store 33 findable + 9 suppressed)
-- [ ] Create test-only "ending room" (Level 17 prototype)
-- [ ] Wire: player reads `rage/impact` → spots overflow → triggers → registry unlocks → patches `vessel/suppress` → ending
-- [ ] Add ending detection and display
+- [x] Add Shade Echo item type
+- [x] Add Vapor Canteen item for tile-state cache poisoning
+- [x] Add tile-state caching system with per-tick cache (exploitable mid-tick)
+- [x] Add registry handle `:unregister` method for destroy-self ending
+- [x] Add fragment registry system (store 33 findable + 9 suppressed)
+- [x] Create ending room (Level 17)
+- [x] Wire: player reads `rage/impact` → spots overflow → triggers → registry unlocks → patches `vessel/suppress` → ending
+- [x] Add ending detection and display
 
 ### Phase 2 — Fragment System
 
-- [ ] Add `MemoryFragment` data type (id, text, weight, status)
+- [x] Add `MemoryFragment` data type (id, text, weight, status)
 - [ ] Add "Memories" panel in UI (right-side tab, shows collected fragments)
-- [ ] Add `(query-registry)` and `(inspect-fragment)` console builtins
-- [ ] Implement fragment discovery (find in world, add to collection)
+- [x] Add `(query-registry)` and `(inspect-fragment)` console builtins
+- [x] Implement fragment discovery (find in world, add to collection)
 - [ ] Implement fragment sacrifice (level 9 mechanic — lose fragments)
 
 ### Phase 3 — Level Implementation
 
-- [ ] Level 0-3: Denial (helpless tutorial, wizard chamber, holding cells + barrels, quiet halls)
-- [ ] Shove mechanic: full spec (push 1 tile, free action, wall/entity blocking, chain pushes, message updates)
-- [ ] Level 4-7: Anger (cave gen, gauntlet, Rage boss)
-- [ ] Level 7: buffer overflow exploit on Rage (rag/impact)
-- [ ] Level 8-11: Bargaining (locked doors with logic bypass, scale sacrifice, shifting maze with injection, offer)
-- [ ] Level 12-14: Depression (long corridor, archive, ash field)
-- [ ] Level 15-16: Acceptance (clearing, spiral descent)
-- [ ] Level 16: `unregister-rule` unlock
-- [ ] Level 17: Core room
+- [x] Level 0-3: Denial (helpless tutorial, wizard chamber, holding cells + barrels, quiet halls)
+- [x] Shove mechanic: full spec (push 1 tile, free action, wall/entity blocking, chain pushes, message updates)
+- [x] Level 4-7: Anger (cave gen, gauntlet, Rage boss)
+- [x] Level 7: buffer overflow model on Rage (`rage-impact`)
+- [ ] Level 8-11: Bargaining polish (logic bypass, scale sacrifice, shifting maze injection remain future work)
+- [x] Level 12-14: Depression (long corridor, archive, ash field)
+- [x] Level 15-16: Acceptance (clearing, spiral descent)
+- [x] Level 17: Core room
 
 ### Phase 4 — Wizard AI
 

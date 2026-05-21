@@ -106,7 +106,6 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Press . to wait. Time passes\nand enemies move too.\nYou can also use (wait!) in bindings.",
     );
     world.ecs.spawn_slime(Position::new(12, 20));
-    world.ecs.spawn_goblin(Position::new(7, 18));
 
     // Room 4: Enemy inspection
     world.ecs.spawn_sign(
@@ -115,6 +114,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     );
     world.ecs.spawn_slime(Position::new(31, 20));
     world.ecs.spawn_bat(Position::new(28, 16));
+    world.ecs.spawn_goblin(Position::new(24, 18));
     world.ecs.spawn_sign(
         Position::new(33, 15),
         "Bats have only 2 HP but\ncan fly through walls.\nUse i to inspect enemies.",
@@ -138,7 +138,6 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Stairs down are below.\nEach level challenges you\ndifferently. Adapt.",
     );
     world.ecs.spawn_slime(Position::new(14, 29));
-    world.ecs.spawn_goblin(Position::new(7, 26));
     world.ecs.spawn_sign(
         Position::new(14, 31),
         "Each level mixes enemy\ntypes. Learn patterns,\nadapt, survive.",

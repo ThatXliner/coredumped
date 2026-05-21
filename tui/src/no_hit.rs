@@ -228,6 +228,7 @@ mod tests {
             wizard_taught: false,
             wizard_id: None,
             bindings: std::collections::HashMap::new(),
+            has_new_bindings: false,
             konami_index: 0,
             cheat_unlocked: false,
             console_history: Vec::new(),

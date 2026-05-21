@@ -103,7 +103,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     // Room 3: Wait
     world.ecs.spawn_sign(
         Position::new(3, 17),
-        "Press . to wait. Time passes\nand enemies move too.\nUse (wait!) in bindings.",
+        "Press . to wait. Time passes\nand enemies move too.\nYou can also use (wait!) in bindings.",
     );
     world.ecs.spawn_slime(Position::new(12, 20));
     world.ecs.spawn_goblin(Position::new(7, 18));
@@ -118,6 +118,10 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     world.ecs.spawn_sign(
         Position::new(33, 15),
         "Bats have only 2 HP but\ncan fly through walls.\nUse i to inspect enemies.",
+    );
+    world.ecs.spawn_sign(
+        Position::new(17, 19),
+        "Goblins have 5 HP and\nhit harder. Tactical\npositioning matters.",
     );
 
     // Room 5: Console
@@ -137,7 +141,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     world.ecs.spawn_goblin(Position::new(7, 26));
     world.ecs.spawn_sign(
         Position::new(14, 31),
-        "Goblins have 5 HP and\nhit harder. Tactical\npositioning matters.",
+        "Each level mixes enemy\ntypes. Learn patterns,\nadapt, survive.",
     );
 
     // Room 7: "Nothing is wrong"
@@ -171,13 +175,19 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     world.ecs.spawn_barrel(stairs_down);
 
     // Signs in barrel room
-    world.ecs.spawn_sign(
-        Position::new(37, 25),
-        "Welcome to the Puzzle Room!\n\nChain commands with (do ...):\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs N times:\n  (repeat 4 (do-attack :east))",
-    );
 
     world.ecs.spawn_sign(
         Position::new(37, 30),
-        "Bind a combo to one key:\n  (bind-key :x (do (move! :south)\n    (repeat 3 (do-attack :east))))\n\nNow clear these barrels and\nfind the exit!",
+        "Welcome to the Puzzle Room! This is a LOT of barrels...the exit is under one of them\nTry binding a combo to one key to make things faster",
+    );
+
+    world.ecs.spawn_sign(
+        Position::new(37, 31),
+        "Chain commands with (do ...):\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs N times:\n  (repeat 4 (do-attack :east))",
+    );
+
+    world.ecs.spawn_sign(
+        Position::new(41, 31),
+        "Need help?\nTry running this in the console:\n  (bind-key :x (do (move! :south)\n    (repeat 3 (do-attack :east))))\n\nNow clear these barrels and\nfind the exit!",
     );
 }

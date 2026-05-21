@@ -13,12 +13,15 @@ use crate::{
 pub fn key_to_intent(event: KeyEvent, world: &World) -> Intent {
     let shift = event.modifiers.contains(KeyModifiers::SHIFT);
     let ctrl = event.modifiers.contains(KeyModifiers::CONTROL);
+    let alt = event.modifiers.contains(KeyModifiers::ALT);
 
     match world.mode {
         Mode::Normal => {
             match event.code {
                 KeyCode::F(5) => return Intent::SaveGame(1),
                 KeyCode::F(9) => return Intent::LoadGame(1),
+                KeyCode::PageUp => return Intent::Scroll(-10),
+                KeyCode::PageDown => return Intent::Scroll(10),
                 _ => {}
             }
             if let Some(name) = key_to_binding_name(event.code) {
@@ -30,7 +33,7 @@ pub fn key_to_intent(event: KeyEvent, world: &World) -> Intent {
         }
         Mode::Inspector => inspector_key_to_intent(event.code),
         Mode::Keybindings => keybindings_key_to_intent(event.code),
-        Mode::Console => console_key_to_intent(event.code, shift, ctrl),
+        Mode::Console => console_key_to_intent(event.code, shift, ctrl, alt),
         Mode::Dead => dead_key_to_intent(event.code, shift),
     }
 }
@@ -54,6 +57,8 @@ fn keybindings_key_to_intent(key: KeyCode) -> Intent {
     match key {
         KeyCode::Esc | KeyCode::Tab | KeyCode::BackTab => Intent::CloseOverlay,
         KeyCode::Char('`') => Intent::ToggleConsole,
+        KeyCode::PageUp => Intent::InspectorScroll(-8),
+        KeyCode::PageDown => Intent::InspectorScroll(8),
         KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => Intent::InspectorScroll(-1),
         KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => Intent::InspectorScroll(1),
         _ => Intent::Noop,
@@ -64,13 +69,15 @@ fn inspector_key_to_intent(key: KeyCode) -> Intent {
     match key {
         KeyCode::Esc | KeyCode::Char('i') | KeyCode::Char('I') => Intent::CloseOverlay,
         KeyCode::Char('`') => Intent::ToggleConsole,
+        KeyCode::PageUp => Intent::InspectorScroll(-8),
+        KeyCode::PageDown => Intent::InspectorScroll(8),
         KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => Intent::InspectorScroll(-1),
         KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => Intent::InspectorScroll(1),
         _ => Intent::Noop,
     }
 }
 
-fn console_key_to_intent(key: KeyCode, shift: bool, ctrl: bool) -> Intent {
+fn console_key_to_intent(key: KeyCode, shift: bool, ctrl: bool, alt: bool) -> Intent {
     if ctrl && matches!(key, KeyCode::Char('e') | KeyCode::Char('E')) {
         return Intent::OpenExternalEditor;
     }
@@ -78,13 +85,33 @@ fn console_key_to_intent(key: KeyCode, shift: bool, ctrl: bool) -> Intent {
     match key {
         KeyCode::Esc => Intent::CloseOverlay,
         KeyCode::Char('`') => Intent::ToggleConsole,
-        KeyCode::Backspace => Intent::ConsoleBackspace,
+        KeyCode::Backspace if alt => Intent::ConsoleBackspaceWord,
+        KeyCode::Backspace => {
+            if ctrl {
+                Intent::ConsoleBackspaceWord
+            } else {
+                Intent::ConsoleBackspace
+            }
+        }
+        KeyCode::Delete => Intent::ConsoleDelete,
+        KeyCode::Home => Intent::ConsoleHome,
+        KeyCode::End => Intent::ConsoleEnd,
+        KeyCode::PageUp => Intent::Scroll(-10),
+        KeyCode::PageDown => Intent::Scroll(10),
         KeyCode::Enter if shift => Intent::ConsoleNewline,
         KeyCode::Enter => Intent::ConsoleSubmit,
         KeyCode::Up => Intent::ConsoleHistory(-1),
         KeyCode::Down => Intent::ConsoleHistory(1),
+        KeyCode::Left if ctrl || alt => Intent::ConsoleMoveWord(-1),
+        KeyCode::Right if ctrl || alt => Intent::ConsoleMoveWord(1),
         KeyCode::Left => Intent::ConsoleCursor(-1),
         KeyCode::Right => Intent::ConsoleCursor(1),
+        KeyCode::Char('a') | KeyCode::Char('A') if ctrl => Intent::ConsoleHome,
+        KeyCode::Char('u') | KeyCode::Char('U') if ctrl => Intent::ConsoleKillToStart,
+        KeyCode::Char('k') | KeyCode::Char('K') if ctrl => Intent::ConsoleKillToEnd,
+        KeyCode::Char('w') | KeyCode::Char('W') if ctrl => Intent::ConsoleBackspaceWord,
+        KeyCode::Char('b') | KeyCode::Char('B') if alt => Intent::ConsoleMoveWord(-1),
+        KeyCode::Char('f') | KeyCode::Char('F') if alt => Intent::ConsoleMoveWord(1),
         KeyCode::Char(c) if !ctrl => Intent::ConsoleInput(console_char(c)),
         _ => Intent::Noop,
     }

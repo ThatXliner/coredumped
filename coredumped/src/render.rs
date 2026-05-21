@@ -453,9 +453,10 @@ fn render_event_log(ctx: &mut Frame, world: &World) {
     let visible_lines = (log_height - 2).max(0) as usize;
     let text_width = (log_width - 4).max(1);
     let lines = wrapped_log_lines(world.event_log.entries(), text_width as usize);
-    let start = lines.len().saturating_sub(visible_lines);
+    let max_start = lines.len().saturating_sub(visible_lines);
+    let start = max_start.saturating_sub(world.event_log_scroll);
 
-    for (line_index, line) in lines[start..].iter().enumerate() {
+    for (line_index, line) in lines[start..].iter().take(visible_lines).enumerate() {
         let y = log_y + 1 + line_index as i32;
         if let Some(color) = line.color {
             print_clipped_color(ctx, 1, y, text_width, &line.text, color);
@@ -516,15 +517,27 @@ fn render_console(ctx: &mut Frame, world: &World) {
     } else {
         wrap_text(&world.console_buffer, input_wrap_width)
     };
+    let cursor_visual = cursor_visual_pos(
+        &world.console_buffer,
+        world.console_cursor,
+        input_wrap_width,
+    );
+    let cursor_visual_line = cursor_visual.0;
+    let cursor_visual_col = cursor_visual.1;
 
     // Reserve space for input at the bottom — cap to keep at least 1 line for output
     let max_input_lines = (output_height - 1).max(1) as usize;
     let input_line_count = input_wrapped.len().min(max_input_lines);
-    let visible_input = if input_wrapped.len() > max_input_lines {
-        &input_wrapped[input_wrapped.len() - max_input_lines..]
+    let first_visible_input_line = if input_wrapped.len() > max_input_lines {
+        cursor_visual_line
+            .saturating_add(1)
+            .saturating_sub(max_input_lines)
+            .min(input_wrapped.len().saturating_sub(max_input_lines))
     } else {
-        &input_wrapped[..]
+        0
     };
+    let visible_input =
+        &input_wrapped[first_visible_input_line..first_visible_input_line + input_line_count];
 
     // Output rendered in remaining space above the input area
     let output_available = output_height - input_line_count as i32;
@@ -534,12 +547,10 @@ fn render_console(ctx: &mut Frame, world: &World) {
         } else {
             wrap_text(&world.console_output, inner_width as usize)
         };
-        let start = lines.len().saturating_sub(output_available as usize);
-        for (i, line) in lines[start..]
-            .iter()
-            .enumerate()
-            .take(output_available as usize)
-        {
+        let visible_output = output_available as usize;
+        let max_start = lines.len().saturating_sub(visible_output);
+        let start = max_start.saturating_sub(world.console_output_scroll);
+        for (i, line) in lines[start..].iter().enumerate().take(visible_output) {
             if let Some(color) = world.console_output_color {
                 print_clipped_color(ctx, x + 2, output_y + i as i32, inner_width, line, color);
             } else {
@@ -551,17 +562,10 @@ fn render_console(ctx: &mut Frame, world: &World) {
     // Render wrapped input lines at the bottom
     let input_inner_width = (width - 6).max(1);
     let input_start_y = prompt_y - input_line_count as i32 + 1;
-    let cursor_visual = cursor_visual_pos(
-        &world.console_buffer,
-        world.console_cursor,
-        input_wrap_width,
-    );
-    let cursor_visual_line = cursor_visual.0;
-    let cursor_visual_col = cursor_visual.1;
 
     for (i, line) in visible_input.iter().enumerate() {
         let line_y = input_start_y + i as i32;
-        let is_cursor_on_this_line = i == cursor_visual_line;
+        let is_cursor_on_this_line = first_visible_input_line + i == cursor_visual_line;
 
         // Prompt prefix: "> " on last line, "  " elsewhere
         if i == visible_input.len() - 1 {

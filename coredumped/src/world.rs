@@ -71,6 +71,10 @@ pub struct World {
     pub console_history_draft: String,
     /// Byte-offset cursor position within console_buffer.
     pub console_cursor: usize,
+    /// Output scrollback offset for the console overlay. 0 means follow newest.
+    pub console_output_scroll: usize,
+    /// Event-log scrollback offset. 0 means follow newest.
+    pub event_log_scroll: usize,
 
     /// Set to true when q is pressed to confirm quitting.
     pub confirming_quit: bool,
@@ -166,6 +170,8 @@ impl World {
             console_history_index: 0,
             console_history_draft: String::new(),
             console_cursor: 0,
+            console_output_scroll: 0,
+            event_log_scroll: 0,
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,

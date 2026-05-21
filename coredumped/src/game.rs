@@ -41,8 +41,16 @@ pub enum Intent {
     ConsoleNewline,
     ConsoleHistory(i32),
     ConsoleCursor(i32),
+    ConsoleMoveWord(i32),
     ConsoleBackspace,
+    ConsoleBackspaceWord,
+    ConsoleDelete,
+    ConsoleHome,
+    ConsoleEnd,
+    ConsoleKillToStart,
+    ConsoleKillToEnd,
     ConsoleSubmit,
+    Scroll(i32),
     CloseOverlay,
     ToggleConsole,
     ToggleKeybindings,
@@ -116,6 +124,8 @@ impl World {
             console_history_index: 0,
             console_history_draft: String::new(),
             console_cursor: 0,
+            console_output_scroll: 0,
+            event_log_scroll: 0,
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
@@ -193,6 +203,8 @@ impl World {
             console_history_index: 0,
             console_history_draft: String::new(),
             console_cursor: 0,
+            console_output_scroll: 0,
+            event_log_scroll: 0,
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
@@ -270,57 +282,72 @@ impl World {
             }
             Intent::ConsoleInput(ch) => {
                 if self.mode == Mode::Console {
-                    self.console_buffer.insert(self.console_cursor, ch);
-                    self.console_cursor += ch.len_utf8();
+                    self.console_insert(ch);
                 }
                 ActionCost::Free
             }
             Intent::ConsoleNewline => {
                 if self.mode == Mode::Console {
-                    self.console_buffer.insert(self.console_cursor, '\n');
-                    self.console_cursor += 1;
+                    self.console_insert('\n');
                 }
                 ActionCost::Free
             }
             Intent::ConsoleCursor(delta) => {
                 if self.mode == Mode::Console {
-                    if delta < 0 {
-                        // Move cursor left one char
-                        let mut new_pos = self.console_cursor;
-                        if new_pos > 0 {
-                            new_pos -= 1;
-                            while new_pos > 0
-                                && self.console_buffer.as_bytes()[new_pos] & 0xC0 == 0x80
-                            {
-                                new_pos -= 1;
-                            }
-                            self.console_cursor = new_pos;
-                        }
-                    } else {
-                        // Move cursor right one char
-                        let len = self.console_buffer.len();
-                        if self.console_cursor < len {
-                            self.console_cursor += 1;
-                            while self.console_cursor < len
-                                && self.console_buffer.as_bytes()[self.console_cursor] & 0xC0
-                                    == 0x80
-                            {
-                                self.console_cursor += 1;
-                            }
-                        }
-                    }
+                    self.console_move_cursor(delta);
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleMoveWord(delta) => {
+                if self.mode == Mode::Console {
+                    self.console_move_word(delta);
                 }
                 ActionCost::Free
             }
             Intent::ConsoleBackspace => {
-                if self.mode == Mode::Console && self.console_cursor > 0 {
-                    self.console_cursor -= 1;
-                    while self.console_cursor > 0
-                        && self.console_buffer.as_bytes()[self.console_cursor] & 0xC0 == 0x80
-                    {
-                        self.console_cursor -= 1;
-                    }
-                    self.console_buffer.remove(self.console_cursor);
+                if self.mode == Mode::Console {
+                    self.console_backspace();
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleBackspaceWord => {
+                if self.mode == Mode::Console {
+                    self.console_backspace_word();
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleDelete => {
+                if self.mode == Mode::Console {
+                    self.console_delete();
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleHome => {
+                if self.mode == Mode::Console {
+                    self.console_cursor = 0;
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleEnd => {
+                if self.mode == Mode::Console {
+                    self.console_cursor = self.console_buffer.len();
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleKillToStart => {
+                if self.mode == Mode::Console {
+                    self.console_cursor =
+                        clamp_to_char_boundary(&self.console_buffer, self.console_cursor);
+                    self.console_buffer.drain(..self.console_cursor);
+                    self.console_cursor = 0;
+                }
+                ActionCost::Free
+            }
+            Intent::ConsoleKillToEnd => {
+                if self.mode == Mode::Console {
+                    self.console_cursor =
+                        clamp_to_char_boundary(&self.console_buffer, self.console_cursor);
+                    self.console_buffer.truncate(self.console_cursor);
                 }
                 ActionCost::Free
             }
@@ -331,6 +358,10 @@ impl World {
                     self.console_history_draft.clear();
                     self.console_cursor = 0;
                 }
+                ActionCost::Free
+            }
+            Intent::Scroll(delta) => {
+                self.scroll_view(delta);
                 ActionCost::Free
             }
             Intent::CloseOverlay => {
@@ -976,13 +1007,81 @@ impl World {
 
     fn scroll_inspector(&mut self, delta: i32) {
         if delta < 0 {
-            self.inspector_selection = self.inspector_selection.saturating_sub(1);
+            self.inspector_selection = self
+                .inspector_selection
+                .saturating_sub(delta.unsigned_abs() as usize);
         } else {
             self.inspector_selection = self
                 .inspector_selection
-                .saturating_add(1)
+                .saturating_add(delta as usize)
                 .min(self.registry.len().saturating_sub(1));
         }
+    }
+
+    fn scroll_view(&mut self, delta: i32) {
+        let target = match self.mode {
+            Mode::Console => &mut self.console_output_scroll,
+            Mode::Inspector | Mode::Keybindings => {
+                self.scroll_inspector(delta);
+                return;
+            }
+            _ => &mut self.event_log_scroll,
+        };
+
+        if delta < 0 {
+            *target = target.saturating_add(delta.unsigned_abs() as usize);
+        } else {
+            *target = target.saturating_sub(delta as usize);
+        }
+    }
+
+    fn console_insert(&mut self, ch: char) {
+        self.console_cursor = clamp_to_char_boundary(&self.console_buffer, self.console_cursor);
+        self.console_buffer.insert(self.console_cursor, ch);
+        self.console_cursor += ch.len_utf8();
+    }
+
+    fn console_move_cursor(&mut self, delta: i32) {
+        if delta < 0 {
+            self.console_cursor = previous_char_boundary(&self.console_buffer, self.console_cursor);
+        } else {
+            self.console_cursor = next_char_boundary(&self.console_buffer, self.console_cursor);
+        }
+    }
+
+    fn console_move_word(&mut self, delta: i32) {
+        self.console_cursor = if delta < 0 {
+            previous_word_boundary(&self.console_buffer, self.console_cursor)
+        } else {
+            next_word_boundary(&self.console_buffer, self.console_cursor)
+        };
+    }
+
+    fn console_backspace(&mut self) {
+        if self.console_cursor == 0 {
+            return;
+        }
+        let start = previous_char_boundary(&self.console_buffer, self.console_cursor);
+        self.console_buffer.drain(start..self.console_cursor);
+        self.console_cursor = start;
+    }
+
+    fn console_backspace_word(&mut self) {
+        if self.console_cursor == 0 {
+            return;
+        }
+        let start = previous_word_boundary(&self.console_buffer, self.console_cursor);
+        self.console_buffer.drain(start..self.console_cursor);
+        self.console_cursor = start;
+    }
+
+    fn console_delete(&mut self) {
+        if self.console_cursor >= self.console_buffer.len() {
+            return;
+        }
+        self.console_cursor = clamp_to_char_boundary(&self.console_buffer, self.console_cursor);
+        let end = next_char_boundary(&self.console_buffer, self.console_cursor);
+        self.console_buffer.drain(self.console_cursor..end);
     }
 
     fn console_history_move(&mut self, delta: i32) {
@@ -1182,6 +1281,7 @@ impl World {
 
     fn submit_console(&mut self) {
         let trimmed = self.console_buffer.trim();
+        self.console_output_scroll = 0;
 
         // Handle pending wipe confirmation
         if let Some(slot) = self.pending_wipe_slot.take() {
@@ -1337,6 +1437,91 @@ impl World {
             }
         }
     }
+}
+
+fn clamp_to_char_boundary(text: &str, cursor: usize) -> usize {
+    let mut cursor = cursor.min(text.len());
+    while cursor > 0 && !text.is_char_boundary(cursor) {
+        cursor -= 1;
+    }
+    cursor
+}
+
+fn previous_char_boundary(text: &str, cursor: usize) -> usize {
+    let cursor = clamp_to_char_boundary(text, cursor);
+    if cursor == 0 {
+        return 0;
+    }
+
+    text[..cursor]
+        .char_indices()
+        .next_back()
+        .map(|(index, _)| index)
+        .unwrap_or(0)
+}
+
+fn next_char_boundary(text: &str, cursor: usize) -> usize {
+    let cursor = clamp_to_char_boundary(text, cursor);
+    if cursor >= text.len() {
+        return text.len();
+    }
+
+    cursor
+        + text[cursor..]
+            .chars()
+            .next()
+            .map(char::len_utf8)
+            .unwrap_or(0)
+}
+
+fn previous_word_boundary(text: &str, cursor: usize) -> usize {
+    let mut pos = clamp_to_char_boundary(text, cursor);
+
+    while let Some((index, ch)) = text[..pos].char_indices().next_back() {
+        if is_console_word_char(ch) {
+            break;
+        }
+        pos = index;
+    }
+
+    while let Some((index, ch)) = text[..pos].char_indices().next_back() {
+        if !is_console_word_char(ch) {
+            break;
+        }
+        pos = index;
+    }
+
+    pos
+}
+
+fn next_word_boundary(text: &str, cursor: usize) -> usize {
+    let mut pos = clamp_to_char_boundary(text, cursor);
+
+    while pos < text.len() {
+        let ch = text[pos..].chars().next().expect("pos is a char boundary");
+        if is_console_word_char(ch) {
+            break;
+        }
+        pos += ch.len_utf8();
+    }
+
+    while pos < text.len() {
+        let ch = text[pos..].chars().next().expect("pos is a char boundary");
+        if !is_console_word_char(ch) {
+            break;
+        }
+        pos += ch.len_utf8();
+    }
+
+    pos
+}
+
+fn is_console_word_char(ch: char) -> bool {
+    ch.is_alphanumeric()
+        || matches!(
+            ch,
+            '_' | '-' | '?' | '!' | '*' | '/' | '+' | '<' | '>' | '='
+        )
 }
 
 fn console_response(printed: &str, value: &Value) -> String {
@@ -2485,6 +2670,68 @@ mod tests {
 
         assert_eq!(world.turn, 0);
         assert_eq!(world.console_buffer, "xy");
+    }
+
+    #[test]
+    fn console_readline_word_motion_and_deletion_are_free() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "alpha beta gamma".to_string();
+        world.console_cursor = world.console_buffer.len();
+
+        assert_eq!(
+            world.apply_intent(Intent::ConsoleMoveWord(-1)),
+            ActionCost::Free
+        );
+        assert_eq!(world.console_cursor, "alpha beta ".len());
+
+        world.apply_intent(Intent::ConsoleBackspaceWord);
+
+        assert_eq!(world.console_buffer, "alpha gamma");
+        assert_eq!(world.console_cursor, "alpha ".len());
+        assert_eq!(world.turn, 0);
+    }
+
+    #[test]
+    fn console_readline_kill_and_delete_edit_the_buffer() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "alpha beta".to_string();
+        world.console_cursor = "alpha ".len();
+
+        world.apply_intent(Intent::ConsoleKillToStart);
+
+        assert_eq!(world.console_buffer, "beta");
+        assert_eq!(world.console_cursor, 0);
+
+        world.console_buffer = "alpha beta".to_string();
+        world.console_cursor = "alpha".len();
+        world.apply_intent(Intent::ConsoleKillToEnd);
+
+        assert_eq!(world.console_buffer, "alpha");
+        assert_eq!(world.console_cursor, "alpha".len());
+
+        world.console_buffer = "éx".to_string();
+        world.console_cursor = 0;
+        world.apply_intent(Intent::ConsoleDelete);
+
+        assert_eq!(world.console_buffer, "x");
+    }
+
+    #[test]
+    fn scroll_intent_targets_active_scrollback() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+
+        world.apply_intent(Intent::Scroll(-3));
+        assert_eq!(world.event_log_scroll, 3);
+        world.apply_intent(Intent::Scroll(1));
+        assert_eq!(world.event_log_scroll, 2);
+
+        world.mode = Mode::Console;
+        world.apply_intent(Intent::Scroll(-5));
+        assert_eq!(world.console_output_scroll, 5);
+        world.apply_intent(Intent::Scroll(2));
+        assert_eq!(world.console_output_scroll, 3);
     }
 
     #[test]

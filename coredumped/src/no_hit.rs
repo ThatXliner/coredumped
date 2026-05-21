@@ -236,6 +236,8 @@ mod tests {
             console_history_index: 0,
             console_history_draft: String::new(),
             console_cursor: 0,
+            console_output_scroll: 0,
+            event_log_scroll: 0,
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,

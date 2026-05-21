@@ -102,6 +102,9 @@ through to a procedural builder.
 | `i` | Toggle inspector |
 | <code>\`</code> | Toggle console |
 | `Enter` | Submit console expression |
+| `PageUp` / `PageDown` / mouse wheel | Scroll log, console output, or overlay |
+| `Home` / `End`, `Ctrl+A`, `Ctrl+K`, `Ctrl+U`, `Ctrl+W` | Edit console input |
+| `Alt+B` / `Alt+F` or word-arrow keys | Move by console word |
 | `Esc` | Close overlay / cancel quit |
 | `q` | Quit |
 

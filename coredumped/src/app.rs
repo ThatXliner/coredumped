@@ -126,9 +126,19 @@ impl State {
                 }
             }
             Event::Mouse(mouse) => {
+                self.frame
+                    .set_mouse_pos(mouse.column as i32, mouse.row as i32);
                 if matches!(mouse.kind, MouseEventKind::Moved | MouseEventKind::Down(_)) {
-                    self.frame
-                        .set_mouse_pos(mouse.column as i32, mouse.row as i32);
+                    return Ok(());
+                }
+
+                let scroll_delta = match mouse.kind {
+                    MouseEventKind::ScrollUp => Some(-3),
+                    MouseEventKind::ScrollDown => Some(3),
+                    _ => None,
+                };
+                if let Some(delta) = scroll_delta {
+                    self.world.apply_intent(Intent::Scroll(delta));
                 }
             }
             Event::Resize(width, height) => {

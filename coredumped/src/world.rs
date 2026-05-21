@@ -54,7 +54,7 @@ pub struct World {
     /// Cleared when the keybindings overlay is opened.
     pub has_new_bindings: bool,
 
-    /// Binding keys added since the last time the keybindings overlay was opened.
+    /// Binding keys added since the last time the keybindings overlay was closed.
     /// Mirrors new_rule_ids for the rules inspector.
     pub new_binding_keys: HashSet<String>,
 

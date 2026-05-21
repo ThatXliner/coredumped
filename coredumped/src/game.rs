@@ -367,7 +367,11 @@ impl World {
                 ActionCost::Free
             }
             Intent::CloseOverlay => {
-                self.new_rule_ids.clear();
+                match self.mode {
+                    Mode::Inspector => self.new_rule_ids.clear(),
+                    Mode::Keybindings => self.new_binding_keys.clear(),
+                    _ => {}
+                }
                 self.mode = Mode::Normal;
                 ActionCost::Free
             }
@@ -2020,10 +2024,10 @@ fn builtin_toggle_keybindings(
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
     world.mode = if world.mode == Mode::Keybindings {
+        world.new_binding_keys.clear();
         Mode::Normal
     } else {
         world.has_new_bindings = false;
-        world.new_binding_keys.clear();
         Mode::Keybindings
     };
     Ok(Value::Nil)
@@ -2963,6 +2967,56 @@ mod tests {
         assert_eq!(cost, ActionCost::Free);
         assert_eq!(world.turn, 0);
         assert_eq!(world.mode, Mode::Inspector);
+    }
+
+    #[test]
+    fn closing_keybindings_does_not_acknowledge_new_rules() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Keybindings;
+        world.new_rule_ids.insert("slime-hunt".into());
+        world.new_binding_keys.insert("z".into());
+
+        let cost = world.apply_intent(Intent::CloseOverlay);
+
+        assert_eq!(cost, ActionCost::Free);
+        assert_eq!(world.mode, Mode::Normal);
+        assert!(world.new_rule_ids.contains("slime-hunt"));
+        assert!(world.new_binding_keys.is_empty());
+    }
+
+    #[test]
+    fn closing_inspector_does_not_acknowledge_new_bindings() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Inspector;
+        world.new_rule_ids.insert("slime-hunt".into());
+        world.has_new_bindings = true;
+        world.new_binding_keys.insert("z".into());
+
+        let cost = world.apply_intent(Intent::CloseOverlay);
+
+        assert_eq!(cost, ActionCost::Free);
+        assert_eq!(world.mode, Mode::Normal);
+        assert!(world.new_rule_ids.is_empty());
+        assert!(world.has_new_bindings);
+        assert!(world.new_binding_keys.contains("z"));
+    }
+
+    #[test]
+    fn opening_keybindings_keeps_new_binding_rows_marked_until_close() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.has_new_bindings = true;
+        world.new_binding_keys.insert("z".into());
+
+        let cost = world.apply_intent(Intent::ExecuteBinding("tab".into()));
+
+        assert_eq!(cost, ActionCost::Free);
+        assert_eq!(world.mode, Mode::Keybindings);
+        assert!(!world.has_new_bindings);
+        assert!(world.new_binding_keys.contains("z"));
+
+        world.apply_intent(Intent::CloseOverlay);
+
+        assert!(world.new_binding_keys.is_empty());
     }
 
     #[test]

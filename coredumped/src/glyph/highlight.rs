@@ -1,5 +1,9 @@
 //! Syntax highlighter for Glyph source. Tokenizes source into categorized
 //! spans so the renderer can paint each category with its own color.
+//!
+//! This is intentionally a lightweight lexer, independent from `reader`. The
+//! console calls it while source is incomplete or invalid, so highlighting must
+//! never require a parsed AST.
 
 use bracket_color::prelude::RGB;
 
@@ -80,7 +84,7 @@ pub fn highlight(source: &str) -> Vec<Span> {
         }
 
         if c == '"' {
-            read_string(&mut spans, &chars, &mut i);
+            read_string_literal(&mut spans, &chars, &mut i);
             continue;
         }
 
@@ -175,7 +179,7 @@ pub fn highlight(source: &str) -> Vec<Span> {
     spans
 }
 
-fn read_string(spans: &mut Vec<Span>, chars: &[char], i: &mut usize) {
+fn read_string_literal(spans: &mut Vec<Span>, chars: &[char], i: &mut usize) {
     let mut segment_start = *i;
     *i += 1;
 
@@ -600,6 +604,14 @@ mod tests {
         assert!(spans
             .iter()
             .any(|span| span.text == "#{" && span.tok == Tok::ReaderMacro));
+    }
+
+    #[test]
+    fn test_incomplete_source_still_highlights() {
+        let spans = highlight(r#"(bind-key :z (do "unterminated"#);
+        assert_token(&spans, "bind-key", Tok::Special);
+        assert_token(&spans, ":z", Tok::Keyword);
+        assert!(spans.iter().any(|span| span.tok == Tok::String));
     }
 
     fn assert_token(spans: &[Span], text: &str, tok: Tok) {

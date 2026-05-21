@@ -520,7 +520,14 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     .iter()
     .enumerate()
     {
-        print_clipped(ctx, x + 2, y + 2 + i as i32, width - 4, line);
+        let trimmed: String = line.chars().take((width - 4) as usize).collect();
+        ctx.print_color(
+            x + 2,
+            y + 2 + i as i32,
+            RGB::named(WHITE),
+            RGB::named(BLACK),
+            &trimmed,
+        );
     }
 
     let output_y = y + 4;
@@ -859,6 +866,15 @@ fn display_key(key: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn console_header_wraps_to_two_lines_at_eighty() {
+        let text = "Glyph REPL — press Ctrl+E to open an external editor for multi-line input. Try (help). ESC or ` to close.";
+        let lines = wrap_text(text, 80);
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].chars().count() <= 80);
+        assert!(lines[1].chars().count() <= 80);
+    }
 
     #[test]
     fn log_entries_wrap_into_visible_rows() {

@@ -81,13 +81,6 @@ Run the tests:
 cargo test
 ```
 
-If you are working through the repo's local tooling, use:
-
-```bash
-rtk cargo run -p xlyph-tui
-rtk cargo test
-```
-
 ## Controls
 
 | Key | Action |
@@ -163,14 +156,6 @@ cargo test
 cargo check
 ```
 
-With local tooling:
-
-```bash
-rtk cargo fmt
-rtk cargo test
-rtk cargo check
-```
-
 The most useful tests cover pure game logic:
 
 - Player movement increments the turn
@@ -198,4 +183,3 @@ Later:
 - Save/load
 - More expressive world editing
 - A real design pass on balance, readability, and pacing
-

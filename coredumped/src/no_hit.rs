@@ -253,6 +253,8 @@ mod tests {
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
             fire_cache: HashSet::new(),
+            dijkstra_cache_target_idx: None,
+            dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
         }
     }

@@ -4,7 +4,6 @@
 //! `step-toward!`, etc. They receive `&mut World` directly through the
 //! eval chain's context parameter.
 
-use bracket_lib::pathfinding::DijkstraMap;
 use bracket_lib::prelude::{ORANGE, RED, RGB};
 
 use crate::{
@@ -145,23 +144,10 @@ fn builtin_step_toward(
         return Ok(Value::Bool(false));
     }
 
-    let player_idx = world.map.idx(target_pos);
-    let dm = DijkstraMap::new(
-        world.map.width,
-        world.map.height,
-        &[player_idx],
-        &world.map,
-        200.0,
-    );
-    let entity_idx = world.map.idx(entity_pos);
-    if dm.map[entity_idx] >= f32::MAX {
-        return Ok(Value::Bool(false));
-    }
-    let next_idx = match DijkstraMap::find_lowest_exit(&dm, entity_idx, &world.map) {
-        Some(idx) => idx,
+    let next_pos = match world.dijkstra_best_step(entity_pos, target_pos) {
+        Some(pos) => pos,
         None => return Ok(Value::Bool(false)),
     };
-    let next_pos = world.map.position_for_idx(next_idx);
 
     if next_pos == target_pos
         || !world.map.is_walkable(next_pos)

@@ -3,9 +3,15 @@
 //! Defined here so the glyph module can reference it in `BuiltinFn`'s
 //! signature without creating circular `use` confusion.
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+};
 
-use bracket_lib::prelude::RGB;
+use bracket_lib::{
+    pathfinding::DijkstraMap,
+    prelude::{BaseMap, RGB},
+};
 
 use crate::{
     ecs::Ecs,
@@ -17,6 +23,8 @@ use crate::{
     map::{Map, TileType},
     rules::RuleRegistry,
 };
+
+const AI_DIJKSTRA_MAX_DEPTH: f32 = 200.0;
 
 #[derive(Clone, Debug)]
 pub struct World {
@@ -116,6 +124,10 @@ pub struct World {
     /// Fire-tile cache rebuilt at tick start. Vapor Canteen can mutate mid-tick.
     pub fire_cache: HashSet<Position>,
 
+    /// Tick-local distance field reused by AI pathfinding builtins.
+    pub(crate) dijkstra_cache_target_idx: Option<usize>,
+    pub(crate) dijkstra_cache_map: Vec<f32>,
+
     /// Per-level wizard dialogue callback. Set by each level builder.
     /// Called when player bumps wizard post-teaching.
     /// Return `true` to heal player, `false` to refuse.
@@ -173,8 +185,65 @@ impl World {
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
             fire_cache: HashSet::new(),
+            dijkstra_cache_target_idx: None,
+            dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
         }
+    }
+
+    pub(crate) fn clear_dijkstra_cache(&mut self) {
+        self.dijkstra_cache_target_idx = None;
+        self.dijkstra_cache_map.clear();
+    }
+
+    pub(crate) fn dijkstra_best_step(
+        &mut self,
+        from: Position,
+        target: Position,
+    ) -> Option<Position> {
+        if from == target || !self.map.contains(from) || !self.map.contains(target) {
+            return None;
+        }
+
+        let target_idx = self.map.idx(target);
+        self.ensure_dijkstra_cache(target_idx);
+
+        let from_idx = self.map.idx(from);
+        let current_dist = self.dijkstra_cache_map[from_idx];
+        if current_dist >= f32::MAX {
+            return None;
+        }
+
+        self.map
+            .get_available_exits(from_idx)
+            .into_iter()
+            .filter(|(idx, _)| self.dijkstra_cache_map[*idx] < current_dist)
+            .min_by(|(left, _), (right, _)| {
+                self.dijkstra_cache_map[*left]
+                    .partial_cmp(&self.dijkstra_cache_map[*right])
+                    .unwrap_or(Ordering::Equal)
+            })
+            .map(|(idx, _)| self.map.position_for_idx(idx))
+    }
+
+    fn ensure_dijkstra_cache(&mut self, target_idx: usize) {
+        let map_len = (self.map.width * self.map.height) as usize;
+        if self.dijkstra_cache_target_idx == Some(target_idx)
+            && self.dijkstra_cache_map.len() == map_len
+        {
+            return;
+        }
+
+        let dm = DijkstraMap::new(
+            self.map.width,
+            self.map.height,
+            &[target_idx],
+            &self.map,
+            AI_DIJKSTRA_MAX_DEPTH,
+        );
+        self.dijkstra_cache_map = dm.map;
+        self.dijkstra_cache_map[target_idx] = 0.0;
+        self.dijkstra_cache_target_idx = Some(target_idx);
     }
 
     /// Ensure flashlight cache is up to date. Call before reading `cached_flashlight`.

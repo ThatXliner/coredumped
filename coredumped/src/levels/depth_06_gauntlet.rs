@@ -44,7 +44,7 @@ pub(crate) fn build_gauntlet(world: &mut World) {
     // frag-001 in segment 3
     world
         .ecs
-        .spawn_fragment(Position::new(16, corridor_y - 2), "frag-001");
+        .spawn_fragment(Position::new(16, corridor_y), "frag-001");
 
     // Wizard at start
     let wizard_pos = Position::new(5, corridor_y - 1);

@@ -69,3 +69,59 @@ pub fn build_level(world: &mut World, depth: u32) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use crate::{EntityKind, World};
+
+    use super::build_level;
+
+    #[test]
+    fn campaign_fragment_spawns_are_walkable_and_cover_findable_memories() {
+        let mut placed = BTreeSet::new();
+
+        for depth in 0..=17 {
+            let mut world = World::new_game();
+            build_level(&mut world, depth);
+
+            for entity_id in world.ecs.entity_ids() {
+                if world.ecs.kind(entity_id) != Some(EntityKind::Fragment) {
+                    continue;
+                }
+
+                let pos = world
+                    .ecs
+                    .position(entity_id)
+                    .expect("fragment should have a position");
+                let fragment_id = world
+                    .ecs
+                    .fragment_id(entity_id)
+                    .expect("fragment should have an id");
+
+                assert!(
+                    world.map.is_walkable(pos),
+                    "{fragment_id} spawned on a blocked tile at depth {depth}: {pos:?}"
+                );
+                placed.insert(fragment_id.to_string());
+            }
+        }
+
+        for idx in 1..=33 {
+            let fragment_id = format!("frag-{idx:03}");
+            assert!(
+                placed.contains(&fragment_id),
+                "{fragment_id} has no campaign placement"
+            );
+        }
+
+        for idx in 34..=42 {
+            let fragment_id = format!("frag-{idx:03}");
+            assert!(
+                !placed.contains(&fragment_id),
+                "{fragment_id} should remain suppressed, not placed"
+            );
+        }
+    }
+}

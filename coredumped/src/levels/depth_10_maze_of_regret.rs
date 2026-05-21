@@ -1,6 +1,6 @@
 use bracket_color::prelude::{CYAN, RGB};
 
-use super::helpers::{apply_map, find_stairs_down};
+use super::helpers::{apply_map, find_stairs_down, spawn_fragment_near_open_floor};
 use crate::{
     entity::Position,
     map::{Map, MAP_HEIGHT, MAP_WIDTH},
@@ -20,16 +20,13 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
 
     // Fragments in various rooms
     let stairs = find_stairs_down(&world.map);
-    world.ecs.spawn_fragment(
+    spawn_fragment_near_open_floor(
+        world,
         Position::new(gen.player_start.x + 5, gen.player_start.y + 2),
         "frag-007",
     );
-    world
-        .ecs
-        .spawn_fragment(Position::new(stairs.x - 4, stairs.y - 2), "frag-008");
-    world
-        .ecs
-        .spawn_fragment(Position::new(stairs.x + 2, stairs.y + 4), "frag-009");
+    spawn_fragment_near_open_floor(world, Position::new(stairs.x - 4, stairs.y - 2), "frag-008");
+    spawn_fragment_near_open_floor(world, Position::new(stairs.x + 2, stairs.y + 4), "frag-009");
 
     // Wizard at entrance — uncertain
     let wizard_pos = Position::new(gen.player_start.x + 2, gen.player_start.y - 2);

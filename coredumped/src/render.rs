@@ -208,94 +208,32 @@ fn render_side_panel(ctx: &mut Frame, world: &World) {
     }
     y += 2;
 
-    // --- Keys section ---
-    print_section_header(ctx, c1, y, w, "keys");
-    y += 1;
-
-    if !world.player_can_attack {
-        print_clipped(ctx, c1, y, w, "HELPLESS - find wizard!");
-        y += 1;
-    }
-
-    let bind = |cmd: &str| -> String {
-        world
-            .bindings
-            .iter()
-            .find(|(_, v)| *v == cmd)
-            .map(|(k, _)| k.clone())
-            .unwrap_or_default()
-    };
-
-    // Movement — collect all direction keys
-    let move_keys: Vec<String> = [
-        bind("(move! :north)"),
-        bind("(move! :south)"),
-        bind("(move! :east)"),
-        bind("(move! :west)"),
-    ]
-    .into_iter()
-    .filter(|k| !k.is_empty())
-    .collect();
-    let move_str = move_keys.join("/");
-    if !move_str.is_empty() {
-        print_clipped(ctx, c1, y, 6, "move");
-        print_clipped(ctx, c1 + 6, y, w - 6, &move_str);
-        y += 1;
-    }
-
-    // Single-key actions
-    let descend_key = bind("(descend!)");
-    let inspector_key = bind("(toggle-inspector!)");
-    let console_key = bind("(toggle-console!)");
-    let bindings_key = bind("(toggle-keybindings!)");
-
-    let has_new_rules = !world.new_rule_ids.is_empty();
-    let has_new_bindings = world.has_new_bindings;
-    let entries: [(&str, &str, bool, bool); 4] = [
-        ("descend", display_key(&descend_key), false, false),
-        ("inspector", &inspector_key, has_new_rules, has_new_rules),
-        ("console", &console_key, false, false),
-        (
-            "bindings",
-            &bindings_key,
-            has_new_bindings,
-            has_new_bindings,
-        ),
-    ];
-    for (label, key, highlight, is_new) in &entries {
-        if !key.is_empty() {
-            let display = if *is_new {
-                format!("{label} [new]")
-            } else {
-                (*label).to_string()
-            };
-            if *highlight {
-                print_clipped_color(ctx, c1, y, 14, &display, RGB::named(YELLOW));
-            } else {
-                print_clipped(ctx, c1, y, 14, &display);
-            }
-            print_clipped(ctx, c1 + 15, y, w - 15, key);
-            y += 1;
-        }
-    }
+    let content_bottom = panel_y + panel_height - 2;
+    let log_reserved_rows = if event_log_uses_side_panel(ctx) { 8 } else { 0 };
+    let max_key_rows = (content_bottom - y + 1 - log_reserved_rows).max(0);
+    y = render_key_summary(ctx, world, c1, y, w, max_key_rows);
 
     // Fragment count
     let collected = world.fragment_registry.collected_count();
-    if collected > 0 {
+    if collected > 0 && y <= content_bottom {
         y += 1;
-        print_clipped(ctx, c1, y, w, &format!("memories {}/33", collected));
+        if y <= content_bottom {
+            print_clipped(ctx, c1, y, w, &format!("memories {}/33", collected));
+        }
     }
 
     // Ending display
     if let Some(ref ending) = world.ending {
-        y += 2;
-        print_clipped_color(ctx, c1, y, w, "--- ENDING ---", RGB::named(YELLOW));
-        y += 1;
-        for line in ending.lines() {
-            if y < panel_y + panel_height - 2 {
-                print_clipped(ctx, c1, y, w, line);
-            }
+        if y <= content_bottom {
+            y += 2;
+            print_clipped_color(ctx, c1, y, w, "--- ENDING ---", RGB::named(YELLOW));
             y += 1;
+            for line in ending.lines() {
+                if y < panel_y + panel_height - 2 {
+                    print_clipped(ctx, c1, y, w, line);
+                }
+                y += 1;
+            }
         }
     }
 
@@ -303,6 +241,196 @@ fn render_side_panel(ctx: &mut Frame, world: &World) {
         y += 2;
         let log_height = panel_y + panel_height - 1 - y;
         render_event_log_panel(ctx, world, c1, y, w, log_height);
+    }
+}
+
+fn render_key_summary(
+    ctx: &mut Frame,
+    world: &World,
+    x: i32,
+    mut y: i32,
+    width: i32,
+    max_rows: i32,
+) -> i32 {
+    if max_rows <= 0 {
+        return y;
+    }
+
+    let start_y = y;
+    let mut rows_used = 0;
+
+    print_section_header(ctx, x, y, width, "keys");
+    y += 1;
+    rows_used += 1;
+
+    if !world.player_can_attack && rows_used < max_rows {
+        print_clipped(ctx, x, y, width, "HELPLESS - find wizard!");
+        y += 1;
+        rows_used += 1;
+    }
+
+    let summaries = binding_summaries(world);
+    let remaining_rows = (max_rows - rows_used).max(0) as usize;
+    let needs_hint = summaries.len() > remaining_rows;
+    let binding_rows = if needs_hint {
+        remaining_rows.saturating_sub(1)
+    } else {
+        remaining_rows
+    };
+
+    for summary in summaries.iter().take(binding_rows) {
+        render_binding_summary(ctx, summary, x, y, width);
+        y += 1;
+        rows_used += 1;
+    }
+
+    if needs_hint && rows_used < max_rows {
+        print_clipped_color(ctx, x, y, width, "See more bindings: Tab", RGB::named(CYAN));
+        y += 1;
+    }
+
+    y.max(start_y + 1)
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct BindingSummary {
+    command: String,
+    label: String,
+    keys: Vec<String>,
+    is_new: bool,
+}
+
+fn render_binding_summary(ctx: &mut Frame, summary: &BindingSummary, x: i32, y: i32, width: i32) {
+    if width <= 0 {
+        return;
+    }
+
+    let key_text = summary
+        .keys
+        .iter()
+        .map(|key| display_key(key))
+        .collect::<Vec<_>>()
+        .join("/");
+    let key_width = key_text.chars().count() as i32;
+    let label_width = (width - key_width - 1).max(1);
+    let label = if summary.is_new {
+        format!("{} [new]", summary.label)
+    } else {
+        summary.label.clone()
+    };
+    let label_color = if summary.is_new {
+        RGB::named(YELLOW)
+    } else {
+        RGB::named(WHITE)
+    };
+
+    print_clipped_color(ctx, x, y, label_width, &label, label_color);
+    if key_width > 0 && label_width + 1 < width {
+        print_clipped(
+            ctx,
+            x + label_width + 1,
+            y,
+            width - label_width - 1,
+            &key_text,
+        );
+    }
+}
+
+fn binding_summaries(world: &World) -> Vec<BindingSummary> {
+    let mut summaries: Vec<BindingSummary> = Vec::new();
+    for (key, command) in &world.bindings {
+        if let Some(summary) = summaries
+            .iter_mut()
+            .find(|summary| summary.command == *command)
+        {
+            summary.keys.push(key.clone());
+            summary.is_new |= world.new_binding_keys.contains(key);
+            continue;
+        }
+
+        summaries.push(BindingSummary {
+            command: command.clone(),
+            label: binding_label(command),
+            keys: vec![key.clone()],
+            is_new: world.new_binding_keys.contains(key)
+                || (command == "(toggle-inspector!)" && !world.new_rule_ids.is_empty())
+                || (command == "(toggle-keybindings!)" && world.has_new_bindings),
+        });
+    }
+
+    for summary in &mut summaries {
+        summary.keys.sort_by_key(|key| binding_key_priority(key));
+    }
+    summaries.sort_by(|a, b| {
+        binding_command_priority(&a.command)
+            .cmp(&binding_command_priority(&b.command))
+            .then_with(|| a.label.cmp(&b.label))
+            .then_with(|| a.keys.cmp(&b.keys))
+    });
+
+    summaries
+}
+
+fn binding_label(command: &str) -> String {
+    match command {
+        "(move! :north)" => "move north".into(),
+        "(move! :south)" => "move south".into(),
+        "(move! :west)" => "move west".into(),
+        "(move! :east)" => "move east".into(),
+        "(wait!)" => "wait".into(),
+        "(descend!)" => "descend".into(),
+        "(ascend!)" => "ascend".into(),
+        "(block!)" => "block".into(),
+        "(shove!)" => "shove".into(),
+        "(toggle-inspector!)" => "inspector".into(),
+        "(toggle-console!)" => "console".into(),
+        "(toggle-keybindings!)" => "bindings".into(),
+        "(quit!)" => "quit".into(),
+        command if command.contains("do-attack") => "attack".into(),
+        command => command.to_string(),
+    }
+}
+
+fn binding_command_priority(command: &str) -> usize {
+    match command {
+        "(move! :north)" => 0,
+        "(move! :south)" => 1,
+        "(move! :west)" => 2,
+        "(move! :east)" => 3,
+        "(wait!)" => 4,
+        "(descend!)" => 5,
+        "(ascend!)" => 6,
+        "(block!)" => 7,
+        "(shove!)" => 8,
+        "(toggle-inspector!)" => 9,
+        "(toggle-console!)" => 10,
+        "(toggle-keybindings!)" => 11,
+        "(quit!)" => 12,
+        command if command.contains("do-attack") => 13,
+        _ => 100,
+    }
+}
+
+fn binding_key_priority(key: &str) -> usize {
+    match key {
+        "h" => 0,
+        "j" => 1,
+        "k" => 2,
+        "l" => 3,
+        "left" => 4,
+        "down" => 5,
+        "up" => 6,
+        "right" => 7,
+        "." => 8,
+        ">" => 9,
+        "<" => 10,
+        "b" => 11,
+        "v" => 12,
+        "i" => 13,
+        "`" => 14,
+        "tab" => 15,
+        "q" => 16,
+        key => 100 + key.bytes().map(usize::from).sum::<usize>(),
     }
 }
 
@@ -989,6 +1117,32 @@ mod tests {
         let narrow = Frame::new(MAP_BOX_WIDTH + PANEL_MIN_WIDTH - 1, MAP_BOX_HEIGHT + 3);
 
         assert!(!event_log_uses_side_panel(&narrow));
+    }
+
+    #[test]
+    fn key_summary_groups_duplicate_commands() {
+        let mut world = World::minimal();
+        world.bindings.insert("k".into(), "(move! :north)".into());
+        world.bindings.insert("up".into(), "(move! :north)".into());
+        world
+            .bindings
+            .insert("i".into(), "(toggle-inspector!)".into());
+        world.new_rule_ids.insert("slime-hunt".into());
+
+        let summaries = binding_summaries(&world);
+        let north = summaries
+            .iter()
+            .find(|summary| summary.command == "(move! :north)")
+            .expect("north movement binding should be summarized");
+        assert_eq!(north.label, "move north");
+        assert_eq!(north.keys, vec!["k", "up"]);
+
+        let inspector = summaries
+            .iter()
+            .find(|summary| summary.command == "(toggle-inspector!)")
+            .expect("inspector binding should be summarized");
+        assert_eq!(inspector.label, "inspector");
+        assert!(inspector.is_new);
     }
 
     #[test]

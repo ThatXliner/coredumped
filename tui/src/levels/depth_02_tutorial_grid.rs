@@ -81,7 +81,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Move with arrow keys or hjkl.\nYou can fight now — try your\nbound attack key!",
     );
     world.ecs.spawn_slime(Position::new(14, 6));
-    world.ecs.spawn_slime(Position::new(10, 8));
+    world.ecs.spawn_bat(Position::new(10, 8));
 
     // Room 1: Inspector
     world.ecs.spawn_sign(
@@ -89,14 +89,16 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Press i to open the inspector.\nHover over things to learn\ntheir names and properties.",
     );
     world.ecs.spawn_slime(Position::new(31, 6));
-    world.ecs.spawn_slime(Position::new(27, 8));
+    world.ecs.spawn_bat(Position::new(27, 8));
 
     // Room 2: Wizard room
     let wizard_pos = Position::new(38, 6);
-    world
-        .ecs
-        .spawn_sign(Position::new(44, 4), "The wizard waits for you.");
+    world.ecs.spawn_sign(
+        Position::new(44, 4),
+        "The wizard comes and goes.\nTalk to him when you can.\nPress ` to open a console\nand learn the dungeon's language.",
+    );
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.ecs.spawn_fragment(Position::new(50, 9), "frag-001");
 
     // Room 3: Wait
     world.ecs.spawn_sign(
@@ -104,7 +106,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Press . to wait. Time passes\nand enemies move too.\nUse (wait!) in bindings.",
     );
     world.ecs.spawn_slime(Position::new(12, 20));
-    world.ecs.spawn_slime(Position::new(7, 18));
+    world.ecs.spawn_goblin(Position::new(7, 18));
 
     // Room 4: Enemy inspection
     world.ecs.spawn_sign(
@@ -113,11 +115,15 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     );
     world.ecs.spawn_slime(Position::new(31, 20));
     world.ecs.spawn_bat(Position::new(28, 16));
+    world.ecs.spawn_sign(
+        Position::new(33, 15),
+        "Bats have only 2 HP but\ncan fly through walls.\nUse i to inspect enemies.",
+    );
 
     // Room 5: Console
     world.ecs.spawn_sign(
         Position::new(37, 17),
-        "Press ` to open the console.\nTry: (player-facing)\nOr: (bind-key :z (do-attack))",
+        "Press ` for the console.\nTry simple expressions:\n  (player-facing)\n  (+ 1 2)\n  (help)\nLanguage runs the dungeon.",
     );
     world.ecs.spawn_slime(Position::new(48, 20));
     world.ecs.spawn_slime(Position::new(42, 17));
@@ -129,6 +135,10 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     );
     world.ecs.spawn_slime(Position::new(14, 29));
     world.ecs.spawn_goblin(Position::new(7, 26));
+    world.ecs.spawn_sign(
+        Position::new(14, 31),
+        "Goblins have 5 HP and\nhit harder. Tactical\npositioning matters.",
+    );
 
     // Room 7: "Nothing is wrong"
     world

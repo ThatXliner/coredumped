@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use super::helpers::{apply_map, find_stairs_down};
 use crate::{
     entity::Position,
@@ -32,4 +34,13 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
     // Wizard at entrance — uncertain
     let wizard_pos = Position::new(gen.player_start.x + 2, gen.player_start.y - 2);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world.event_log.push_colored(
+        "\"I could tell you the way. I think you need to find it yourself.\"",
+        RGB::named(CYAN),
+    );
+    true
 }

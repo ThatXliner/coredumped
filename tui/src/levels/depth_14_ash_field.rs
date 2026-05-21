@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -60,4 +62,12 @@ pub(crate) fn build_ash_field(world: &mut World) {
     // Wizard at end
     let wizard_pos = Position::new(MAP_WIDTH - 4, MAP_HEIGHT - 4);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world
+        .event_log
+        .push_colored("\"...You crossed the ash. Not many do.\"", RGB::named(CYAN));
+    true
 }

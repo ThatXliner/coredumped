@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use super::helpers::apply_map;
 use crate::{
     entity::Position,
@@ -25,4 +27,13 @@ pub(crate) fn build_first_scar(world: &mut World) {
     // Wizard at midpoint — player alone at start for first time
     let wizard_pos = Position::new(MAP_WIDTH / 2, MAP_HEIGHT / 2);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world.event_log.push_colored(
+        "\"Ah, you made it past the... the. I'm sorry. The air down here is different.\"",
+        RGB::named(CYAN),
+    );
+    true
 }

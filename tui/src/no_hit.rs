@@ -253,6 +253,7 @@ mod tests {
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
             fire_cache: HashSet::new(),
+            on_wizard_interact: None,
         }
     }
 

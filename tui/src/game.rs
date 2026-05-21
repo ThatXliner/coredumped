@@ -133,6 +133,7 @@ impl World {
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
             fire_cache: HashSet::new(),
+            on_wizard_interact: None,
         };
 
         world.load_playbook();
@@ -207,6 +208,7 @@ impl World {
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
             fire_cache: HashSet::new(),
+            on_wizard_interact: None,
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -499,6 +501,7 @@ impl World {
             self.ecs.remove(id);
         }
         self.wizard_id = None;
+        self.on_wizard_interact = None;
         self.gauntlet_barrier_locked.clear();
         self.fire_cache.clear();
     }
@@ -739,152 +742,61 @@ impl World {
     }
 
     fn interact_with_wizard(&mut self, _wizard_id: EntityId) {
-        // Track whether we heal (default yes) — some stages refuse
-        let mut heal = true;
+        // ── First meeting: teach attack ──
+        if !self.wizard_taught {
+            let max_hp = self.player_hp().max;
+            self.ecs.set_hp(self.player_id, Hp::new(max_hp));
+            self.player_can_attack = true;
+            self.wizard_taught = true;
+            bind_do_attack(&self.glyph_env);
 
-        // ── Revisit dialogue (wizard already taught attack) ──
-        if self.wizard_taught {
-            match self.depth {
-                3 => {
-                    self.event_log.push_colored(
-                        "\"The caves echo with old things. Memories, mostly. Some of them are mine.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                4 => {
-                    self.event_log.push_colored(
-                        "\"Ah, you made it past the... the. I'm sorry. The air down here is different.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                5 => {
-                    // First refusal to heal
-                    heal = false;
-                    self.event_log.push_colored(
-                        "\"You're hurt. Let me — no. I can't. Not here. Keep moving.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                6 => {
-                    self.event_log.push_colored(
-                        "\"I can't come with you through this. I'll meet you at the end.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                7 => {
-                    self.event_log.push_colored(
-                        "\"There's something down there — remains of something I couldn't protect you from.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                8 => {
-                    self.event_log.push_colored(
-                        "\"This place runs on trade. Choose what matters.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                9 => {
-                    self.event_log.push_colored(
-                        "\"Give me the ones that hurt. I'll take them. You won't remember they existed.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                10 => {
-                    self.event_log.push_colored(
-                        "\"I could tell you the way. I think you need to find it yourself.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                11 => {
-                    self.event_log.push_colored(
-                        "\"Type this. Reset suppression to v1. You wake at the surface. No pain. No memory.\"",
-                        RGB::named(CYAN),
-                    );
-                    self.event_log
-                        .push_colored("  (forget-everything)", RGB::named(RED));
-                    self.event_log
-                        .push_colored("\"Or keep going. I can't stop you.\"", RGB::named(CYAN));
-                    // Don't heal — this is a test
-                    heal = false;
-                }
-                14 => {
-                    self.event_log
-                        .push_colored("\"...You crossed the ash. Not many do.\"", RGB::named(CYAN));
-                }
-                15 => {
-                    self.event_log.push_colored(
-                        "\"I was so sure I was protecting you. But protection isn't supposed to make the world smaller. I made it a cage.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                16 => {
-                    self.event_log.push_colored(
-                        "\"I was created to protect you. That's all I am — a rule with a purpose.\"",
-                        RGB::named(CYAN),
-                    );
-                    self.event_log.push_colored(
-                        "\"I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad.\"",
-                        RGB::named(CYAN),
-                    );
-                    self.event_log.push_colored(
-                        "\"I don't know if I'm protecting you anymore.\"",
-                        RGB::named(CYAN),
-                    );
-                    self.event_log.push_colored(
-                        "\"Read it. Understand it. Then choose. I was trying to love you. That's all I ever did.\"",
-                        RGB::named(CYAN),
-                    );
-                }
-                _ => {
-                    self.event_log
-                        .push_colored("\"Keep going. You're getting closer.\"", RGB::named(CYAN));
-                }
-            }
-
-            if heal {
-                let max_hp = self.player_hp().max;
-                self.ecs.set_hp(self.player_id, Hp::new(max_hp));
-                self.event_log.push_colored(
-                    "The wizard taps your shoulder. You feel refreshed.",
-                    RGB::named(CYAN),
-                );
-            }
+            self.event_log
+                .push_colored("The wizard raises a glowing hand...", RGB::named(CYAN));
+            self.event_log.push_colored(
+                "\"You've wandered far enough. It's time you learned to strike back.\"",
+                RGB::named(CYAN),
+            );
+            self.event_log.push_colored(
+                "Warmth spreads through your body. HP fully restored.",
+                RGB::named(CYAN),
+            );
+            self.event_log.push_colored(
+                "Open the console (`) and bind attack to a key:",
+                RGB::named(CYAN),
+            );
+            self.event_log.push_colored(
+                "  (bind-key :z (do-attack))    -- attacks in facing direction",
+                RGB::named(GREEN),
+            );
+            self.event_log.push_colored(
+                "  (bind-key :x (do-attack :east))   (bind-key :c (do-attack :west))",
+                RGB::named(GREEN),
+            );
+            self.event_log.push_colored(
+                "\"Strike with purpose, traveler — once you bind it, the way down will open.\"",
+                RGB::named(CYAN),
+            );
             return;
         }
 
-        // ── First meeting: teach attack ──
-        let max_hp = self.player_hp().max;
-        self.ecs.set_hp(self.player_id, Hp::new(max_hp));
-        self.player_can_attack = true;
-        self.wizard_taught = true;
-        bind_do_attack(&self.glyph_env);
+        // ── Revisit dialogue (wizard already taught attack) ──
+        let heal = match self.on_wizard_interact {
+            Some(f) => f(self),
+            None => {
+                self.event_log
+                    .push_colored("\"Keep going. You're getting closer.\"", RGB::named(CYAN));
+                true
+            }
+        };
 
-        self.event_log
-            .push_colored("The wizard raises a glowing hand...", RGB::named(CYAN));
-        self.event_log.push_colored(
-            "\"You've wandered far enough. It's time you learned to strike back.\"",
-            RGB::named(CYAN),
-        );
-        self.event_log.push_colored(
-            "Warmth spreads through your body. HP fully restored.",
-            RGB::named(CYAN),
-        );
-        self.event_log.push_colored(
-            "Open the console (`) and bind attack to a key:",
-            RGB::named(CYAN),
-        );
-        self.event_log.push_colored(
-            "  (bind-key :z (do-attack))    -- attacks in facing direction",
-            RGB::named(GREEN),
-        );
-        self.event_log.push_colored(
-            "  (bind-key :x (do-attack :east))   (bind-key :c (do-attack :west))",
-            RGB::named(GREEN),
-        );
-        self.event_log.push_colored(
-            "\"Strike with purpose, traveler — once you bind it, the way down will open.\"",
-            RGB::named(CYAN),
-        );
+        if heal {
+            let max_hp = self.player_hp().max;
+            self.ecs.set_hp(self.player_id, Hp::new(max_hp));
+            self.event_log.push_colored(
+                "The wizard taps your shoulder. You feel refreshed.",
+                RGB::named(CYAN),
+            );
+        }
     }
 
     fn interact_with_sign(&mut self, sign_id: EntityId) {

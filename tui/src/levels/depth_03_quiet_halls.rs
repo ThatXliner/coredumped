@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -96,6 +98,7 @@ pub(crate) fn build_quiet_halls(world: &mut World) {
     // Wizard near entrance
     let wizard_pos = Position::new(9, 5);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
 
     // Cave-dwelling enemies
     world.ecs.spawn_bat(Position::new(34, 8));
@@ -123,4 +126,12 @@ pub(crate) fn build_quiet_halls(world: &mut World) {
         Position::new(22, 28),
         "The way down is through.\nKeep walking.\n\n  — the wizard",
     );
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world.event_log.push_colored(
+        "\"The caves echo with old things. Memories, mostly. Some of them are mine.\"",
+        RGB::named(CYAN),
+    );
+    true
 }

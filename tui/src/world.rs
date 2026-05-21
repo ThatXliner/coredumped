@@ -115,6 +115,11 @@ pub struct World {
 
     /// Fire-tile cache rebuilt at tick start. Vapor Canteen can mutate mid-tick.
     pub fire_cache: HashSet<Position>,
+
+    /// Per-level wizard dialogue callback. Set by each level builder.
+    /// Called when player bumps wizard post-teaching.
+    /// Return `true` to heal player, `false` to refuse.
+    pub on_wizard_interact: Option<fn(&mut World) -> bool>,
 }
 
 impl World {
@@ -168,6 +173,7 @@ impl World {
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
             fire_cache: HashSet::new(),
+            on_wizard_interact: None,
         }
     }
 

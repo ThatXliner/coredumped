@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -74,10 +76,19 @@ pub(crate) fn build_boiling_heart(world: &mut World) {
     // Wizard before boss — warns about the heat
     let wizard_pos = Position::new(rx + 3, ry + rh / 2 + 2);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
 
     // Sign near entrance warning about fire
     world.ecs.spawn_sign(
         Position::new(rx + 2, ry + rh / 2 - 2),
         "The air shimmers with heat.\nFire pools on the floor ahead —\nit will burn you every step.\n\nSomething cold might quench it.",
     );
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world.event_log.push_colored(
+        "\"There's something down there — remains of something I couldn't protect you from.\"",
+        RGB::named(CYAN),
+    );
+    true
 }

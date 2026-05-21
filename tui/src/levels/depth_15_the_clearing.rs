@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -75,4 +77,13 @@ pub(crate) fn build_the_clearing(world: &mut World) {
     // Wizard under the tree
     let wizard_pos = Position::new(MAP_WIDTH / 2 + 1, MAP_HEIGHT / 2);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world.event_log.push_colored(
+        "\"I was so sure I was protecting you. But protection isn't supposed to make the world smaller. I made it a cage.\"",
+        RGB::named(CYAN),
+    );
+    true
 }

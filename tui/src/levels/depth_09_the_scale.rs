@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -68,4 +70,13 @@ pub(crate) fn build_the_scale(world: &mut World) {
     // Wizard in center
     let wizard_pos = Position::new(cx, cy + 4);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world.event_log.push_colored(
+        "\"Give me the ones that hurt. I'll take them. You won't remember they existed.\"",
+        RGB::named(CYAN),
+    );
+    true
 }

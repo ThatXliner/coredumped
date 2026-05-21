@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -74,4 +76,25 @@ pub(crate) fn build_the_descent(world: &mut World) {
     // Wizard walks alongside
     let wizard_pos = Position::new(cx + 2, cy);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world.event_log.push_colored(
+        "\"I was created to protect you. That's all I am — a rule with a purpose.\"",
+        RGB::named(CYAN),
+    );
+    world.event_log.push_colored(
+        "\"I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad.\"",
+        RGB::named(CYAN),
+    );
+    world.event_log.push_colored(
+        "\"I don't know if I'm protecting you anymore.\"",
+        RGB::named(CYAN),
+    );
+    world.event_log.push_colored(
+        "\"Read it. Understand it. Then choose. I was trying to love you. That's all I ever did.\"",
+        RGB::named(CYAN),
+    );
+    true
 }

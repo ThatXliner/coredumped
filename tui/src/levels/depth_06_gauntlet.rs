@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -47,4 +49,13 @@ pub(crate) fn build_gauntlet(world: &mut World) {
     // Wizard at start
     let wizard_pos = Position::new(5, corridor_y - 1);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world.event_log.push_colored(
+        "\"I can't come with you through this. I'll meet you at the end.\"",
+        RGB::named(CYAN),
+    );
+    true
 }

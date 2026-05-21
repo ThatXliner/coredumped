@@ -1,3 +1,5 @@
+use bracket_lib::prelude::{CYAN, RGB};
+
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -71,4 +73,13 @@ pub(crate) fn build_counting_room(world: &mut World) {
     // Wizard at entrance
     let wizard_pos = Position::new(hub_x + 2, hub_y - 2);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
+    world.on_wizard_interact = Some(wizard_interact);
+}
+
+fn wizard_interact(world: &mut World) -> bool {
+    world.event_log.push_colored(
+        "\"This place runs on trade. Choose what matters.\"",
+        RGB::named(CYAN),
+    );
+    true
 }

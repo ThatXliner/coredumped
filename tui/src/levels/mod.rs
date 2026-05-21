@@ -4,8 +4,6 @@
 //! the player, and spawns entities. Adding a new hand-crafted level means
 //! writing one builder function and adding a match arm in [`build_level`].
 
-mod helpers;
-mod procedural;
 mod depth_00_foyer;
 mod depth_01_wizard_chamber;
 mod depth_02_tutorial_grid;
@@ -24,17 +22,15 @@ mod depth_14_ash_field;
 mod depth_15_the_clearing;
 mod depth_16_the_descent;
 mod depth_17_the_core;
+mod helpers;
+mod procedural;
 
-#[allow(unused_imports)]
-pub use helpers::find_stairs_down;
 #[allow(unused_imports)]
 pub use depth_01_wizard_chamber::generate_wizard_box;
+#[allow(unused_imports)]
+pub use helpers::find_stairs_down;
 
-use crate::{
-    entity::Position,
-    map::TileType,
-    world::World,
-};
+use crate::{entity::Position, map::TileType, world::World};
 
 /// Dispatch to the appropriate level builder for the given depth.
 pub fn build_level(world: &mut World, depth: u32) {

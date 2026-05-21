@@ -196,7 +196,9 @@ impl World {
 
     /// Scan currently visible rules and record any newly discovered ones.
     pub fn refresh_rule_discovery(&mut self) {
-        let visible = self.registry.visible_ids(&self.seen_entity_kinds, &self.seen_tile_types);
+        let visible = self
+            .registry
+            .visible_ids(&self.seen_entity_kinds, &self.seen_tile_types);
         for id in visible {
             if !self.known_rule_ids.contains(&id) {
                 self.known_rule_ids.insert(id.clone());

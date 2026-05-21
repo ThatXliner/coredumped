@@ -1,5 +1,7 @@
 # Xlyph
 
+![](./coredumped_logo.png)
+
 Welcome, traveler.
 
 Before thee lies a dungeon of rules, lamps, slimes, and suspiciously readable

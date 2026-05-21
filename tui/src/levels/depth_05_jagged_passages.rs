@@ -1,9 +1,5 @@
 use super::helpers::{apply_map, spawn_wizard_near_player};
-use crate::{
-    entity::Position,
-    map::Map,
-    world::World,
-};
+use crate::{entity::Position, map::Map, world::World};
 
 // ---------------------------------------------------------------------------
 // Depth 5 — Jagged Passages (Anger: hostile terrain)

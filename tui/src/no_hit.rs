@@ -229,6 +229,7 @@ mod tests {
             wizard_id: None,
             bindings: std::collections::HashMap::new(),
             has_new_bindings: false,
+            new_binding_keys: std::collections::HashSet::new(),
             konami_index: 0,
             cheat_unlocked: false,
             console_history: Vec::new(),

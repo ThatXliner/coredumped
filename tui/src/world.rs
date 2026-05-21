@@ -48,6 +48,10 @@ pub struct World {
     /// Cleared when the keybindings overlay is opened.
     pub has_new_bindings: bool,
 
+    /// Binding keys added since the last time the keybindings overlay was opened.
+    /// Mirrors new_rule_ids for the rules inspector.
+    pub new_binding_keys: HashSet<String>,
+
     /// Tracks progress through the Konami code (↑↑↓↓←→←→).
     pub konami_index: usize,
     /// Set to true when the full Konami code is entered.
@@ -140,6 +144,7 @@ impl World {
             wizard_id: None,
             bindings: HashMap::new(),
             has_new_bindings: false,
+            new_binding_keys: HashSet::new(),
             konami_index: 0,
             cheat_unlocked: false,
             console_history: Vec::new(),

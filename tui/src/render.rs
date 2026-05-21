@@ -229,20 +229,31 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
     let bindings_key = bind("(toggle-keybindings!)");
 
     let has_new_rules = !world.new_rule_ids.is_empty();
-    let entries: [(&str, &str, bool); 4] = [
-        ("descend", display_key(&descend_key), false),
-        ("inspector", &inspector_key, has_new_rules),
-        ("console", &console_key, false),
-        ("bindings", &bindings_key, world.has_new_bindings),
+    let has_new_bindings = world.has_new_bindings;
+    let entries: [(&str, &str, bool, bool); 4] = [
+        ("descend", display_key(&descend_key), false, false),
+        ("inspector", &inspector_key, has_new_rules, has_new_rules),
+        ("console", &console_key, false, false),
+        (
+            "bindings",
+            &bindings_key,
+            has_new_bindings,
+            has_new_bindings,
+        ),
     ];
-    for (label, key, highlight) in &entries {
+    for (label, key, highlight, is_new) in &entries {
         if !key.is_empty() {
-            if *highlight {
-                print_clipped_color(ctx, c1, y, 8, label, RGB::named(YELLOW));
+            let display = if *is_new {
+                format!("{label} [new]")
             } else {
-                print_clipped(ctx, c1, y, 8, label);
+                (*label).to_string()
+            };
+            if *highlight {
+                print_clipped_color(ctx, c1, y, 14, &display, RGB::named(YELLOW));
+            } else {
+                print_clipped(ctx, c1, y, 14, &display);
             }
-            print_clipped(ctx, c1 + 9, y, w - 9, key);
+            print_clipped(ctx, c1 + 15, y, w - 15, key);
             y += 1;
         }
     }
@@ -701,8 +712,20 @@ fn render_keybindings(ctx: &mut BTerm, world: &World) {
         let mut sorted: Vec<_> = world.bindings.iter().collect();
         sorted.sort_by_key(|(k, _)| *k);
         for (key, command) in &sorted {
-            print_clipped(ctx, inner_x + 1, line_y, 6, &format!("[{}]", key));
-            print_clipped(ctx, inner_x + 8, line_y, inner_w - 8, command);
+            let is_new = world.new_binding_keys.contains(*key);
+            let key_label = format!("[{}]", key);
+            let fg = if is_new {
+                RGB::named(CYAN)
+            } else {
+                RGB::named(WHITE)
+            };
+            print_clipped_color(ctx, inner_x + 1, line_y, 6, &key_label, fg);
+            if is_new {
+                print_clipped_color(ctx, inner_x + 7, line_y, 6, "[NEW]", RGB::named(CYAN));
+                print_clipped(ctx, inner_x + 13, line_y, inner_w - 13, command);
+            } else {
+                print_clipped(ctx, inner_x + 7, line_y, inner_w - 7, command);
+            }
             line_y += 1;
             if line_y > y + height - 3 {
                 break;

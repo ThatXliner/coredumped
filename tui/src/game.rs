@@ -109,6 +109,7 @@ impl World {
             wizard_id: None,
             bindings: default_bindings(),
             has_new_bindings: false,
+            new_binding_keys: HashSet::new(),
             konami_index: 0,
             cheat_unlocked: false,
             console_history: Vec::new(),
@@ -182,6 +183,7 @@ impl World {
             wizard_id: None,
             bindings: default_bindings(),
             has_new_bindings: false,
+            new_binding_keys: HashSet::new(),
             konami_index: 0,
             cheat_unlocked: false,
             console_history: Vec::new(),
@@ -1819,6 +1821,8 @@ fn builtin_toggle_keybindings(
     world.mode = if world.mode == Mode::Keybindings {
         Mode::Normal
     } else {
+        world.has_new_bindings = false;
+        world.new_binding_keys.clear();
         Mode::Keybindings
     };
     Ok(Value::Nil)

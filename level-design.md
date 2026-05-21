@@ -1,4 +1,4 @@
-# Xlyph: Level Design — The Vessel
+# CoreDumped: Level Design — The Vessel
 
 **Status**: Final design spec
 **Based on**: game-architecture.md, current codebase (Rust + Glyph Lisp embed + bracket-lib)
@@ -652,7 +652,7 @@ When player has no attack (`player_can_attack = false`), bumping an enemy trigge
 | **Size** | 25×15 |
 | **Enemies** | 1 Slime (`s` HP3 — pushable, [see Shove Mechanic](#shove-mechanic)) |
 | **Fragments** | None |
-| **Special** | Sign at entrance: "Xlyph runtime booted. If you're reading this, you finally woke up." Sign at stairs: "Move with arrow keys or hjkl. Descend when ready." Player has no attack. |
+| **Special** | Sign at entrance: "CoreDumped runtime booted. If you're reading this, you finally woke up." Sign at stairs: "Move with arrow keys or hjkl. Descend when ready." Player has no attack. |
 | **Wizard** | First meeting — heals player to full. "Ah — you're awake. I was starting to worry. You've been... resting. Come, let me show you how things work here." |
 | **Palette** | Warm amber, soft gray. |
 | **Purpose** | Establish helplessness + shove mechanic. Player learns they can interact without killing. Wizard dialogue: "resting" implies he wasn't always here. |

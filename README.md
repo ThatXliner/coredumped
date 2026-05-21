@@ -1,12 +1,16 @@
-# Xlyph
+# CoreDumped
 
 ![](./coredumped_logo.png)
 
 Welcome, traveler.
 
 Before thee lies a dungeon of rules, lamps, slimes, and suspiciously readable
-machinery. Xlyph is a text-graphical roguelike about understanding, editing, and
-eventually rewriting the rules of the thing trying to kill you.
+machinery. **CoreDumped** is a text-graphical roguelike about understanding,
+editing, and eventually rewriting the rules of the thing trying to kill you.
+
+CoreDumped is built on the **Xlyph** engine — a reusable framework for
+Glyph-powered roguelikes. The engine provides the ECS, map, rules registry,
+rendering, and Glyph language runtime. The game and its levels are built on top.
 
 The current beta is a small playable vertical slice: a text-graphical dungeon,
 turn-based movement, pathing enemies, a directional flashlight, an inspector
@@ -19,7 +23,7 @@ world exactly one tick.
 
 ## Why
 
-Most roguelikes ask you to learn a system from the outside. Xlyph is an
+Most roguelikes ask you to learn a system from the outside. CoreDumped is an
 experiment in making the system itself part of the dungeon.
 
 The long-term idea is that monsters, items, terrain, and mechanics can expose
@@ -195,6 +199,3 @@ Later:
 - More expressive world editing
 - A real design pass on balance, readability, and pacing
 
-## Name
-
-`Xlyph` is a working title. It is short, odd, and looks good in blocky glyphs.

@@ -526,7 +526,7 @@ The root environment is initialised by the host with all built-in functions and 
 
 ## 8. Sandbox & Host Integration
 
-Glyph is designed to run embedded in a host application (currently: the Xlyph roguelike). The host controls what capabilities Glyph code has.
+Glyph is designed to run embedded in a host application (currently: the CoreDumped roguelike). The host controls what capabilities Glyph code has.
 
 ### 8.1 Recursion limiting
 

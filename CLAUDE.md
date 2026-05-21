@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Xlyph is a text-graphical roguelike about inspecting and eventually rewriting the rules that govern the dungeon. The current beta is a playable vertical slice using `bracket-lib` for rendering, input, and pathfinding. The long-term vision embeds a custom Lisp (Glyph) as the run-time for rules, queries, and player-authored patches, but the playable prototype today is pure Rust.
+CoreDumped is a text-graphical roguelike about inspecting and eventually rewriting the rules that govern the dungeon, built on the **Xlyph** engine. The current beta is a playable vertical slice using `bracket-lib` for rendering, input, and pathfinding. The long-term vision embeds a custom Lisp (Glyph) as the run-time for rules, queries, and player-authored patches, but the playable prototype today is pure Rust.
 
 ## Commands
 
@@ -22,11 +22,11 @@ cargo test
 cargo fmt
 ```
 
-The workspace has one crate: `tui` (package name `xlyph-tui`). No other automation beyond Cargo.
+The workspace has one crate: `coredumped` (package name `xlyph-tui`). No other automation beyond Cargo.
 
 ## Architecture
 
-All source lives under `tui/src/`. The only external dependency is `bracket-lib ~0.8`.
+All source lives under `coredumped/src/`. The only external dependency is `bracket-lib ~0.8`.
 
 **Simulation core** — `game.rs`
 - `World` owns the map, turn counter, UI mode, event log, console buffer, player-facing direction, inspector scroll, and an `Ecs` store. It is the single source of truth.

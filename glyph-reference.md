@@ -1,6 +1,6 @@
 # Glyph Language Reference
 
-A guided tour of Glyph, the Lisp dialect embedded in Xlyph. If you want the formal grammar and semantics, see `language-spec.md`. This document is meant to be read cover-to-cover.
+A guided tour of Glyph, the Lisp dialect embedded in CoreDumped. If you want the formal grammar and semantics, see `language-spec.md`. This document is meant to be read cover-to-cover.
 
 ## Hello, World
 

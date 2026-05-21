@@ -1,4 +1,4 @@
-use bracket_lib::prelude::{CYAN, RGB};
+use bracket_color::prelude::{CYAN, RGB};
 
 use crate::{
     entity::Position,

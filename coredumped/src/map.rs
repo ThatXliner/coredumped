@@ -1,4 +1,4 @@
-//! Static map and bracket-lib pathing implementation.
+//! Static map and pathing implementation.
 //!
 //! The map owns terrain, walkability, pathfinding exits, and the v1 flashlight
 //! ray caster. It does not know about entities beyond receiving a player
@@ -6,9 +6,8 @@
 
 use std::collections::{HashSet, VecDeque};
 
-use bracket_lib::prelude::{
-    Algorithm2D, BaseMap, DistanceAlg, Point, RandomNumberGenerator, SmallVec,
-};
+use bracket_pathfinding::prelude::{Algorithm2D, BaseMap, DistanceAlg, Point, SmallVec};
+use bracket_random::prelude::RandomNumberGenerator;
 
 use serde::{Deserialize, Serialize};
 

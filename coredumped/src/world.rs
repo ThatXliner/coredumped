@@ -8,10 +8,8 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-use bracket_lib::{
-    pathfinding::DijkstraMap,
-    prelude::{BaseMap, RGB},
-};
+use bracket_color::prelude::RGB;
+use bracket_pathfinding::prelude::{BaseMap, DijkstraMap};
 
 use crate::{
     ecs::Ecs,

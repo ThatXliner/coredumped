@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-CoreDumped is a text-graphical roguelike about inspecting and eventually rewriting the rules that govern the dungeon, built on the **Xlyph** engine. The current beta is a playable vertical slice using `bracket-lib` for rendering, input, and pathfinding. The long-term vision embeds a custom Lisp (Glyph) as the run-time for rules, queries, and player-authored patches, but the playable prototype today is pure Rust.
+CoreDumped is a text-graphical roguelike about inspecting and eventually rewriting the rules that govern the dungeon, built on the **Xlyph** engine. The current beta is a playable vertical slice using `crossterm` for the terminal frontend and small bracket crates for color, geometry, pathfinding, and random numbers. The long-term vision embeds a custom Lisp (Glyph) as the run-time for rules, queries, and player-authored patches, but the playable prototype today is pure Rust.
 
 ## Commands
 
@@ -26,24 +26,24 @@ The workspace has one crate: `coredumped` (package name `xlyph-tui`). No other a
 
 ## Architecture
 
-All source lives under `coredumped/src/`. The only external dependency is `bracket-lib ~0.8`.
+All source lives under `coredumped/src/`. The terminal UI is direct `crossterm`; pathing and shared math use `bracket-pathfinding`, `bracket-geometry`, `bracket-color`, and `bracket-random`.
 
 **Simulation core** — `game.rs`
 - `World` owns the map, turn counter, UI mode, event log, console buffer, player-facing direction, inspector scroll, and an `Ecs` store. It is the single source of truth.
 - `Intent` is the action enum produced by the input layer. `ActionCost` classifies every intent as `Free` (no time passes), `Tick` (advances turn + enemies), or `Quit`.
 - `Mode` (Normal / Inspector / Console) determines how keys are routed and what overlays draw.
-- Gameplay systems (player movement, wall bump, melee attack, enemy AI step, tick advancement, console submission, inspector scroll) live directly on `World` as methods. Enemy pathing uses bracket-lib's `a_star_search`.
+- Gameplay systems (player movement, wall bump, melee attack, enemy AI step, tick advancement, console submission, inspector scroll) live directly on `World` as methods. Enemy pathing uses bracket pathfinding helpers.
 
 **ECS** — `ecs.rs` and `entity.rs`
 - Custom in-house ECS: `EntityId` is a stable `usize` handle. Component stores are `BTreeMap<EntityId, T>` for position, HP, kind, render glyph. Marker sets (`BTreeSet<EntityId>`) track alive entities and enemy AI membership.
 - `EntityView` is a read-only snapshot returned by queries. No systems abstraction — game logic reads/writes ECS directly.
 
 **Map** — `map.rs`
-- Fixed 55×30 static map. Implements bracket-lib's `Algorithm2D` and `BaseMap` for pathfinding.
+- Fixed 55×30 static map. Implements `Algorithm2D` and `BaseMap` for pathfinding.
 - Flashlight ray-caster: selects tiles within a radius cone in the facing direction, then Bresenham-traces each ray until a wall.
 
 **Key translation** — `input.rs`
-- Mode-aware routing: `key_to_intent(VirtualKeyCode, &World) -> Intent` dispatches to normal/inspector/console sub-functions.
+- Mode-aware routing: `key_to_intent(KeyEvent, &World) -> Intent` dispatches to normal/inspector/console sub-functions.
 - Normal mode: arrow keys / hjkl → Move, `.` → Wait, `i` → ToggleInspector, backtick → ToggleConsole, Escape/q → Quit.
 - Inspector mode: Escape/i → CloseOverlay, arrow/jk → scroll, backtick → ToggleConsole.
 - Console mode: Escape → CloseOverlay, backtick → ToggleConsole, Backspace/Enter handled, alphanumerics → ConsoleInput.
@@ -58,7 +58,7 @@ All source lives under `coredumped/src/`. The only external dependency is `brack
 - Append-only ring buffer capped at 100 lines. Game systems push human-readable strings; the renderer shows the most recent entries.
 
 **App shell** — `app.rs`
-- `State` implements bracket-lib's `GameState`. `tick()` reads a key, translates to intent, applies it to `World`, and renders. The only module that talks to bracket-lib's game loop.
+- `State` owns the crossterm event loop. `tick()` reads terminal events, translates keys to intents, applies them to `World`, and renders. The only module that talks to crossterm's alternate-screen/raw-mode APIs.
 
 ## Key design rules
 

@@ -1,7 +1,7 @@
 //! Syntax highlighter for Glyph source. Tokenizes source into categorized
 //! spans so the renderer can paint each category with its own color.
 
-use bracket_lib::prelude::RGB;
+use bracket_color::prelude::RGB;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tok {
@@ -25,15 +25,15 @@ pub struct Span {
 impl Span {
     pub fn color(&self) -> RGB {
         match self.tok {
-            Tok::Paren => RGB::named(bracket_lib::prelude::GRAY),
-            Tok::Keyword => RGB::named(bracket_lib::prelude::MAGENTA),
-            Tok::String => RGB::named(bracket_lib::prelude::GREEN),
-            Tok::Number => RGB::named(bracket_lib::prelude::CYAN),
-            Tok::Comment => RGB::named(bracket_lib::prelude::DARK_GRAY),
-            Tok::Special => RGB::named(bracket_lib::prelude::WHITE),
-            Tok::Constant => RGB::named(bracket_lib::prelude::YELLOW),
-            Tok::Quote => RGB::named(bracket_lib::prelude::GRAY),
-            Tok::Symbol => RGB::named(bracket_lib::prelude::WHITE),
+            Tok::Paren => RGB::named(bracket_color::prelude::GRAY),
+            Tok::Keyword => RGB::named(bracket_color::prelude::MAGENTA),
+            Tok::String => RGB::named(bracket_color::prelude::GREEN),
+            Tok::Number => RGB::named(bracket_color::prelude::CYAN),
+            Tok::Comment => RGB::named(bracket_color::prelude::DARK_GRAY),
+            Tok::Special => RGB::named(bracket_color::prelude::WHITE),
+            Tok::Constant => RGB::named(bracket_color::prelude::YELLOW),
+            Tok::Quote => RGB::named(bracket_color::prelude::GRAY),
+            Tok::Symbol => RGB::named(bracket_color::prelude::WHITE),
         }
     }
 }

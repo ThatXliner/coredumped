@@ -3,7 +3,7 @@
 //! The log is intentionally tiny for v1: game systems push human-readable
 //! strings, and the renderer shows the newest lines in the bottom panel.
 
-use bracket_lib::prelude::RGB;
+use bracket_color::prelude::RGB;
 use serde::{Deserialize, Serialize};
 
 pub const MAX_LOG_LINES: usize = 100;

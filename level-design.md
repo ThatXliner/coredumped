@@ -1,7 +1,7 @@
 # CoreDumped: Level Design — The Vessel
 
 **Status**: Final design spec
-**Based on**: game-architecture.md, current codebase (Rust + Glyph Lisp embed + bracket-lib)
+**Based on**: game-architecture.md, current codebase (Rust + Glyph Lisp embed + crossterm)
 **Storyline**: Merged Vessel (dungeon = mind) + Debt ending mechanic (final choice = real Glyph patch)
 
 ---

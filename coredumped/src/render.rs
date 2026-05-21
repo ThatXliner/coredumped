@@ -1,4 +1,4 @@
-//! Bracket-lib drawing code for the prototype.
+//! Terminal drawing code for the prototype.
 //!
 //! Rendering is deliberately a read-only projection of `World`: it paints the
 //! map, warm flashlight cone, entities, event log, inspector text, and console
@@ -7,7 +7,7 @@
 
 use std::collections::HashSet;
 
-use bracket_lib::prelude::*;
+use bracket_color::prelude::*;
 
 use crate::{
     entity::{EntityKind, EntityView, Position},
@@ -15,23 +15,17 @@ use crate::{
     game::Mode,
     glyph::highlight::{self, Span},
     map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
+    terminal::Frame,
     world::World,
 };
 
-const SCREEN_WIDTH: i32 = 90;
-const SCREEN_HEIGHT: i32 = 50;
 const MAP_X: i32 = 1;
 const MAP_Y: i32 = 1;
-const PANEL_X: i32 = 57;
-const PANEL_Y: i32 = 1;
-const PANEL_WIDTH: i32 = 32;
-const PANEL_HEIGHT: i32 = 35;
-const LOG_X: i32 = 1;
-const LOG_Y: i32 = 35;
-const LOG_WIDTH: i32 = 88;
-const LOG_HEIGHT: i32 = 15;
+const MAP_BOX_WIDTH: i32 = MAP_WIDTH + 2;
+const MAP_BOX_HEIGHT: i32 = MAP_HEIGHT + 2;
+const PANEL_MIN_WIDTH: i32 = 18;
 
-pub fn render(ctx: &mut BTerm, world: &World) {
+pub fn render(ctx: &mut Frame, world: &World) {
     // lit_tiles computed via cache — render takes &World (not &mut) so we can't call
     // world.lit_tiles() here. The cache is populated by mark_visible_entities in tick().
     // Fall back to computing directly if cache is stale.
@@ -58,26 +52,21 @@ pub fn render(ctx: &mut BTerm, world: &World) {
         return;
     }
 
-    if world.mode == Mode::Inspector {
+    let needs_overlay = matches!(world.mode, Mode::Inspector | Mode::Keybindings);
+    if needs_overlay {
         render_overlay_backdrop(ctx);
     }
 
-    if world.mode == Mode::Inspector {
-        render_inspector(ctx, world);
-    }
-
-    if world.mode == Mode::Keybindings {
-        render_overlay_backdrop(ctx);
-        render_keybindings(ctx, world);
-    }
-
-    if world.mode == Mode::Console {
-        render_console(ctx, world);
+    match world.mode {
+        Mode::Inspector => render_inspector(ctx, world),
+        Mode::Keybindings => render_keybindings(ctx, world),
+        Mode::Console => render_console(ctx, world),
+        _ => {}
     }
 }
 
-fn render_map(ctx: &mut BTerm, world: &World, lit_tiles: &HashSet<Position>) {
-    draw_box(ctx, 0, 0, MAP_WIDTH + 2, MAP_HEIGHT + 2, " dungeon ");
+fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
+    draw_box(ctx, 0, 0, MAP_BOX_WIDTH, MAP_BOX_HEIGHT, " dungeon ");
 
     for y in 0..world.map.height {
         for x in 0..world.map.width {
@@ -93,7 +82,7 @@ fn render_map(ctx: &mut BTerm, world: &World, lit_tiles: &HashSet<Position>) {
                 (TileType::Fire, true) => ('^', RGB::named(RED)),
                 (TileType::Fire, false) => ('^', RGB::named(DARK_RED)),
             };
-            ctx.set(MAP_X + x, MAP_Y + y, fg, RGB::named(BLACK), to_cp437(glyph));
+            ctx.set(MAP_X + x, MAP_Y + y, fg, RGB::named(BLACK), glyph);
         }
     }
 
@@ -102,7 +91,7 @@ fn render_map(ctx: &mut BTerm, world: &World, lit_tiles: &HashSet<Position>) {
     }
 }
 
-fn draw_entity(ctx: &mut BTerm, entity: EntityView, lit_tiles: &HashSet<Position>) {
+fn draw_entity(ctx: &mut Frame, entity: EntityView, lit_tiles: &HashSet<Position>) {
     let lit = lit_tiles.contains(&entity.pos) || entity.kind == EntityKind::Player;
     let color = match (entity.kind, lit) {
         (EntityKind::Player, _) => RGB::named(YELLOW),
@@ -139,26 +128,34 @@ fn draw_entity(ctx: &mut BTerm, entity: EntityView, lit_tiles: &HashSet<Position
         MAP_Y + entity.pos.y,
         color,
         RGB::named(BLACK),
-        to_cp437(entity.glyph()),
+        entity.glyph(),
     );
 }
 
-fn render_side_panel(ctx: &mut BTerm, world: &World) {
+fn render_side_panel(ctx: &mut Frame, world: &World) {
+    let panel_x = MAP_BOX_WIDTH;
+    let panel_y = 0;
+    let panel_width = (ctx.width() - panel_x).max(0);
+    let panel_height = top_panel_height(ctx);
+    if panel_width < PANEL_MIN_WIDTH || panel_height < 3 {
+        return;
+    }
+
     draw_box(
         ctx,
-        PANEL_X,
-        PANEL_Y,
-        PANEL_WIDTH,
-        PANEL_HEIGHT,
+        panel_x,
+        panel_y,
+        panel_width,
+        panel_height,
         " runtime ",
     );
 
-    let mut y = PANEL_Y + 2;
+    let mut y = panel_y + 2;
 
     // --- Stats (two-column) ---
-    let c1 = PANEL_X + 2;
-    let c2 = PANEL_X + 13;
-    let w = PANEL_WIDTH - 4;
+    let c1 = panel_x + 2;
+    let c2 = panel_x + 13;
+    let w = panel_width - 4;
 
     print_clipped(ctx, c1, y, w, &format!("turn  {}", world.turn));
     print_clipped(ctx, c2, y, 10, &format!("depth {}", world.depth));
@@ -271,7 +268,7 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
         print_clipped_color(ctx, c1, y, w, "--- ENDING ---", RGB::named(YELLOW));
         y += 1;
         for line in ending.lines() {
-            if y < PANEL_Y + PANEL_HEIGHT - 2 {
+            if y < panel_y + panel_height - 2 {
                 print_clipped(ctx, c1, y, w, line);
             }
             y += 1;
@@ -279,27 +276,27 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
     }
 }
 
-fn render_overlay_backdrop(ctx: &mut BTerm) {
+fn render_overlay_backdrop(ctx: &mut Frame) {
     let bg = RGB::named(BLACK);
-    for y in 0..SCREEN_HEIGHT {
-        for x in 0..SCREEN_WIDTH {
-            ctx.set(x, y, RGB::named(BLACK), bg, to_cp437(' '));
+    for y in 0..ctx.height() {
+        for x in 0..ctx.width() {
+            ctx.set(x, y, RGB::named(BLACK), bg, ' ');
         }
     }
     // Re-render is handled by the overlay draw that follows
 }
 
-fn render_inspector(ctx: &mut BTerm, world: &World) {
-    let x = 2;
-    let y = 1;
-    let width = 86;
-    let height = 46;
+fn render_inspector(ctx: &mut Frame, world: &World) {
+    let x = if ctx.width() > 4 { 2 } else { 0 };
+    let y = if ctx.height() > 3 { 1 } else { 0 };
+    let width = (ctx.width() - x * 2).max(1);
+    let height = (ctx.height() - y - 1).max(1);
 
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " rules ");
 
     let mut line_y = y + 2;
-    let inner_w = width - 4;
+    let inner_w = (width - 4).max(1);
     let rules: Vec<_> = world
         .registry
         .iter()
@@ -377,7 +374,7 @@ fn render_inspector(ctx: &mut BTerm, world: &World) {
     print_clipped(ctx, x + 2, y + height - 2, inner_w, &nav);
 }
 
-fn print_section_header(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, title: &str) {
+fn print_section_header(ctx: &mut Frame, x: i32, y: i32, max_width: i32, title: &str) {
     let header = format!("-- {title} ");
     let fill = "-".repeat((max_width as usize).saturating_sub(header.len()));
     let line = format!("{header}{fill}");
@@ -386,7 +383,7 @@ fn print_section_header(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, title: 
 
 /// Show a tooltip with entity info when the mouse hovers over a map position
 /// that contains a living entity.
-fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
+fn render_entity_tooltip(ctx: &mut Frame, world: &World) {
     let (mx, my) = ctx.mouse_pos();
     let map_x = mx - MAP_X;
     let map_y = my - MAP_Y;
@@ -406,9 +403,9 @@ fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
         format!("pos: ({}, {})", entity.pos.x, entity.pos.y),
     ];
 
-    let tooltip_w = 24;
-    let tooltip_x = (mx + 2).min(SCREEN_WIDTH - tooltip_w - 1);
-    let tooltip_y = my.min(LOG_Y - 4 - tip_lines.len() as i32);
+    let tooltip_w = 24.min(ctx.width().max(1));
+    let tooltip_x = (mx + 2).min(ctx.width() - tooltip_w).max(0);
+    let tooltip_y = my.min(log_box_y(ctx) - 3 - tip_lines.len() as i32).max(0);
     let tooltip_h = tip_lines.len() as i32 + 2;
 
     let fg = RGB::named(WHITE);
@@ -417,36 +414,24 @@ fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
     fill_rect(ctx, tooltip_x, tooltip_y, tooltip_w, tooltip_h, bg);
 
     for dx in 0..tooltip_w {
-        ctx.set(tooltip_x + dx, tooltip_y, fg, bg, to_cp437('-'));
-        ctx.set(
-            tooltip_x + dx,
-            tooltip_y + tooltip_h - 1,
-            fg,
-            bg,
-            to_cp437('-'),
-        );
+        ctx.set(tooltip_x + dx, tooltip_y, fg, bg, '-');
+        ctx.set(tooltip_x + dx, tooltip_y + tooltip_h - 1, fg, bg, '-');
     }
 
     for dy in 0..tooltip_h {
-        ctx.set(tooltip_x, tooltip_y + dy, fg, bg, to_cp437('|'));
-        ctx.set(
-            tooltip_x + tooltip_w - 1,
-            tooltip_y + dy,
-            fg,
-            bg,
-            to_cp437('|'),
-        );
+        ctx.set(tooltip_x, tooltip_y + dy, fg, bg, '|');
+        ctx.set(tooltip_x + tooltip_w - 1, tooltip_y + dy, fg, bg, '|');
     }
 
-    ctx.set(tooltip_x, tooltip_y, fg, bg, to_cp437('+'));
-    ctx.set(tooltip_x + tooltip_w - 1, tooltip_y, fg, bg, to_cp437('+'));
-    ctx.set(tooltip_x, tooltip_y + tooltip_h - 1, fg, bg, to_cp437('+'));
+    ctx.set(tooltip_x, tooltip_y, fg, bg, '+');
+    ctx.set(tooltip_x + tooltip_w - 1, tooltip_y, fg, bg, '+');
+    ctx.set(tooltip_x, tooltip_y + tooltip_h - 1, fg, bg, '+');
     ctx.set(
         tooltip_x + tooltip_w - 1,
         tooltip_y + tooltip_h - 1,
         fg,
         bg,
-        to_cp437('+'),
+        '+',
     );
 
     for (i, line) in tip_lines.iter().enumerate() {
@@ -455,38 +440,27 @@ fn render_entity_tooltip(ctx: &mut BTerm, world: &World) {
     }
 }
 
-fn render_event_log(ctx: &mut BTerm, world: &World) {
-    draw_box(
-        ctx,
-        LOG_X - 1,
-        LOG_Y - 1,
-        LOG_WIDTH,
-        LOG_HEIGHT,
-        " event log ",
-    );
+fn render_event_log(ctx: &mut Frame, world: &World) {
+    let log_y = log_box_y(ctx);
+    let log_height = log_box_height(ctx);
+    let log_width = ctx.width();
+    if log_height < 3 || log_width < 4 {
+        return;
+    }
 
-    let visible_lines = (LOG_HEIGHT - 2) as usize;
-    let lines = wrapped_log_lines(world.event_log.entries(), (LOG_WIDTH - 4) as usize);
+    draw_box(ctx, 0, log_y, log_width, log_height, " event log ");
+
+    let visible_lines = (log_height - 2).max(0) as usize;
+    let text_width = (log_width - 4).max(1);
+    let lines = wrapped_log_lines(world.event_log.entries(), text_width as usize);
     let start = lines.len().saturating_sub(visible_lines);
 
     for (line_index, line) in lines[start..].iter().enumerate() {
+        let y = log_y + 1 + line_index as i32;
         if let Some(color) = line.color {
-            print_clipped_color(
-                ctx,
-                LOG_X + 1,
-                LOG_Y + line_index as i32,
-                LOG_WIDTH - 4,
-                &line.text,
-                color,
-            );
+            print_clipped_color(ctx, 1, y, text_width, &line.text, color);
         } else {
-            print_clipped(
-                ctx,
-                LOG_X + 1,
-                LOG_Y + line_index as i32,
-                LOG_WIDTH - 4,
-                &line.text,
-            );
+            print_clipped(ctx, 1, y, text_width, &line.text);
         }
     }
 }
@@ -505,22 +479,23 @@ fn wrapped_log_lines(entries: &[LogEntry], max_width: usize) -> Vec<LogEntry> {
         .collect()
 }
 
-fn render_console(ctx: &mut BTerm, world: &World) {
-    let x = 3;
-    let y = 8;
-    let width = 84;
-    let height = 27;
+fn render_console(ctx: &mut Frame, world: &World) {
+    let x = if ctx.width() > 20 { 3 } else { 0 };
+    let y = if ctx.height() > 18 { 4 } else { 0 };
+    let width = (ctx.width() - x * 2).max(1);
+    let height = (ctx.height() - y * 2).max(1);
+    let inner_width = (width - 4).max(1);
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " glyph console ");
 
     for (i, line) in wrap_text(
         "Glyph REPL — press Ctrl+E to open an external editor for multi-line input. Try (help). ESC or ` to close.",
-        (width - 4) as usize,
+        inner_width as usize,
     )
     .iter()
     .enumerate()
     {
-        let trimmed: String = line.chars().take((width - 4) as usize).collect();
+        let trimmed: String = line.chars().take(inner_width as usize).collect();
         ctx.print_color(
             x + 2,
             y + 2 + i as i32,
@@ -535,7 +510,7 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     let output_height = prompt_y - output_y - 1; // total lines available for output + input
 
     // Wrap input buffer into lines for multi-line display (word-wrap at inner width)
-    let input_wrap_width = (width - 6) as usize;
+    let input_wrap_width = (width - 6).max(1) as usize;
     let input_wrapped = if world.console_buffer.is_empty() {
         vec![String::new()]
     } else {
@@ -555,9 +530,9 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     let output_available = output_height - input_line_count as i32;
     if !world.console_output.is_empty() && output_available > 0 {
         let lines = if is_diagnostic_output(&world.console_output) {
-            clipped_lines(&world.console_output, (width - 4) as usize)
+            clipped_lines(&world.console_output, inner_width as usize)
         } else {
-            wrap_text(&world.console_output, (width - 4) as usize)
+            wrap_text(&world.console_output, inner_width as usize)
         };
         let start = lines.len().saturating_sub(output_available as usize);
         for (i, line) in lines[start..]
@@ -566,15 +541,15 @@ fn render_console(ctx: &mut BTerm, world: &World) {
             .take(output_available as usize)
         {
             if let Some(color) = world.console_output_color {
-                print_clipped_color(ctx, x + 2, output_y + i as i32, width - 4, line, color);
+                print_clipped_color(ctx, x + 2, output_y + i as i32, inner_width, line, color);
             } else {
-                print_clipped(ctx, x + 2, output_y + i as i32, width - 4, line);
+                print_clipped(ctx, x + 2, output_y + i as i32, inner_width, line);
             }
         }
     }
 
     // Render wrapped input lines at the bottom
-    let input_inner_width = width - 6;
+    let input_inner_width = (width - 6).max(1);
     let input_start_y = prompt_y - input_line_count as i32 + 1;
     let cursor_visual = cursor_visual_pos(
         &world.console_buffer,
@@ -613,7 +588,7 @@ fn render_console(ctx: &mut BTerm, world: &World) {
                     line_y,
                     RGB::named(BLACK),
                     RGB::named(WHITE),
-                    to_cp437(cursor_char),
+                    cursor_char,
                 );
             }
 
@@ -690,17 +665,17 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     lines
 }
 
-fn render_keybindings(ctx: &mut BTerm, world: &World) {
-    let x = 15;
-    let y = 5;
-    let width = 60;
-    let height = 38;
+fn render_keybindings(ctx: &mut Frame, world: &World) {
+    let width = (ctx.width() - 4).clamp(1, 80);
+    let height = (ctx.height() - 4).clamp(1, 38);
+    let x = ((ctx.width() - width) / 2).max(0);
+    let y = ((ctx.height() - height) / 2).max(0);
 
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " keybindings ");
 
     let inner_x = x + 2;
-    let inner_w = width - 4;
+    let inner_w = (width - 4).max(1);
     let mut line_y = y + 2;
 
     print_section_header(ctx, inner_x, line_y, inner_w, "bindings");
@@ -744,17 +719,17 @@ fn render_keybindings(ctx: &mut BTerm, world: &World) {
     print_clipped(ctx, inner_x, line_y, inner_w, "tab/esc close");
 }
 
-fn render_death_screen(ctx: &mut BTerm, world: &World) {
-    let x = 15;
-    let y = 12;
-    let width = 60;
-    let height = 18;
+fn render_death_screen(ctx: &mut Frame, world: &World) {
+    let width = (ctx.width() - 4).clamp(1, 60);
+    let height = (ctx.height() - 4).clamp(1, 18);
+    let x = ((ctx.width() - width) / 2).max(0);
+    let y = ((ctx.height() - height) / 2).max(0);
 
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " death ");
 
     let inner_x = x + 2;
-    let inner_w = width - 4;
+    let inner_w = (width - 4).max(1);
     let mut line_y = y + 2;
 
     ctx.print_color(
@@ -794,50 +769,58 @@ fn render_death_screen(ctx: &mut BTerm, world: &World) {
     print_clipped(ctx, inner_x, line_y, inner_w, "[esc/q]   Quit");
 }
 
-fn draw_box(ctx: &mut BTerm, x: i32, y: i32, width: i32, height: i32, title: &str) {
+fn draw_box(ctx: &mut Frame, x: i32, y: i32, width: i32, height: i32, title: &str) {
+    if width < 2 || height < 2 {
+        return;
+    }
+
     let fg = RGB::named(WHITE);
     let bg = RGB::named(BLACK);
 
     for dx in 0..width {
-        ctx.set(x + dx, y, fg, bg, to_cp437('-'));
-        ctx.set(x + dx, y + height - 1, fg, bg, to_cp437('-'));
+        ctx.set(x + dx, y, fg, bg, '-');
+        ctx.set(x + dx, y + height - 1, fg, bg, '-');
     }
 
     for dy in 0..height {
-        ctx.set(x, y + dy, fg, bg, to_cp437('|'));
-        ctx.set(x + width - 1, y + dy, fg, bg, to_cp437('|'));
+        ctx.set(x, y + dy, fg, bg, '|');
+        ctx.set(x + width - 1, y + dy, fg, bg, '|');
     }
 
-    ctx.set(x, y, fg, bg, to_cp437('+'));
-    ctx.set(x + width - 1, y, fg, bg, to_cp437('+'));
-    ctx.set(x, y + height - 1, fg, bg, to_cp437('+'));
-    ctx.set(x + width - 1, y + height - 1, fg, bg, to_cp437('+'));
+    ctx.set(x, y, fg, bg, '+');
+    ctx.set(x + width - 1, y, fg, bg, '+');
+    ctx.set(x, y + height - 1, fg, bg, '+');
+    ctx.set(x + width - 1, y + height - 1, fg, bg, '+');
     print_clipped(ctx, x + 2, y, width - 4, title);
 }
 
-fn fill_rect(ctx: &mut BTerm, x: i32, y: i32, width: i32, height: i32, color: RGB) {
+fn fill_rect(ctx: &mut Frame, x: i32, y: i32, width: i32, height: i32, color: RGB) {
+    if width <= 0 || height <= 0 {
+        return;
+    }
+
     for dy in 0..height {
         for dx in 0..width {
-            ctx.set(x + dx, y + dy, RGB::named(WHITE), color, to_cp437(' '));
+            ctx.set(x + dx, y + dy, RGB::named(WHITE), color, ' ');
         }
     }
 }
 
-fn print_highlighted(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, spans: &[Span]) {
+fn print_highlighted(ctx: &mut Frame, x: i32, y: i32, max_width: i32, spans: &[Span]) {
     let mut cx = x;
     for span in spans {
         let fg = span.color();
         for ch in span.text.chars() {
             if cx < x + max_width {
-                ctx.set(cx, y, fg, RGB::named(BLACK), to_cp437(ch));
+                ctx.set(cx, y, fg, RGB::named(BLACK), ch);
                 cx += 1;
             }
         }
     }
 }
 
-fn print_clipped(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str) {
-    if max_width <= 0 || !(0..SCREEN_HEIGHT).contains(&y) {
+fn print_clipped(ctx: &mut Frame, x: i32, y: i32, max_width: i32, text: &str) {
+    if max_width <= 0 || y < 0 || y >= ctx.height() {
         return;
     }
 
@@ -845,13 +828,29 @@ fn print_clipped(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str) {
     ctx.print_color(x, y, RGB::named(WHITE), RGB::named(BLACK), &clipped);
 }
 
-fn print_clipped_color(ctx: &mut BTerm, x: i32, y: i32, max_width: i32, text: &str, color: RGB) {
-    if max_width <= 0 || !(0..SCREEN_HEIGHT).contains(&y) {
+fn print_clipped_color(ctx: &mut Frame, x: i32, y: i32, max_width: i32, text: &str, color: RGB) {
+    if max_width <= 0 || y < 0 || y >= ctx.height() {
         return;
     }
 
     let clipped: String = text.chars().take(max_width as usize).collect();
     ctx.print_color(x, y, color, RGB::named(BLACK), &clipped);
+}
+
+fn top_panel_height(ctx: &Frame) -> i32 {
+    (log_box_y(ctx) + 1).max(1)
+}
+
+fn log_box_y(ctx: &Frame) -> i32 {
+    if ctx.height() > MAP_BOX_HEIGHT {
+        MAP_BOX_HEIGHT - 1
+    } else {
+        ctx.height().saturating_sub(1)
+    }
+}
+
+fn log_box_height(ctx: &Frame) -> i32 {
+    (ctx.height() - log_box_y(ctx)).max(0)
 }
 
 /// Maps a binding key to a clearer display string.

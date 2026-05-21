@@ -4,7 +4,7 @@
 //! `step-toward!`, etc. They receive `&mut World` directly through the
 //! eval chain's context parameter.
 
-use bracket_lib::prelude::{ORANGE, RED, RGB};
+use bracket_color::prelude::{ORANGE, RED, RGB};
 
 use crate::{
     entity::{EntityId, Position},

@@ -1,18 +1,41 @@
-//! Bracket-lib application shell.
+//! Crossterm application shell.
 //!
-//! This is the only module that talks to the bracket-lib game loop. It receives
+//! This is the only module that talks to the terminal event loop. It receives
 //! key events, asks `input` for an intent, applies it to `World`, and delegates
 //! all drawing to `render`.
 
-use bracket_lib::prelude::*;
+use std::{
+    io::{stdout, Stdout, Write},
+    time::Duration,
+};
 
-use crate::{game::Intent, input::key_to_intent, render::render, world::World};
+use bracket_color::prelude::{RED, RGB};
+use crossterm::{
+    cursor::{Hide, Show},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, MouseEventKind,
+    },
+    execute,
+    style::ResetColor,
+    terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, SetTitle},
+};
+
+use crate::{
+    game::{ActionCost, Intent},
+    input::key_to_intent,
+    render::render,
+    terminal::Frame,
+    world::World,
+};
 
 const COUNTDOWN_FRAMES: u32 = 30;
+const COUNTDOWN_FRAME_TIME: Duration = Duration::from_millis(33);
+const IDLE_POLL_TIME: Duration = Duration::from_millis(250);
 
 pub struct State {
     world: World,
     countdown_frame: u32,
+    frame: Frame,
 }
 
 impl State {
@@ -31,30 +54,26 @@ impl State {
         Self {
             world,
             countdown_frame: 0,
+            frame: Frame::new(90, 50),
         }
     }
-}
 
-impl Default for State {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+    fn tick(&mut self, out: &mut Stdout) -> crossterm::Result<bool> {
+        self.sync_terminal_size()?;
+        self.world.mark_visible_entities();
+        self.world.mark_visible_tiles();
+        self.world.refresh_rule_discovery();
 
-impl GameState for State {
-    fn tick(&mut self, ctx: &mut BTerm) {
-        ctx.cls();
+        self.frame.clear();
+        render(&mut self.frame, &self.world);
+        self.frame.flush(out)?;
 
-        // Countdown timer (post-wipe). Escape cancels.
+        if !self.world.running {
+            return Ok(false);
+        }
+
         if self.world.quit_countdown > 0 {
-            if let Some(key) = ctx.key {
-                let intent = key_to_intent(key, ctx.shift, ctx.control, &self.world);
-                if matches!(intent, Intent::CloseOverlay) {
-                    self.world.quit_countdown = 0;
-                    self.countdown_frame = 0;
-                    self.world.event_log.push("Countdown cancelled.");
-                }
-            }
+            self.handle_countdown_input()?;
             if self.world.quit_countdown > 0 {
                 self.countdown_frame += 1;
                 if self.countdown_frame >= COUNTDOWN_FRAMES {
@@ -67,37 +86,122 @@ impl GameState for State {
                 }
                 if self.world.quit_countdown == 0 {
                     self.world.running = false;
-                    ctx.quitting = true;
-                    return;
+                    return Ok(false);
                 }
-                render(ctx, &self.world);
-                return;
             }
+            return Ok(true);
         }
 
-        if let Some(key) = ctx.key {
-            let intent = key_to_intent(key, ctx.shift, ctx.control, &self.world);
-            self.world.apply_intent(intent);
+        if event::poll(IDLE_POLL_TIME)? {
+            self.handle_event(event::read()?)?;
         }
 
-        self.world.mark_visible_entities();
-        self.world.mark_visible_tiles();
-        self.world.refresh_rule_discovery();
+        Ok(self.world.running)
+    }
 
-        if !self.world.running {
-            ctx.quitting = true;
-            return;
+    fn handle_countdown_input(&mut self) -> crossterm::Result<()> {
+        if event::poll(COUNTDOWN_FRAME_TIME)? {
+            self.handle_event(event::read()?)?;
         }
+        Ok(())
+    }
 
-        render(ctx, &self.world);
+    fn handle_event(&mut self, event: Event) -> crossterm::Result<()> {
+        match event {
+            Event::Key(key) if key.kind == KeyEventKind::Press => {
+                if self.world.quit_countdown > 0 && key.code == KeyCode::Esc {
+                    self.cancel_countdown();
+                    return Ok(());
+                }
+
+                let intent = key_to_intent(key, &self.world);
+                if self.world.quit_countdown > 0 && matches!(intent, Intent::CloseOverlay) {
+                    self.cancel_countdown();
+                    return Ok(());
+                }
+
+                let cost = self.world.apply_intent(intent);
+                if cost == ActionCost::Tick && self.world.quit_countdown == 0 {
+                    self.countdown_frame = 0;
+                }
+            }
+            Event::Mouse(mouse) => {
+                if matches!(mouse.kind, MouseEventKind::Moved | MouseEventKind::Down(_)) {
+                    self.frame
+                        .set_mouse_pos(mouse.column as i32, mouse.row as i32);
+                }
+            }
+            Event::Resize(width, height) => {
+                self.frame.resize(width as i32, height as i32);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn sync_terminal_size(&mut self) -> crossterm::Result<()> {
+        let (width, height) = terminal::size()?;
+        self.frame.resize(width as i32, height as i32);
+        Ok(())
+    }
+
+    fn cancel_countdown(&mut self) {
+        self.world.quit_countdown = 0;
+        self.countdown_frame = 0;
+        self.world.event_log.push("Countdown cancelled.");
     }
 }
 
-pub fn run() -> BError {
-    let context = BTermBuilder::simple(90, 50)?
-        .with_title("Xlyph - bracket-lib prototype")
-        .with_fitscreen(true)
-        .with_tile_dimensions(12u32, 12u32)
-        .build()?;
-    main_loop(context, State::new())
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub fn run() -> crossterm::Result<()> {
+    let mut terminal = TerminalSession::enter()?;
+    let mut state = State::new();
+
+    loop {
+        if !state.tick(&mut terminal.stdout)? {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+struct TerminalSession {
+    stdout: Stdout,
+}
+
+impl TerminalSession {
+    fn enter() -> crossterm::Result<Self> {
+        terminal::enable_raw_mode()?;
+        let mut stdout = stdout();
+        execute!(
+            stdout,
+            EnterAlternateScreen,
+            EnableMouseCapture,
+            SetTitle("Xlyph"),
+            Clear(ClearType::All),
+            Hide
+        )?;
+        stdout.flush()?;
+        Ok(Self { stdout })
+    }
+}
+
+impl Drop for TerminalSession {
+    fn drop(&mut self) {
+        let _ = execute!(
+            self.stdout,
+            Show,
+            ResetColor,
+            DisableMouseCapture,
+            LeaveAlternateScreen
+        );
+        let _ = terminal::disable_raw_mode();
+        let _ = self.stdout.flush();
+    }
 }

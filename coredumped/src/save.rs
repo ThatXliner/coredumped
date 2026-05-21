@@ -341,7 +341,7 @@ impl World {
 
         // --- Event log ---
         {
-            use bracket_lib::prelude::RGB;
+            use bracket_color::prelude::RGB;
             let mut log = crate::event_log::EventLog::new();
             for entry in &data.event_log {
                 let color = if entry.has_color {
@@ -351,7 +351,7 @@ impl World {
                 };
                 log.push_colored(
                     &entry.text,
-                    color.unwrap_or(RGB::named(bracket_lib::prelude::WHITE)),
+                    color.unwrap_or(RGB::named(bracket_color::prelude::WHITE)),
                 );
                 // Cheat: push_colored always adds color; to push without color we
                 // need to work around. Just push with white if no color.

@@ -7,7 +7,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use bracket_lib::prelude::{CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW};
+use bracket_color::prelude::{CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW};
 use serde::{Deserialize, Serialize};
 
 const KONAMI_CODE: [&str; 8] = ["up", "up", "down", "down", "left", "right", "left", "right"];
@@ -748,6 +748,14 @@ impl World {
     fn interact_with_wizard(&mut self, _wizard_id: EntityId) {
         // ── First meeting: teach attack ──
         if !self.wizard_taught {
+            if self.depth == 0 {
+                self.event_log.push_colored(
+                    "\"Good. I see you're awake. Keep moving; I'll find you below.\"",
+                    RGB::named(CYAN),
+                );
+                return;
+            }
+
             let max_hp = self.player_hp().max;
             self.ecs.set_hp(self.player_id, Hp::new(max_hp));
             self.player_can_attack = true;
@@ -1006,7 +1014,7 @@ impl World {
     }
 
     fn load_playbook(&mut self) {
-        use bracket_lib::prelude::GREEN;
+        use bracket_color::prelude::GREEN;
         if !crate::playbook::has_playbook() {
             return;
         }
@@ -2206,7 +2214,7 @@ fn builtin_save(
     _opts: &glyph::SandboxOptions,
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    use bracket_lib::prelude::GREEN;
+    use bracket_color::prelude::GREEN;
     let slot: u32 = match args.first() {
         Some(Value::I64(n)) if *n >= 0 => *n as u32,
         None => 1,
@@ -2232,7 +2240,7 @@ fn builtin_load(
     _opts: &glyph::SandboxOptions,
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    use bracket_lib::prelude::GREEN;
+    use bracket_color::prelude::GREEN;
     let slot: u32 = match args.first() {
         Some(Value::I64(n)) if *n >= 0 => *n as u32,
         None => 1,

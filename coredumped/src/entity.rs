@@ -4,7 +4,7 @@
 //! ids, positions, directions, HP, kinds, and render glyphs. Storage and query
 //! behavior live in `ecs.rs`; gameplay systems live in `game.rs`.
 
-use bracket_lib::prelude::Point;
+use bracket_geometry::prelude::Point;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

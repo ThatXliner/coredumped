@@ -1,9 +1,8 @@
-//! Executable entrypoint for the Xlyph bracket-lib prototype.
+//! Executable entrypoint for the Xlyph terminal prototype.
 //!
-//! The binary only starts the bracket-lib shell. All interesting code lives in
+//! The binary only starts the crossterm shell. All interesting code lives in
 //! the library modules so the prototype stays easy to inspect and test.
 
-use bracket_lib::prelude::BError;
 use clap::Parser;
 
 #[derive(Parser)]
@@ -14,7 +13,7 @@ struct Args {
     wipe: bool,
 }
 
-fn main() -> BError {
+fn main() -> crossterm::Result<()> {
     let args = Args::parse();
     if args.wipe {
         xlyph_tui::save::wipe();

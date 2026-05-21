@@ -1,6 +1,6 @@
-//! Library boundary for the Xlyph bracket-lib prototype.
+//! Library boundary for the Xlyph terminal prototype.
 //!
-//! This crate keeps the readable game model separate from the bracket-lib
+//! This crate keeps the readable game model separate from the crossterm
 //! executable. The modules are intentionally small: `game` owns simulation,
 //! `map` owns terrain/pathing, `input` translates keys into intents, and
 //! `render` draws the current state.
@@ -22,6 +22,7 @@ pub(crate) mod player_profile;
 pub mod render;
 pub mod rules;
 pub mod save;
+pub mod terminal;
 pub mod world;
 
 pub use ecs::Ecs;

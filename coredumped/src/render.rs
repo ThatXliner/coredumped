@@ -55,10 +55,7 @@ pub fn render(ctx: &mut Frame, world: &World) {
         return;
     }
 
-    let needs_overlay = matches!(
-        world.mode,
-        Mode::Inspector | Mode::Keybindings | Mode::Console
-    );
+    let needs_overlay = matches!(world.mode, Mode::Inspector | Mode::Keybindings);
     if needs_overlay {
         render_overlay_backdrop(ctx);
     }
@@ -663,10 +660,7 @@ fn wrapped_log_lines(entries: &[LogEntry], max_width: usize) -> Vec<LogEntry> {
 }
 
 fn render_console(ctx: &mut Frame, world: &World) {
-    let x = if ctx.width() > 4 { 2 } else { 0 };
-    let y = if ctx.height() > 3 { 1 } else { 0 };
-    let width = (ctx.width() - x * 2).max(1);
-    let height = (ctx.height() - y - 1).max(1);
+    let (x, y, width, height) = console_bounds(ctx);
     let inner_width = (width - 4).max(1);
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " glyph console ");
@@ -786,6 +780,19 @@ fn render_console(ctx: &mut Frame, world: &World) {
             print_highlighted(ctx, x + 4, line_y, input_inner_width, &spans);
         }
     }
+}
+
+fn console_bounds(ctx: &Frame) -> (i32, i32, i32, i32) {
+    let margin_x = if ctx.width() > 8 { 3 } else { 0 };
+    let margin_y = if ctx.height() > 8 { 2 } else { 0 };
+    let max_width = (ctx.width() - margin_x * 2).max(1);
+    let max_height = (ctx.height() - margin_y * 2).max(1);
+    let width = max_width.min(120);
+    let height = max_height.min(24);
+    let x = ((ctx.width() - width) / 2).max(0);
+    let y = (ctx.height() - height - margin_y).max(0);
+
+    (x, y, width, height)
 }
 
 /// Map a byte offset in `text` to a (wrapped_line, column) position in the
@@ -1097,6 +1104,30 @@ mod tests {
             vec!["Open the console", "(`) and bind", "attack to a key"]
         );
         assert!(lines.iter().all(|line| line.color == Some(color)));
+    }
+
+    #[test]
+    fn console_uses_floating_bounds_on_large_terminals() {
+        let frame = Frame::new(180, 60);
+
+        let (x, y, width, height) = console_bounds(&frame);
+
+        assert!(x > 0);
+        assert!(y > 0);
+        assert!(width < frame.width());
+        assert!(height < frame.height());
+        assert_eq!(width, 120);
+        assert_eq!(height, 24);
+    }
+
+    #[test]
+    fn console_bounds_fit_tiny_terminals() {
+        let frame = Frame::new(7, 6);
+
+        let (x, y, width, height) = console_bounds(&frame);
+
+        assert_eq!((x, y), (0, 0));
+        assert_eq!((width, height), (7, 6));
     }
 
     #[test]

@@ -19,17 +19,19 @@ Glyph-powered (a custom LISP) roguelikes. The engine provides the ECS, map, rule
 cargo run -p xlyph-tui
 ```
 
-Move with arrow keys / hjkl. Descend stairs. Inspect enemies. Open the console
-with backtick. Submit code with Enter.
+Move with arrow keys or hjkl, descend stairs, inspect enemies, and when you
+feel like poking around, open the console with backtick and submit code with
+Enter.
 
 ## Why
 
 Every roguelike has rules, but most hide them behind source code or wiki pages.
 CoreDumped puts them on screen and lets you poke at them.
 
-The long bet: if the game shows you its moving parts, the mystery shifts from
-"how does this work" to "what can I make it do." The inspector and console are actually the core interface, not just a hack. The dungeon is literally
-a Lisp runtime with graphics.
+The long bet is that if the game shows you its moving parts, the mystery shifts
+from "how does this work" to "what can I make it do." The inspector and console
+are the core interface rather than a hack bolted on top, and the dungeon is a
+Lisp runtime with graphics attached.
 
 ### What works now
 
@@ -54,15 +56,16 @@ a Lisp runtime with graphics.
 
 ## Architecture
 
-**Engine/game split**: The **Xlyph** engine (ECS, map, rules registry, Glyph
-runtime, event log) is the framework. **CoreDumped** is the game built on it —
-levels, world state, save system, player profile. Same repo, separate concerns.
-You could build different levels on the same engine.
+**Engine/game split**: The **Xlyph** engine handles the ECS, map, rules
+registry, Glyph runtime, and event log. **CoreDumped** is the game built on top
+of it with levels, world state, save system, and player profile. They share a
+repo but someone could build different levels on the same engine.
 
-**ECS**: Custom in-house, no dependency. `EntityId` is a stable handle.
-Component stores are `BTreeMap<EntityId, T>`. Marker sets for alive/enemy-ai.
-No systems abstraction — game logic reads/writes ECS directly. Keeps the
-codebase small and auditable (~40 source files total).
+**ECS**: Custom in-house with no external dependency. `EntityId` is a stable
+handle and component stores are `BTreeMap<EntityId, T>` with marker sets for
+alive and enemy-ai tracking. There is no systems abstraction layer; game logic
+reads and writes the ECS directly, which keeps the codebase around forty source
+files total.
 
 **Turn model**:
 
@@ -70,13 +73,16 @@ codebase small and auditable (~40 source files total).
 pub enum ActionCost { Free, Tick, Quit }
 ```
 
-Every gameplay action costs a tick. Every tick advances enemies once. UI actions
-(inspector, console, typing) are free. This invariant is tested.
+Every gameplay action costs a tick, and every tick advances enemies once. UI
+actions like the inspector, console, and typing are free, and this invariant is
+tested.
 
-**Glyph embedding**: `BuiltinFn` takes `(&[Value], &Env, &SandboxOptions, &mut World)`.
-Game builtins (print, inspect, toggle console) access World directly. The same
-eval path runs enemy AI rules, console expressions, and keybindings. No FFI,
-no IPC, no scripting bridge — just Rust functions registered in the environment.
+**Glyph embedding**: Each `BuiltinFn` signature takes a `World` reference
+alongside the value stack, environment, and sandbox options. Game builtins for
+printing, inspecting, and toggling the console access World directly, and the
+same eval path runs enemy AI rules, console expressions, and keybindings
+without FFI or a scripting bridge: everything is Rust functions registered in
+the environment.
 
 **Levels are callbacks**: Each depth (0–17) is a function that receives `&mut World`
 and places entities, sets terrain, configures wizard dialogue. Depth 18+ falls
@@ -102,17 +108,18 @@ cargo fmt         # single crate, no config
 cargo check       # fast feedback
 ```
 
-The most important tests verify the turn invariant — that gameplay costs ticks,
-UI doesn't, and enemies advance exactly once per tick.
+The most important tests verify the turn invariant: that gameplay costs ticks,
+UI actions do not, and enemies advance exactly once per tick.
 
 ## Status
 
-Beta. Playable from depth 0 to depth 17 (the Core). Has an ending. Expect
-rough edges, missing content, and things that kill you without explanation.
+This is a beta, playable from depth 0 to depth 17 with an ending in place.
+Expect rough edges, missing content, and things that kill you without
+explanation.
 
-The engine is minimal and intentional — about 13k lines of Rust, half of which
-is the Glyph interpreter. If the project stops here, the codebase is small
-enough to learn from in an afternoon.
+The engine comes to about 13k lines of Rust, half of which is the Glyph
+interpreter; if the project stops here, the codebase is small enough that
+someone could learn from it in an afternoon.
 
 ## License
 

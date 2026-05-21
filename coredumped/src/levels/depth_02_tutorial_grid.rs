@@ -117,7 +117,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     world.ecs.spawn_goblin(Position::new(24, 18));
     world.ecs.spawn_sign(
         Position::new(33, 15),
-        "Bats have only 2 HP but\ncan fly through walls.\n\nTry hovering over the enemies for more information\n\nUse i to inspect the rules that dictate their behavior\nbut this only works after\nyou've seen them with your flashlight",
+        "Bats have only 2 HP but\nflutter unpredictably.\n\nTry hovering over the enemies for more information\n\nUse i to inspect the rules that dictate their behavior\nbut this only works after\nyou've seen them with your flashlight",
     );
     world.ecs.spawn_sign(
         Position::new(17, 19),

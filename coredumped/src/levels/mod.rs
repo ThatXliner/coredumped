@@ -124,4 +124,26 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn campaign_enemy_spawns_are_walkable() {
+        let mut blocked = Vec::new();
+
+        for depth in 0..=17 {
+            let mut world = World::new_game();
+            build_level(&mut world, depth);
+
+            for enemy in world.living_enemies() {
+                if !world.map.is_walkable(enemy.pos) {
+                    blocked.push(format!(
+                        "{} spawned on a blocked tile at depth {depth}: {:?}",
+                        enemy.name(),
+                        enemy.pos
+                    ));
+                }
+            }
+        }
+
+        assert!(blocked.is_empty(), "{}", blocked.join("\n"));
+    }
 }

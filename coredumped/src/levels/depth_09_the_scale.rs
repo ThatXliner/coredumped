@@ -31,9 +31,13 @@ pub(crate) fn build_the_scale(world: &mut World) {
             }
         }
         // Corridor from center to room
-        let dir: i32 = if rx < cx { -1 } else { 1 };
-        for t in 1..6 {
-            map.set_tile(Position::new(cx + dir * t, cy), TileType::Floor);
+        let (start_x, end_x) = if rx < cx {
+            (rx + rw, cx - 5)
+        } else {
+            (cx + 5, rx)
+        };
+        for x in start_x..=end_x {
+            map.set_tile(Position::new(x, cy), TileType::Floor);
         }
     }
 
@@ -54,10 +58,10 @@ pub(crate) fn build_the_scale(world: &mut World) {
     // Enemies
     world.ecs.spawn_ogre(Position::new(cx - 14, cy));
     world.ecs.spawn_ogre(Position::new(cx + 16, cy));
-    world.ecs.spawn_goblin(Position::new(cx - 4, cy - 6));
-    world.ecs.spawn_goblin(Position::new(cx + 4, cy + 6));
-    world.ecs.spawn_bat(Position::new(cx - 8, cy - 2));
-    world.ecs.spawn_bat(Position::new(cx + 8, cy + 2));
+    world.ecs.spawn_goblin(Position::new(cx - 4, cy - 3));
+    world.ecs.spawn_goblin(Position::new(cx + 4, cy + 3));
+    world.ecs.spawn_bat(Position::new(cx - 8, cy));
+    world.ecs.spawn_bat(Position::new(cx + 8, cy));
 
     // Fragments
     world

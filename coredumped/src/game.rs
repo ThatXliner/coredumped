@@ -1005,13 +1005,35 @@ impl World {
         for &bx in &barrier_xs {
             if player_x > bx && self.gauntlet_barrier_locked.insert(bx) {
                 for dy in -2..=2 {
-                    self.map
-                        .set_tile(Position::new(bx, corridor_y + dy), TileType::Wall);
+                    let pos = Position::new(bx, corridor_y + dy);
+                    if let Some(entity_id) = self.ecs.entity_at(pos) {
+                        if let Some(evacuation_pos) =
+                            self.gauntlet_barrier_evacuation_pos(bx, corridor_y)
+                        {
+                            self.ecs.set_position(entity_id, evacuation_pos);
+                        }
+                    }
+                    self.map.set_tile(pos, TileType::Wall);
                 }
                 self.event_log
                     .push_colored("A barrier slams shut behind you!", RGB::named(RED));
             }
         }
+    }
+
+    fn gauntlet_barrier_evacuation_pos(&self, bx: i32, corridor_y: i32) -> Option<Position> {
+        for distance in 1..=8 {
+            for x in [bx - distance, bx + distance] {
+                if matches!(x, 7 | 13 | 19 | 25 | 31 | 37 | 43 | 49) {
+                    continue;
+                }
+                let candidate = Position::new(x, corridor_y);
+                if self.map.is_walkable(candidate) && self.ecs.entity_at(candidate).is_none() {
+                    return Some(candidate);
+                }
+            }
+        }
+        None
     }
 
     fn advance_enemies(&mut self) {
@@ -3161,6 +3183,30 @@ mod tests {
         assert_eq!(world.turn, 1);
         assert_ne!(single_enemy(&world).pos, Position::new(10, 8));
         assert_eq!(world.map.tile(Position::new(10, 8)), TileType::Wall);
+    }
+
+    #[test]
+    fn gauntlet_barrier_does_not_trap_enemy_inside_wall() {
+        let mut world = World::new_game();
+        world.depth = 6;
+        crate::levels::build_level(&mut world, 6);
+        world.clear_all_enemies();
+
+        let corridor_y = crate::map::MAP_HEIGHT / 2;
+        let enemy_id = world.spawn_slime(Position::new(13, corridor_y));
+        world.set_player_pos(Position::new(14, corridor_y));
+
+        world.check_gauntlet_barriers();
+
+        let enemy_pos = world
+            .ecs
+            .position(enemy_id)
+            .expect("enemy should still have a position");
+        assert!(world.map.is_walkable(enemy_pos));
+        assert_eq!(
+            world.map.tile(Position::new(13, corridor_y)),
+            TileType::Wall
+        );
     }
 
     #[test]

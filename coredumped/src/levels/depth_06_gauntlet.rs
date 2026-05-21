@@ -36,7 +36,7 @@ pub(crate) fn build_gauntlet(world: &mut World) {
     // Enemies spread across 8 segments
     world.ecs.spawn_slime(Position::new(10, corridor_y));
     world.ecs.spawn_goblin(Position::new(22, corridor_y));
-    world.ecs.spawn_bat(Position::new(28, corridor_y - 1));
+    world.ecs.spawn_bat(Position::new(28, corridor_y));
     world.ecs.spawn_slime(Position::new(34, corridor_y));
     world.ecs.spawn_goblin(Position::new(40, corridor_y));
     world.ecs.spawn_ogre(Position::new(46, corridor_y));

@@ -5,7 +5,7 @@
 //! systems that read or mutate those components: player intent handling,
 //! enemy AI, ticking, console state, and inspector state.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 use bracket_color::prelude::{CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW};
 use serde::{Deserialize, Serialize};
@@ -989,6 +989,7 @@ impl World {
         }
         self.check_gauntlet_barriers();
         self.advance_enemies();
+        self.repair_all_enemy_positions();
         self.player_attacked.clear();
         self.blocking = false;
 
@@ -1040,6 +1041,69 @@ impl World {
         None
     }
 
+    fn enemy_can_occupy(&self, enemy_id: EntityId, pos: Position) -> bool {
+        self.map.is_walkable(pos) && self.ecs.entity_at_except(pos, enemy_id).is_none()
+    }
+
+    fn nearest_enemy_open_tile(&self, enemy_id: EntityId, start: Position) -> Option<Position> {
+        if self.map.width <= 0 || self.map.height <= 0 {
+            return None;
+        }
+
+        let start = Position::new(
+            start.x.clamp(0, self.map.width - 1),
+            start.y.clamp(0, self.map.height - 1),
+        );
+        let mut queue = VecDeque::new();
+        let mut visited = HashSet::new();
+        queue.push_back(start);
+        visited.insert(start);
+
+        while let Some(pos) = queue.pop_front() {
+            if self.enemy_can_occupy(enemy_id, pos) {
+                return Some(pos);
+            }
+
+            for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
+                let next = pos.offset(dx, dy);
+                if self.map.contains(next) && visited.insert(next) {
+                    queue.push_back(next);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn repair_enemy_position(&mut self, enemy_id: EntityId, fallback: Position) {
+        let Some(pos) = self.ecs.position(enemy_id) else {
+            return;
+        };
+
+        if self.enemy_can_occupy(enemy_id, pos) {
+            return;
+        }
+
+        if self.enemy_can_occupy(enemy_id, fallback) {
+            self.ecs.set_position(enemy_id, fallback);
+        } else if let Some(pos) = self.nearest_enemy_open_tile(enemy_id, fallback) {
+            self.ecs.set_position(enemy_id, pos);
+        }
+    }
+
+    fn repair_all_enemy_positions(&mut self) {
+        let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
+        for enemy_id in enemy_ids {
+            if !self.ecs.is_alive(enemy_id) {
+                continue;
+            }
+            let Some(pos) = self.ecs.position(enemy_id) else {
+                continue;
+            };
+            self.repair_enemy_position(enemy_id, pos);
+        }
+    }
+
     fn advance_enemies(&mut self) {
         self.clear_dijkstra_cache();
         let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
@@ -1055,6 +1119,11 @@ impl World {
             if self.player_attacked.contains(&enemy_id) {
                 continue;
             }
+
+            let previous_pos = match self.ecs.position(enemy_id) {
+                Some(pos) => pos,
+                None => continue,
+            };
 
             let rule_name = match self.ecs.kind(enemy_id) {
                 Some(kind) => kind.rule_name(),
@@ -1074,7 +1143,12 @@ impl World {
             enemy_env.bind("*self*", Value::I64(enemy_id.raw() as i64));
             enemy_env.bind("*player*", Value::I64(self.player_id.raw() as i64));
 
-            match glyph::eval_with_opts(&body_form, &enemy_env, sandbox.clone(), self) {
+            let result = glyph::eval_with_opts(&body_form, &enemy_env, sandbox.clone(), self);
+            if self.ecs.is_alive(enemy_id) {
+                self.repair_enemy_position(enemy_id, previous_pos);
+            }
+
+            match result {
                 Ok(_) => {}
                 Err(err) => {
                     self.event_log.push(format!(
@@ -3237,6 +3311,74 @@ mod tests {
         assert_eq!(world.turn, 1);
         assert_ne!(single_enemy(&world).pos, Position::new(10, 8));
         assert_eq!(world.map.tile(Position::new(10, 8)), TileType::Wall);
+    }
+
+    fn builtin_step_onto_wizard_for_test(
+        args: &[Value],
+        _env: &Env,
+        _opts: &glyph::SandboxOptions,
+        world: &mut World,
+    ) -> glyph::EvalResult<Value> {
+        let Some(Value::I64(raw_id)) = args.first() else {
+            return Err(glyph::EvalError::WrongArgCount {
+                expected: 1,
+                got: args.len(),
+            });
+        };
+        let entity_id = EntityId::new(*raw_id as usize);
+        let wizard_id = world
+            .wizard_id
+            .expect("test world should have a wizard entity");
+        let wizard_pos = world
+            .ecs
+            .position(wizard_id)
+            .expect("wizard should have a position");
+        world.ecs.set_position(entity_id, wizard_pos);
+        Ok(Value::Bool(true))
+    }
+
+    #[test]
+    fn enemy_ai_cannot_finish_on_wizard_tile() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        let old_enemy_id = world.living_enemies().next().unwrap().id;
+        world.ecs.remove(old_enemy_id);
+        world.set_player_pos(Position::new(8, 5));
+        let enemy_id = world.ecs.spawn_goblin(Position::new(5, 5));
+        let wizard_pos = Position::new(6, 5);
+        let wizard_id = world.ecs.spawn_wizard(wizard_pos);
+        world.wizard_id = Some(wizard_id);
+        world.glyph_env.bind(
+            "step-toward!",
+            Value::Builtin(glyph::BuiltinFn {
+                name: "step-toward!",
+                doc: "",
+                func: builtin_step_onto_wizard_for_test,
+            }),
+        );
+
+        world.apply_intent(Intent::Wait);
+
+        assert_eq!(world.ecs.position(wizard_id), Some(wizard_pos));
+        assert_ne!(world.ecs.position(enemy_id), Some(wizard_pos));
+        assert_eq!(world.ecs.entity_at(wizard_pos), Some(wizard_id));
+    }
+
+    #[test]
+    fn enemy_overlap_with_wizard_is_repaired_even_when_ai_is_skipped() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.set_player_pos(Position::new(8, 5));
+        let enemy_id = world.living_enemies().next().unwrap().id;
+        let wizard_pos = Position::new(6, 5);
+        let wizard_id = world.ecs.spawn_wizard(wizard_pos);
+        world.wizard_id = Some(wizard_id);
+        world.ecs.set_position(enemy_id, wizard_pos);
+        world.player_attacked.push(enemy_id);
+
+        world.apply_intent(Intent::Wait);
+
+        assert_eq!(world.ecs.position(wizard_id), Some(wizard_pos));
+        assert_ne!(world.ecs.position(enemy_id), Some(wizard_pos));
+        assert_eq!(world.ecs.entity_at(wizard_pos), Some(wizard_id));
     }
 
     #[test]

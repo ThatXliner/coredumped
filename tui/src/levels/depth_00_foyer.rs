@@ -31,24 +31,12 @@ pub(crate) fn build_foyer(world: &mut World) {
     world.map = map;
     world.ecs.set_position(world.player_id, player_start);
 
-    // Sign at entrance
+    // Single sign: boot, controls, wizard tease
     world.ecs.spawn_sign(
-        Position::new(rx + 1, ry + 2),
-        "Xlyph runtime booted.\nIf you're reading this, you finally woke up.",
-    );
-
-    // Sign at stairs
-    world.ecs.spawn_sign(
-        Position::new(rx + rw - 4, ry + rh - 2),
-        "Move with arrow keys or hjkl.\nDescend when ready.",
+        Position::new(rx + rw / 2 - 6, ry + rh / 2 - 1),
+        "Xlyph runtime booted.\nIf you're reading this, you\nfinally woke up.\n\nMove with arrow keys or hjkl.\nDescend when ready.\n\nYou are alone here.\nThe wizard has not yet come.",
     );
 
     // One pushable slime
     world.ecs.spawn_slime(Position::new(rx + rw - 8, ry + 3));
-
-    // Sign where wizard would be — he arrives depth 1
-    world.ecs.spawn_sign(
-        Position::new(rx + rw / 2, ry + rh / 2 - 1),
-        "You are alone here.\nThe wizard has not yet come.",
-    );
 }

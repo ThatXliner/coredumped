@@ -114,6 +114,9 @@ pub struct World {
     /// Ending text — set when the player triggers an ending at the Core.
     pub ending: Option<String>,
 
+    /// Set when the Rage impact overflow has disabled registry write-protect.
+    pub registry_write_unlocked: bool,
+
     /// Tracks which key IDs the player holds (from killing key-goblins in Level 8).
     pub held_keys: Vec<String>,
 
@@ -185,6 +188,7 @@ impl World {
             cached_flashlight_pos: Position::new(-1, -1),
             cached_flashlight_facing: Direction::East,
             ending: None,
+            registry_write_unlocked: false,
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),

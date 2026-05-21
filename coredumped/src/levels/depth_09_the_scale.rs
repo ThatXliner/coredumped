@@ -48,7 +48,7 @@ pub(crate) fn build_the_scale(world: &mut World) {
     // Scale signs in center
     world.ecs.spawn_sign(
         Position::new(cx, cy - 2),
-        "Two scales sit in the center.\nEach demands a weight.\nPlace what you carry...\nor pass with nothing.",
+        "Two scales sit in the center.\nOne pan is empty.\nThe other is you.\n\nYou can pass with nothing,\nor chase what waits in the side rooms.",
     );
 
     // Enemies
@@ -75,7 +75,7 @@ pub(crate) fn build_the_scale(world: &mut World) {
 
 fn wizard_interact(world: &mut World) -> bool {
     world.event_log.push_colored(
-        "\"Give me the ones that hurt. I'll take them. You won't remember they existed.\"",
+        "\"I would take the ones that hurt if I could. But that bargain is getting harder to believe.\"",
         RGB::named(CYAN),
     );
     true

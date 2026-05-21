@@ -73,6 +73,8 @@ pub struct SaveData {
     pub user_source: Vec<String>,
     pub fragment_registry: crate::fragment::FragmentRegistry,
     pub ending: Option<String>,
+    #[serde(default)]
+    pub registry_write_unlocked: bool,
     pub held_keys: Vec<String>,
     pub held_items: Vec<String>,
     pub gauntlet_barrier_locked: Vec<i32>,
@@ -242,6 +244,7 @@ impl World {
             user_source: self.user_source.clone(),
             fragment_registry: self.fragment_registry.clone(),
             ending: self.ending.clone(),
+            registry_write_unlocked: self.registry_write_unlocked,
             held_keys: self.held_keys.clone(),
             held_items: self.held_items.clone(),
             gauntlet_barrier_locked: self.gauntlet_barrier_locked.iter().copied().collect(),
@@ -383,6 +386,7 @@ impl World {
         // --- Fragment registry ---
         world.fragment_registry = data.fragment_registry.clone();
         world.ending = data.ending.clone();
+        world.registry_write_unlocked = data.registry_write_unlocked;
         world.held_keys = data.held_keys.clone();
         world.held_items = data.held_items.clone();
         world.gauntlet_barrier_locked = data.gauntlet_barrier_locked.iter().copied().collect();

@@ -139,6 +139,7 @@ impl World {
             cached_flashlight_pos: Position::new(-1, -1),
             cached_flashlight_facing: Direction::East,
             ending: None,
+            registry_write_unlocked: false,
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
@@ -218,6 +219,7 @@ impl World {
             cached_flashlight_pos: Position::new(-1, -1),
             cached_flashlight_facing: Direction::East,
             ending: None,
+            registry_write_unlocked: false,
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
@@ -562,6 +564,7 @@ impl World {
         self.new_rule_ids.clear();
         self.known_rule_ids.clear();
         self.ending = None;
+        self.registry_write_unlocked = false;
         self.held_keys.clear();
         self.held_items.clear();
         self.gauntlet_barrier_locked.clear();
@@ -584,11 +587,59 @@ impl World {
         *self = World::new_game();
     }
 
+    fn counting_room_locked_door(pos: Position) -> bool {
+        matches!((pos.x, pos.y), (16, 12) | (28, 12) | (16, 18) | (28, 18))
+    }
+
+    fn try_open_counting_room_door(&mut self, target: Position) -> bool {
+        if self.depth != 8 || !Self::counting_room_locked_door(target) {
+            return false;
+        }
+
+        if self.held_keys.pop().is_some() {
+            self.map.set_tile(target, TileType::Floor);
+            self.event_log.push_colored(
+                "The key dissolves in your hand. The locked door opens.",
+                RGB::named(CYAN),
+            );
+        } else {
+            self.event_log.push_colored(
+                "The door is locked. Somewhere nearby, a key-goblin is carrying what you need.",
+                RGB::named(YELLOW),
+            );
+        }
+        true
+    }
+
+    fn award_counting_room_key(&mut self, target_kind: EntityKind) {
+        if self.depth == 8 && target_kind == EntityKind::Goblin && self.held_keys.len() < 3 {
+            let key_id = format!("memory-key-{}", self.held_keys.len() + 1);
+            self.held_keys.push(key_id);
+            self.event_log.push_colored(
+                "A memory-key clatters to the floor. You pick it up.",
+                RGB::named(CYAN),
+            );
+        }
+    }
+
+    fn maybe_unlock_registry_from_impact(&mut self, target_kind: EntityKind, force: i32) {
+        if target_kind == EntityKind::Rage && force > 12 && !self.registry_write_unlocked {
+            self.registry_write_unlocked = true;
+            self.event_log.push_colored(
+                "The impact payload overruns its buffer. Somewhere deeper, registry write-protect clicks off.",
+                RGB::named(CYAN),
+            );
+        }
+    }
+
     fn apply_player_move(&mut self, direction: Direction) -> ActionCost {
         let (dx, dy) = direction.delta();
         let target = self.player_pos().offset(dx, dy);
 
         if !self.map.is_walkable(target) {
+            if self.try_open_counting_room_door(target) {
+                return ActionCost::Tick;
+            }
             self.event_log
                 .push("You bump into a wall. Time still moves.");
             return ActionCost::Tick;
@@ -653,6 +704,7 @@ impl World {
             }
 
             let target_name = self.ecs.name(target_id);
+            let target_kind = self.ecs.kind(target_id).unwrap_or(EntityKind::Slime);
             let hp = self
                 .ecs
                 .damage(target_id, 1)
@@ -668,6 +720,7 @@ impl World {
                     format!("The {target_name} collapses into inert code."),
                     RGB::named(ORANGE),
                 );
+                self.award_counting_room_key(target_kind);
             }
             return ActionCost::Tick;
         }
@@ -703,7 +756,7 @@ impl World {
     }
 
     /// Deal 1 damage to the first entity in the given direction. Does not move the player.
-    fn attack_in_direction(&mut self, direction: Direction) {
+    fn attack_in_direction(&mut self, direction: Direction, force: i32) {
         let (dx, dy) = direction.delta();
         let target = self.player_pos().offset(dx, dy);
 
@@ -721,10 +774,12 @@ impl World {
                 return;
             }
             let target_name = self.ecs.name(target_id);
+            let target_kind = self.ecs.kind(target_id).unwrap_or(EntityKind::Slime);
             let hp = self
                 .ecs
                 .damage(target_id, 1)
                 .expect("combat targets should have an Hp component");
+            self.maybe_unlock_registry_from_impact(target_kind, force);
 
             self.event_log.push_colored(
                 format!("You strike the {target_name} for 1 damage."),
@@ -736,6 +791,7 @@ impl World {
                     format!("The {target_name} collapses into inert code."),
                     RGB::named(ORANGE),
                 );
+                self.award_counting_room_key(target_kind);
             }
         } else {
             self.event_log
@@ -883,6 +939,17 @@ impl World {
                         RGB::named(CYAN),
                     );
                 }
+                self.ecs.remove(fragment_id);
+            } else if self
+                .fragment_registry
+                .get(&frag_id)
+                .map(|frag| frag.status == crate::fragment::FragmentStatus::Collected)
+                .unwrap_or(false)
+            {
+                self.event_log.push_colored(
+                    format!("Memory {} is already recovered.", frag_id),
+                    RGB::named(DARK_GRAY),
+                );
                 self.ecs.remove(fragment_id);
             }
         }
@@ -1733,6 +1800,11 @@ pub(crate) fn setup_glyph_env() -> Env {
         "read a memory fragment: (inspect-fragment :frag-001)",
         builtin_inspect_fragment
     );
+    reg!(
+        "open-registry",
+        "open a hidden registry handle",
+        builtin_open_registry
+    );
 
     ai_builtins::register_all(&env);
 
@@ -2000,18 +2072,29 @@ fn builtin_do_attack(
     _opts: &glyph::SandboxOptions,
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    let direction = if args.is_empty() {
-        world.player_facing
-    } else if args.len() == 1 {
-        parse_attack_direction(&args[0]).ok_or_else(|| glyph::EvalError::TypeError {
-            expected: "direction keyword (:north, :south, :east, :west)",
-            got: args[0].to_string(),
-        })?
-    } else {
-        return Err(glyph::EvalError::WrongArgCount {
-            expected: 1,
-            got: args.len(),
-        });
+    let (direction, force) = match args {
+        [] => (world.player_facing, 1),
+        [arg] => {
+            if let Some(direction) = parse_attack_direction(arg) {
+                (direction, 1)
+            } else {
+                (world.player_facing, parse_attack_force(arg)?)
+            }
+        }
+        [dir, force] => {
+            let direction =
+                parse_attack_direction(dir).ok_or_else(|| glyph::EvalError::TypeError {
+                    expected: "direction keyword (:north, :south, :east, :west)",
+                    got: dir.to_string(),
+                })?;
+            (direction, parse_attack_force(force)?)
+        }
+        _ => {
+            return Err(glyph::EvalError::WrongArgCount {
+                expected: 2,
+                got: args.len(),
+            })
+        }
     };
 
     if !world.player_can_attack {
@@ -2021,9 +2104,20 @@ fn builtin_do_attack(
     }
 
     world.player_facing = direction;
-    world.attack_in_direction(direction);
+    world.attack_in_direction(direction, force);
     world.finish_tick();
     Ok(Value::Nil)
+}
+
+fn parse_attack_force(value: &Value) -> glyph::EvalResult<i32> {
+    match value {
+        Value::I64(n) if *n > 0 => Ok(*n as i32),
+        Value::F64(n) if *n > 0.0 => Ok(*n as i32),
+        other => Err(glyph::EvalError::TypeError {
+            expected: "positive attack force number",
+            got: other.to_string(),
+        }),
+    }
 }
 
 fn format_value_help(value: &Value) -> String {
@@ -2149,7 +2243,7 @@ Console commands (game-specific):\n\
 
     if world.player_can_attack {
         help.push_str(
-            "\n  (do-attack :dir) — strike in direction (keybindings only; \n  \
+            "\n  (do-attack :dir [force]) — strike in direction (keybindings only; \n  \
              use (bind-key :k (do-attack :dir)) to bind it)\n\
              \n  (bind-key :k (expr)) — bind a key to a Glyph expression",
         );
@@ -2523,6 +2617,199 @@ fn builtin_query_registry(
     }
 }
 
+fn registry_name_from_value(value: &Value) -> glyph::EvalResult<&str> {
+    match value {
+        Value::Keyword(kw) => Ok(kw.name.as_str()),
+        Value::String(s) => Ok(s.as_str()),
+        other => Err(glyph::EvalError::TypeError {
+            expected: "registry or rule keyword",
+            got: other.to_string(),
+        }),
+    }
+}
+
+fn rule_matches(rule: &crate::rules::Rule, requested: &str) -> bool {
+    rule.id == requested
+        || rule.name == requested
+        || rule.id.replace('-', "/") == requested
+        || rule.name.replace('/', "-") == requested
+}
+
+fn suppressed_fragment_list(world: &World) -> Value {
+    let list: Vec<Value> = world
+        .fragment_registry
+        .suppressed()
+        .into_iter()
+        .map(|f| {
+            let mut m: BTreeMap<Value, Value> = BTreeMap::new();
+            m.insert(Value::String("id".into()), Value::String(f.id.clone()));
+            m.insert(Value::String("weight".into()), Value::I64(f.weight as i64));
+            Value::Map(m)
+        })
+        .collect();
+    Value::List(list)
+}
+
+fn builtin_open_registry(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    if args.len() != 1 {
+        return Err(glyph::EvalError::WrongArgCount {
+            expected: 1,
+            got: args.len(),
+        });
+    }
+
+    match registry_name_from_value(&args[0])? {
+        "suppressed-fragments" => Ok(Value::Builtin(glyph::BuiltinFn {
+            name: "suppressed-fragments",
+            doc: "registry handle: (handle :read)",
+            func: builtin_suppressed_fragments_handle,
+        })),
+        "spawn-log" => Ok(Value::Builtin(glyph::BuiltinFn {
+            name: "spawn-log",
+            doc: "registry handle: (handle :write key value)",
+            func: builtin_spawn_log_handle,
+        })),
+        "rule-registry" => {
+            if world.registry_write_unlocked {
+                Ok(Value::Builtin(glyph::BuiltinFn {
+                    name: "rule-registry",
+                    doc: "registry handle: (handle :read rule), (handle :write rule form), or (handle :unregister rule)",
+                    func: builtin_rule_registry_handle,
+                }))
+            } else {
+                Err(glyph::EvalError::Custom(
+                    "Registry access denied: write-protect flag is set.".into(),
+                ))
+            }
+        }
+        other => Err(glyph::EvalError::Custom(format!(
+            "unknown registry: {}",
+            other
+        ))),
+    }
+}
+
+fn builtin_suppressed_fragments_handle(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    match args {
+        [Value::Keyword(method)] if method.name == "read" => Ok(suppressed_fragment_list(world)),
+        _ => Err(glyph::EvalError::Custom("usage: (handle :read)".into())),
+    }
+}
+
+fn builtin_spawn_log_handle(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    match args.first() {
+        Some(Value::Keyword(method)) if method.name == "write" => {
+            world
+                .event_log
+                .push_colored("Spawn log accepted the write.", RGB::named(DARK_GRAY));
+            Ok(Value::Nil)
+        }
+        _ => Err(glyph::EvalError::Custom(
+            "usage: (handle :write key value)".into(),
+        )),
+    }
+}
+
+fn builtin_rule_registry_handle(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let method = match args.first() {
+        Some(Value::Keyword(kw)) => kw.name.as_str(),
+        Some(other) => {
+            return Err(glyph::EvalError::TypeError {
+                expected: "registry method keyword",
+                got: other.to_string(),
+            })
+        }
+        None => {
+            return Err(glyph::EvalError::WrongArgCount {
+                expected: 1,
+                got: 0,
+            })
+        }
+    };
+
+    match method {
+        "read" => {
+            if args.len() != 2 {
+                return Err(glyph::EvalError::WrongArgCount {
+                    expected: 2,
+                    got: args.len(),
+                });
+            }
+            let requested = registry_name_from_value(&args[1])?;
+            let rule = world
+                .registry
+                .iter()
+                .find(|rule| rule_matches(rule, requested))
+                .ok_or_else(|| glyph::EvalError::Custom(format!("unknown rule: {}", requested)))?;
+            Ok(Value::String(rule.source_lines.join("\n")))
+        }
+        "write" => {
+            if args.len() != 3 {
+                return Err(glyph::EvalError::WrongArgCount {
+                    expected: 3,
+                    got: args.len(),
+                });
+            }
+            let requested = registry_name_from_value(&args[1])?;
+            let rule = world
+                .registry
+                .iter()
+                .find(|rule| rule_matches(rule, requested))
+                .ok_or_else(|| glyph::EvalError::Custom(format!("unknown rule: {}", requested)))?;
+            let rule_name = rule.name;
+            world.event_log.push_colored(
+                format!("Registry write accepted for {}.", rule_name),
+                RGB::named(CYAN),
+            );
+            Ok(Value::String(format!("{} patched", rule_name)))
+        }
+        "unregister" => {
+            if args.len() != 2 {
+                return Err(glyph::EvalError::WrongArgCount {
+                    expected: 2,
+                    got: args.len(),
+                });
+            }
+            let requested = registry_name_from_value(&args[1])?;
+            let rule = world
+                .registry
+                .iter()
+                .find(|rule| rule_matches(rule, requested))
+                .ok_or_else(|| glyph::EvalError::Custom(format!("unknown rule: {}", requested)))?;
+            let rule_name = rule.name;
+            world.event_log.push_colored(
+                format!("Registry unregistered {}.", rule_name),
+                RGB::named(RED),
+            );
+            Ok(Value::String(format!("{} unregistered", rule_name)))
+        }
+        _ => Err(glyph::EvalError::Custom(
+            "usage: (handle :read rule), (handle :write rule form), or (handle :unregister rule)"
+                .into(),
+        )),
+    }
+}
+
 fn builtin_inspect_fragment(
     args: &[Value],
     _env: &Env,
@@ -2530,11 +2817,16 @@ fn builtin_inspect_fragment(
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
     let fragment_id = match args.first() {
-        Some(Value::Keyword(kw)) => format!("frag-{:03}", {
+        Some(Value::Keyword(kw)) if kw.name.starts_with("frag-") => kw.name.clone(),
+        Some(Value::Keyword(kw)) => {
             let s = &kw.name;
-            s.parse::<u32>()
-                .map_err(|_| glyph::EvalError::Custom(format!("invalid fragment id: {}", s)))?
-        }),
+            format!(
+                "frag-{:03}",
+                s.parse::<u32>().map_err(|_| {
+                    glyph::EvalError::Custom(format!("invalid fragment id: {}", s))
+                })?
+            )
+        }
         Some(Value::String(s)) => s.clone(),
         _ => {
             return Err(glyph::EvalError::Custom(
@@ -3132,6 +3424,98 @@ mod tests {
             &mut world,
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn charged_rage_attack_unlocks_registry_write() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.clear_all_enemies();
+        world.ecs.spawn_rage(Position::new(6, 5));
+        world.player_can_attack = true;
+        let env = setup_do_attack_test_env();
+        let forms = crate::glyph::read_string("(do-attack :east 13)").unwrap();
+
+        crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        assert!(world.registry_write_unlocked);
+        assert!(world.event_log.contains("write-protect clicks off"));
+    }
+
+    #[test]
+    fn rule_registry_denies_access_before_unlock() {
+        let mut world = World::new();
+        let env = setup_glyph_env();
+        let forms = crate::glyph::read_string("(open-registry :rule-registry)").unwrap();
+
+        let err = crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("write-protect flag is set"));
+    }
+
+    #[test]
+    fn unlocked_rule_registry_handle_accepts_vessel_write() {
+        let mut world = World::new();
+        world.registry_write_unlocked = true;
+        let env = setup_glyph_env();
+        let forms = crate::glyph::read_string(
+            "(let r (open-registry :rule-registry) (r :write :vessel/suppress '(set! *threshold* 0)))",
+        )
+        .unwrap();
+
+        let result = crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        assert_eq!(result, Value::String("vessel/suppress patched".into()));
+    }
+
+    #[test]
+    fn inspect_fragment_accepts_full_keyword_id() {
+        let mut world = World::new();
+        let env = setup_glyph_env();
+        let forms = crate::glyph::read_string("(inspect-fragment :frag-001)").unwrap();
+
+        let result = crate::glyph::eval_with_opts(
+            &forms[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        assert!(matches!(result, Value::Map(_)));
+    }
+
+    #[test]
+    fn counting_room_locked_door_spends_key() {
+        let mut world = World::new_game();
+        crate::levels::build_level(&mut world, 8);
+        world.depth = 8;
+        world.set_player_pos(Position::new(15, 12));
+        world.held_keys.push("memory-key-1".into());
+
+        let cost = world.apply_intent(Intent::Move(Direction::East));
+
+        assert_eq!(cost, ActionCost::Tick);
+        assert_eq!(world.map.tile(Position::new(16, 12)), TileType::Floor);
+        assert!(world.held_keys.is_empty());
+        assert!(world.event_log.contains("locked door opens"));
     }
 
     // --- Death & respawn tests ---

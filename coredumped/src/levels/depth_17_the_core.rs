@@ -29,6 +29,8 @@ pub(crate) fn build_the_core(world: &mut World) {
 
     world.map = map;
     world.ecs.set_position(world.player_id, player_start);
+    world.known_rule_ids.insert("vessel-suppress".into());
+    world.new_rule_ids.insert("vessel-suppress".into());
 
     // frag-033 on pedestal
     world
@@ -38,7 +40,7 @@ pub(crate) fn build_the_core(world: &mut World) {
     // The pedestal — the vessel/suppress rule
     world.ecs.spawn_sign(
         Position::new(rx + rw / 2, ry + rh / 2),
-        "THE CORE\n\nvessel/suppress is here.\n\nOpen the inspector (i) to read the rule.\nOpen the console (`) to modify it.\n\nThe choice is yours.",
+        "THE CORE\n\nvessel/suppress is here.\n\nOpen the inspector (i) to read the rule.\nOpen the console (`) to modify it.\n\nTry:\n(let r (open-registry :rule-registry)\n  (r :write :vessel/suppress\n     '(set! *threshold* 0)))\n\nThe choice is yours.",
     );
 
     // No enemies, no wizard, no items

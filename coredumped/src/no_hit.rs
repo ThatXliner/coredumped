@@ -251,6 +251,7 @@ mod tests {
             cached_flashlight_pos: Position::new(-1, -1),
             cached_flashlight_facing: Direction::East,
             ending: None,
+            registry_write_unlocked: false,
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),

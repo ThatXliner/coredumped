@@ -46,6 +46,14 @@ pub(crate) fn build_counting_room(world: &mut World) {
             map.set_tile(Position::new(door_x, hub_y + dy * t), TileType::Floor);
         }
     }
+    for pos in [
+        Position::new(hub_x - 6, hub_y - 3),
+        Position::new(hub_x + 6, hub_y - 3),
+        Position::new(hub_x - 6, hub_y + 3),
+        Position::new(hub_x + 6, hub_y + 3),
+    ] {
+        map.set_tile(pos, TileType::Wall);
+    }
 
     let player_start = Position::new(hub_x, hub_y);
     let stairs_down = Position::new(hub_x, hub_y + 3);
@@ -55,8 +63,8 @@ pub(crate) fn build_counting_room(world: &mut World) {
     world.map = map;
     world.ecs.set_position(world.player_id, player_start);
 
-    // Goblins hold keys — when killed, player can pick up the key
-    world.ecs.spawn_goblin(Position::new(hub_x - 12, hub_y - 4)); // key-goblin-1
+    // Three goblins hold keys. Four doors exist, so one room must stay locked.
+    world.ecs.spawn_goblin(Position::new(hub_x - 12, hub_y - 6)); // key-goblin-1
     world.ecs.spawn_goblin(Position::new(hub_x + 10, hub_y - 8)); // key-goblin-2
     world.ecs.spawn_goblin(Position::new(hub_x - 12, hub_y + 8)); // key-goblin-3
     world.ecs.spawn_bat(Position::new(hub_x + 8, hub_y + 4));
@@ -74,6 +82,11 @@ pub(crate) fn build_counting_room(world: &mut World) {
     let wizard_pos = Position::new(hub_x + 2, hub_y - 2);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
     world.on_wizard_interact = Some(wizard_interact);
+
+    world.ecs.spawn_sign(
+        Position::new(hub_x - 2, hub_y + 2),
+        "Four doors. Three keys.\nKey-goblins carry them.\nSpend a key by walking into\na locked doorway.\n\nChoose what matters.",
+    );
 }
 
 fn wizard_interact(world: &mut World) -> bool {

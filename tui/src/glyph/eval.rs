@@ -934,6 +934,7 @@ fn eval_bind_key_inner(
     // expression is re-evaluated when the key is pressed later.
     let source = args[1].to_string();
     world.bindings.insert(key.clone(), source.clone());
+    world.has_new_bindings = true;
     world.event_log.push_colored(
         format!("Bound key '{}' to: {}", key, source),
         RGB::named(GREEN),

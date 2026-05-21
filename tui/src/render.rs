@@ -224,16 +224,24 @@ fn render_side_panel(ctx: &mut BTerm, world: &World) {
 
     // Single-key actions
     let descend_key = bind("(descend!)");
+    let inspector_key = bind("(toggle-inspector!)");
     let console_key = bind("(toggle-console!)");
     let bindings_key = bind("(toggle-keybindings!)");
-    let extras: [(&str, &str); 3] = [
-        ("descend", display_key(&descend_key)),
-        ("console", &console_key),
-        ("bindings", &bindings_key),
+
+    let has_new_rules = !world.new_rule_ids.is_empty();
+    let entries: [(&str, &str, bool); 4] = [
+        ("descend", display_key(&descend_key), false),
+        ("inspector", &inspector_key, has_new_rules),
+        ("console", &console_key, false),
+        ("bindings", &bindings_key, world.has_new_bindings),
     ];
-    for (label, key) in &extras {
+    for (label, key, highlight) in &entries {
         if !key.is_empty() {
-            print_clipped(ctx, c1, y, 8, label);
+            if *highlight {
+                print_clipped_color(ctx, c1, y, 8, label, RGB::named(YELLOW));
+            } else {
+                print_clipped(ctx, c1, y, 8, label);
+            }
             print_clipped(ctx, c1 + 9, y, w - 9, key);
             y += 1;
         }

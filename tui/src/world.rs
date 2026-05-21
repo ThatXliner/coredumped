@@ -44,6 +44,10 @@ pub struct World {
     pub wizard_id: Option<EntityId>,
     pub bindings: HashMap<String, String>,
 
+    /// Set to true when a new binding is added via bind-key.
+    /// Cleared when the keybindings overlay is opened.
+    pub has_new_bindings: bool,
+
     /// Tracks progress through the Konami code (↑↑↓↓←→←→).
     pub konami_index: usize,
     /// Set to true when the full Konami code is entered.
@@ -135,6 +139,7 @@ impl World {
             wizard_taught: false,
             wizard_id: None,
             bindings: HashMap::new(),
+            has_new_bindings: false,
             konami_index: 0,
             cheat_unlocked: false,
             console_history: Vec::new(),
@@ -203,6 +208,7 @@ impl World {
             if !self.known_rule_ids.contains(&id) {
                 self.known_rule_ids.insert(id.clone());
                 self.new_rule_ids.insert(id);
+                self.event_log.push("New rule detected. Press I to see it.");
             }
         }
     }

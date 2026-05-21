@@ -108,6 +108,7 @@ impl World {
             wizard_taught: false,
             wizard_id: None,
             bindings: default_bindings(),
+            has_new_bindings: false,
             konami_index: 0,
             cheat_unlocked: false,
             console_history: Vec::new(),
@@ -180,6 +181,7 @@ impl World {
             wizard_taught: false,
             wizard_id: None,
             bindings: default_bindings(),
+            has_new_bindings: false,
             konami_index: 0,
             cheat_unlocked: false,
             console_history: Vec::new(),
@@ -340,6 +342,7 @@ impl World {
                 self.mode = if self.mode == Mode::Keybindings {
                     Mode::Normal
                 } else {
+                    self.has_new_bindings = false;
                     Mode::Keybindings
                 };
                 ActionCost::Free

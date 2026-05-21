@@ -494,13 +494,15 @@ fn render_console(ctx: &mut BTerm, world: &World) {
     fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
     draw_box(ctx, x, y, width, height, " glyph console ");
 
-    print_clipped(
-        ctx,
-        x + 2,
-        y + 2,
-        width - 4,
+    for (i, line) in wrap_text(
         "Glyph REPL — press Ctrl+E to open an external editor for multi-line input. Try (help). ESC or ` to close.",
-    );
+        (width - 4) as usize,
+    )
+    .iter()
+    .enumerate()
+    {
+        print_clipped(ctx, x + 2, y + 2 + i as i32, width - 4, line);
+    }
 
     let output_y = y + 4;
     let prompt_y = y + height - 2;

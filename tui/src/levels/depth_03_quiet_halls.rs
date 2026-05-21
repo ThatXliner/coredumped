@@ -1,73 +1,91 @@
 use crate::{
-    entity::{Direction, Position},
+    entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
 };
 
 // ---------------------------------------------------------------------------
-// Depth 3 — Quiet Halls (Denial: corridor maze, bridge to Anger)
+// Depth 3 — Quiet Halls (Denial: cave of buried memories)
 // ---------------------------------------------------------------------------
+//
+// Redesigned from corridor maze into an organic cave with rock formations,
+// scattered debris, and hidden memory fragments. The irregular walls come
+// from overlapping rectangular chambers offset from each other.
 
 pub(crate) fn build_quiet_halls(world: &mut World) {
     let mut map = Map::new_filled(MAP_WIDTH, MAP_HEIGHT, TileType::Wall);
 
-    // Carve a corridor-based maze with alcoves. Vertical main corridors,
-    // horizontal cross corridors, no dead ends.
-    //
-    // Layout (map is 55×33):
-    //   - Three north-south corridors at x=5, x=27, x=49
-    //   - Three east-west corridors at y=5, y=16, y=27
-    //   - Alcoves branching off the corridors
-    let v_corridors = [5, 27, 49];
-    let h_corridors = [5, 16, 27];
-
-    // Carve main corridors
-    for &vx in &v_corridors {
-        for y in 1..MAP_HEIGHT - 1 {
-            map.set_tile(Position::new(vx, y), TileType::Floor);
-            map.set_tile(Position::new(vx + 1, y), TileType::Floor);
-        }
-    }
-    for &hy in &h_corridors {
-        for x in 1..MAP_WIDTH - 1 {
-            map.set_tile(Position::new(x, hy), TileType::Floor);
-            map.set_tile(Position::new(x, hy + 1), TileType::Floor);
-        }
-    }
-
-    // Carve alcoves (short dead-end branches off corridors)
-    let alcoves: [(i32, i32, Direction); 8] = [
-        (8, 3, Direction::South),   // top-left alcove (south from north corridor)
-        (25, 3, Direction::South),  // top-center alcove
-        (51, 3, Direction::South),  // top-right alcove
-        (3, 14, Direction::East),   // mid-left alcove
-        (51, 14, Direction::West),  // mid-right alcove
-        (3, 25, Direction::East),   // bottom-left alcove
-        (25, 29, Direction::North), // bottom-center alcove
-        (51, 25, Direction::West),  // bottom-right alcove
+    // Carve an irregular cave from overlapping rectangles.
+    // Offsets between chambers create natural-looking jagged edges.
+    let chambers: [(i32, i32, i32, i32); 8] = [
+        (4, 3, 46, 27),  // core chamber
+        (2, 7, 50, 16),  // wider mid — left/right pockets
+        (8, 1, 39, 29),  // taller center — top/bottom pockets
+        (14, 1, 8, 3),   // north nook
+        (16, 29, 16, 3), // south nook
+        (49, 10, 4, 6),  // east alcove
+        (1, 10, 3, 10),  // west crevice
+        (46, 22, 6, 7),  // south-east pocket
     ];
 
-    for &(ax, ay, dir) in &alcoves {
-        let (dx, dy) = match dir {
-            Direction::North => (0, -1),
-            Direction::South => (0, 1),
-            Direction::East => (1, 0),
-            Direction::West => (-1, 0),
-        };
-        let mut cx = ax;
-        let mut cy = ay;
-        for _ in 0..4 {
-            map.set_tile(Position::new(cx, cy), TileType::Floor);
-            map.set_tile(Position::new(cx + 1, cy), TileType::Floor);
-            map.set_tile(Position::new(cx, cy + 1), TileType::Floor);
-            map.set_tile(Position::new(cx + 1, cy + 1), TileType::Floor);
-            cx += dx;
-            cy += dy;
+    for &(x, y, w, h) in &chambers {
+        for cy in y..y + h {
+            for cx in x..x + w {
+                map.set_tile(Position::new(cx, cy), TileType::Floor);
+            }
         }
+    }
+
+    // Rock formations — 2x2 wall pillars that break line of sight and
+    // force the player to weave through the cave.
+    let pillars: [(i32, i32); 8] = [
+        (14, 6),  // near entrance
+        (20, 10), // mid-west
+        (20, 18), // mid-west lower
+        (28, 12), // center
+        (28, 20), // center lower
+        (36, 10), // mid-east
+        (36, 22), // mid-east lower
+        (42, 16), // east
+    ];
+
+    for &(px, py) in &pillars {
+        // 2x2 block
+        map.set_tile(Position::new(px, py), TileType::Wall);
+        map.set_tile(Position::new(px + 1, py), TileType::Wall);
+        map.set_tile(Position::new(px, py + 1), TileType::Wall);
+        map.set_tile(Position::new(px + 1, py + 1), TileType::Wall);
+    }
+
+    // Scattered rock debris — single wall tiles on the cave floor.
+    // Looks like broken rock pieces.
+    let debris: [(i32, i32); 18] = [
+        (6, 11),
+        (8, 16),
+        (12, 22),
+        (16, 14),
+        (24, 7),
+        (26, 24),
+        (30, 8),
+        (34, 15),
+        (38, 6),
+        (40, 26),
+        (44, 12),
+        (46, 20),
+        (10, 26),
+        (32, 5),
+        (42, 6),
+        (18, 26),
+        (36, 28),
+        (48, 18),
+    ];
+
+    for &(dx, dy) in &debris {
+        map.set_tile(Position::new(dx, dy), TileType::Wall);
     }
 
     let player_start = Position::new(6, 6);
-    let stairs_down = Position::new(50, 28);
+    let stairs_down = Position::new(24, 30);
 
     map.set_tile(player_start, TileType::StairsUp);
     map.set_tile(stairs_down, TileType::StairsDown);
@@ -75,24 +93,34 @@ pub(crate) fn build_quiet_halls(world: &mut World) {
     world.map = map;
     world.ecs.set_position(world.player_id, player_start);
 
-    // Wizard at start
-    let wizard_pos = Position::new(8, 5);
+    // Wizard near entrance
+    let wizard_pos = Position::new(9, 5);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
 
-    // Enemies: 2 Bats, 1 Slime
-    world.ecs.spawn_bat(Position::new(28, 8));
-    world.ecs.spawn_slime(Position::new(50, 18));
-    world.ecs.spawn_bat(Position::new(26, 25));
+    // Cave-dwelling enemies
+    world.ecs.spawn_bat(Position::new(34, 8));
+    world.ecs.spawn_bat(Position::new(22, 20));
+    world.ecs.spawn_bat(Position::new(40, 18));
+    world.ecs.spawn_slime(Position::new(14, 24));
 
-    // Sign near wizard
+    // Memory fragments — unplaced Denial-stage fragments
+    // frag-010: "the first time I thought she'd leave me"
+    // frag-011: "walking on eggshells"
+    // frag-012: "tried to explain my childhood"
+    world.ecs.spawn_fragment(Position::new(22, 27), "frag-010");
+    world.ecs.spawn_fragment(Position::new(44, 21), "frag-011");
+    world.ecs.spawn_fragment(Position::new(18, 3), "frag-012");
+
+    // Items hidden in alcoves
+
+    // Signs
     world.ecs.spawn_sign(
-        Position::new(10, 5),
-        "There are a few creatures wandering\nthe halls. They're more confused\nthan dangerous.\n\n  — the wizard",
+        Position::new(11, 5),
+        "The caves go deeper than the halls.\nThings echo longer down here.\nMaybe that's the point.\n\n  — the wizard",
     );
 
-    // Sign near stairs
     world.ecs.spawn_sign(
-        Position::new(48, 27),
-        "You did well. The descent continues.\n\n  — the wizard",
+        Position::new(22, 28),
+        "The way down is through.\nKeep walking.\n\n  — the wizard",
     );
 }

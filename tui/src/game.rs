@@ -747,7 +747,7 @@ impl World {
             match self.depth {
                 3 => {
                     self.event_log.push_colored(
-                        "\"There are a few creatures wandering the halls. They're more confused than dangerous.\"",
+                        "\"The caves echo with old things. Memories, mostly. Some of them are mine.\"",
                         RGB::named(CYAN),
                     );
                 }

@@ -10,7 +10,7 @@ Before thee lies a dungeon of rules, memories, slimes, and suspiciously readable
 machinery. **CoreDumped** is a text-graphical roguelike about understanding,
 editing, and eventually rewriting the rules of the thing trying to kill you.
 
-It's also a tragic game about love, family, CYBERSECURITY EXPLOITS, and the beauty of coding macros to do repetitive tacks. I hope you like it, and enjoy the journey.
+It's also a tragic game about love, family, CYBERSECURITY EXPLOITS, and the beauty of coding macros to do repetitive tacks. I hope you like it, and enjoy the journey. If you're too impatient, the lore is documented [here](./level-design.md).
 
 CoreDumped is built on the **Xlyph** engine, a reusable framework for
 Glyph-powered (a custom LISP) roguelikes. The engine provides the ECS, map, rules registry, rendering, and Glyph language runtime. The game and its levels are built on top. This engine itself is currently built on top of [bracket-lib](https://github.com/amethyst/bracket-lib) (formerly RLTK).

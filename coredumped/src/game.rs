@@ -905,9 +905,6 @@ impl World {
     }
 
     fn advance_enemies(&mut self) {
-        // Compute Dijkstra map once for all enemies on this tick.
-        self.map.compute_dijkstra(self.player_pos());
-
         let enemy_ids: Vec<EntityId> = self.ecs.enemy_ids().collect();
 
         let sandbox = glyph::SandboxOptions::default();

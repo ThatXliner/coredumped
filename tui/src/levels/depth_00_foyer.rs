@@ -34,7 +34,7 @@ pub(crate) fn build_foyer(world: &mut World) {
     // Single sign: boot, controls, wizard tease
     world.ecs.spawn_sign(
         Position::new(rx + rw / 2 - 6, ry + rh / 2 - 1),
-        "Xlyph runtime booted.\nIf you're reading this, you\nfinally woke up.\n\nMove with arrow keys or hjkl.\nDescend when ready.\n\nYou are alone here.\nThe wizard has not yet come.",
+        "Xlyph runtime booted.\nIf you're reading this, you\nfinally woke up.\n\nMove with arrow keys or hjkl.\nDescend when ready.\n\nBeware the slime (the S).\nIt moves toward you.",
     );
 
     // One pushable slime

@@ -95,7 +95,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     let wizard_pos = Position::new(38, 6);
     world.ecs.spawn_sign(
         Position::new(44, 4),
-        "The wizard comes and goes.\nTalk to him when you can.\nPress ` to open a console\nand learn the dungeon's language.",
+        "Green diamonds (♦) hold\nmemory fragments. Inspect\nthem: press i, then hover.\n\nEach enemy type has a\nglyph: s slime, b bat,\ng goblin. They differ in\nspeed and strength.",
     );
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
     world.ecs.spawn_fragment(Position::new(50, 9), "frag-001");

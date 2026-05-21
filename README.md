@@ -2,184 +2,118 @@
 
 ![](./coredumped_logo.png)
 
+*A roguelike where the enemies run on Lisp you can read, edit, and break.*
+
 Welcome, traveler.
 
 Before thee lies a dungeon of rules, lamps, slimes, and suspiciously readable
 machinery. **CoreDumped** is a text-graphical roguelike about understanding,
 editing, and eventually rewriting the rules of the thing trying to kill you.
 
-CoreDumped is built on the **Xlyph** engine — a reusable framework for
-Glyph-powered roguelikes. The engine provides the ECS, map, rules registry,
-rendering, and Glyph language runtime. The game and its levels are built on top.
+CoreDumped is built on the **Xlyph** engine, a reusable framework for
+Glyph-powered (a custom LISP) roguelikes. The engine provides the ECS, map, rules registry, rendering, and Glyph language runtime. The game and its levels are built on top. This engine itself is currently built on top of [bracket-lib](https://github.com/amethyst/bracket-lib) (formerly RLTK).
 
-The current beta is a small playable vertical slice: a text-graphical dungeon,
-turn-based movement, pathing enemies, a directional flashlight, an inspector
-panel, an event log, and a stub console for future live queries. It is
-intentionally tiny, but the loop is real: every gameplay action advances the
-world exactly one tick.
-
-> Inspired by [xsofy](https://github.com/nooga/xsofy), which was inspired by
-> [Brogue](https://sites.google.com/site/broguegame/).
-
-## Why
-
-Most roguelikes ask you to learn a system from the outside. CoreDumped is an
-experiment in making the system itself part of the dungeon.
-
-The long-term idea is that monsters, items, terrain, and mechanics can expose
-source-like behavior to the player. You inspect what a creature does, reason
-about it, and eventually use an in-game language to query or change parts of the
-world.
-
-Glyph is not a gimmick — it already runs the game. Enemy AI rules like
-`slime-hunt` and `goblin-patrol` are written in Glyph source and evaluated at
-runtime by the Glyph interpreter (`glyph::eval_with_opts`), not hardcoded in
-Rust. The rule you see in the inspector is the actual code driving each enemy.
-Modifying a rule's Glyph source changes how that enemy behaves. This is the
-first honest version of that interface: an enemy AI inspector whose displayed
-rule matches the implemented rule.
-
-## Status
-
-Beta vertical slice. Playable, small, and not balanced.
-
-What works now:
-
-- A fixed dungeon map rendered with `bracket-lib`
-- A windowed `bracket-lib` prototype renderer
-- Keyboard movement with arrow keys or Vim keys
-- Deterministic turn ticks
-- Wall bumps, waits, enemy bumps, and movement all consume a tick
-- UI-only actions such as inspector navigation and console typing are free
-- Enemies path toward the player and attack when adjacent
-- A warm directional flashlight that ray-casts from the player's facing
-- A right-side status/inspector panel
-- A bottom event log
-- A console overlay with placeholder query responses
-- Unit tests for the core turn and enemy behavior
-
-What is not in this beta:
-
-- Procedural generation
-- Save files or replay
-- Full field of view or fog of war
-- Inventory
-- A finished Glyph parser/runtime
-- Any claim that the game is fair yet
-
-## Quick Start
-
-You need Rust installed.
+## Play
 
 ```bash
 cargo run -p xlyph-tui
 ```
 
-Run the tests:
+Move with arrow keys / hjkl. Descend stairs. Inspect enemies. Open the console
+with backtick. Submit code with Enter.
 
-```bash
-cargo test
+## Why
+
+Every roguelike has rules, but most hide them behind source code or wiki pages.
+CoreDumped puts them on screen and lets you poke at them.
+
+The long bet: if the game shows you its moving parts, the mystery shifts from
+"how does this work" to "what can I make it do." The inspector and console are actually the core interface, not just a hack. The dungeon is literally
+a Lisp runtime with graphics.
+
+### What works now
+
+- ~18 hand-crafted levels (17 narrative + procedural fallback)
+- Turn-based movement, pathing enemies, directional flashlight
+- Inspector panel showing real Glyph source for every AI rule
+- Working Glyph console — eval expressions, inspect state, bind keys
+- Custom ECS (entity-component-system), no external dependency
+- Deterministic turn model: `ActionCost::Tick` = player + enemies advance;
+  `ActionCost::Free` = UI only
+- Playbook system: drop `.glyph` files in `~/.coredumped/playbooks/current/`,
+  they load on game start
+- Save/load (auto-save on quit, manual slots)
+
+### What doesn't work yet
+
+- No full procedural generation (fixed maps, but 18 is enough for a run)
+- No full FoV / fog of war (flashlight serves to indicate direction)
+- No inventory beyond held keys and special items
+- Half-finished Glyph standard library (enough for enemies, not much else)
+- Not balanced. At all.
+
+## Architecture
+
+**Engine/game split**: The **Xlyph** engine (ECS, map, rules registry, Glyph
+runtime, event log) is the framework. **CoreDumped** is the game built on it —
+levels, world state, save system, player profile. Same repo, separate concerns.
+You could build different levels on the same engine.
+
+**ECS**: Custom in-house, no dependency. `EntityId` is a stable handle.
+Component stores are `BTreeMap<EntityId, T>`. Marker sets for alive/enemy-ai.
+No systems abstraction — game logic reads/writes ECS directly. Keeps the
+codebase small and auditable (~40 source files total).
+
+**Turn model**:
+
+```rust
+pub enum ActionCost { Free, Tick, Quit }
 ```
+
+Every gameplay action costs a tick. Every tick advances enemies once. UI actions
+(inspector, console, typing) are free. This invariant is tested.
+
+**Glyph embedding**: `BuiltinFn` takes `(&[Value], &Env, &SandboxOptions, &mut World)`.
+Game builtins (print, inspect, toggle console) access World directly. The same
+eval path runs enemy AI rules, console expressions, and keybindings. No FFI,
+no IPC, no scripting bridge — just Rust functions registered in the environment.
+
+**Levels are callbacks**: Each depth (0–17) is a function that receives `&mut World`
+and places entities, sets terrain, configures wizard dialogue. Depth 18+ falls
+through to a procedural builder.
 
 ## Controls
 
 | Key | Action |
 | --- | --- |
-| Arrow keys / `h j k l` | Move |
+| Arrow keys / `h j k l` | Move / bump |
 | `.` | Wait one tick |
 | `i` | Toggle inspector |
-| <code>`</code> | Toggle console |
-| `Enter` | Submit console text |
-| `Esc` | Close overlay, or quit if none is open |
-| `q` | Quit from normal mode |
-
-The important design rule is that gameplay actions cost time and interface
-actions do not. Moving, waiting, bumping a wall, and bumping an enemy all
-advance the world. Opening the inspector, reading source-like behavior, opening
-the console, and typing in it are free.
-
-## The Beta Loop
-
-You are `@`.
-
-Enemies are simple, but deliberately inspectable. On each player tick, every
-enemy does one of two things:
-
-1. If adjacent to the player, attack.
-2. Otherwise, path one step toward the player while respecting walls.
-
-That rule is also shown in the in-game inspector. The point is not that the AI
-is clever; the point is that the game should make its behavior legible before it
-asks you to manipulate it.
-
-## Architecture
-
-The beta uses [`bracket-lib`](https://docs.rs/bracket-lib) for rendering, input,
-geometry, colors, pathfinding, and the game loop. The current prototype uses
-bracket-lib's default windowed renderer; the terminal backend was tried and is
-parked for now because of redraw glitches.
-
-The game state is intentionally plain Rust:
-
-- `World`
-- `Ecs`
-- `EntityId`
-- `Map`
-- `Position`
-- `Hp`
-- `RenderGlyph`
-- `EntityKind`
-- `Mode`
-- `EventLog`
-- `Turn`
-
-There is no external ECS dependency yet. The current prototype uses a small
-in-house ECS: stable entity ids, component stores for position/HP/kind/rendering
-and marker sets for things like enemy AI. Gameplay still lives in explicit
-systems so the turn order remains easy to read.
-
-The turn model is explicit:
-
-- `ActionCost::Free` for UI actions
-- `ActionCost::Tick` for accepted gameplay actions
-- Enemy turns run exactly once after each tick action
-
-That makes it possible to test the game rules without the renderer.
+| <code>\`</code> | Toggle console |
+| `Enter` | Submit console expression |
+| `Esc` | Close overlay / cancel quit |
+| `q` | Quit |
 
 ## Development
 
-Common checks:
-
 ```bash
-cargo fmt
-cargo test
-cargo check
+cargo test        # 122 tests, pure game logic (no renderer)
+cargo fmt         # single crate, no config
+cargo check       # fast feedback
 ```
 
-The most useful tests cover pure game logic:
+The most important tests verify the turn invariant — that gameplay costs ticks,
+UI doesn't, and enemies advance exactly once per tick.
 
-- Player movement increments the turn
-- Wall bumps increment the turn and log blocked movement
-- Waiting increments the turn
-- Inspector and console actions do not increment the turn
-- Enemies advance once after each tick action
-- Adjacent enemies attack instead of moving
-- Enemy pathing respects walls
+## Status
 
-## Roadmap
+Beta. Playable from depth 0 to depth 17 (the Core). Has an ending. Expect
+rough edges, missing content, and things that kill you without explanation.
 
-Near term:
+The engine is minimal and intentional — about 13k lines of Rust, half of which
+is the Glyph interpreter. If the project stops here, the codebase is small
+enough to learn from in an afternoon.
 
-- Make the inspector browse more than one rule
-- Replace the console placeholder with a real query path
-- Add a tiny Glyph syntax for inspecting entities and map cells
-- Add a few enemy types with visibly different rules
-- Add screenshots and recorded gameplay demos
+## License
 
-Later:
-
-- Procedural maps
-- Replayable deterministic runs
-- Save/load
-- More expressive world editing
-- A real design pass on balance, readability, and pacing
+MIT

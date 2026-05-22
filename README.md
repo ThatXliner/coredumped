@@ -101,6 +101,7 @@ through to a procedural builder.
 | Arrow keys / `h j k l` | Move / bump |
 | `.` | Wait one tick |
 | `i` | Toggle inspector |
+| `m` | Toggle collected memories |
 | <code>\`</code> | Toggle console |
 | `Enter` | Submit console expression |
 | `PageUp` / `PageDown` / mouse wheel | Scroll log, console output, or overlay |

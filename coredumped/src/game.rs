@@ -54,6 +54,7 @@ pub enum Intent {
     CloseOverlay,
     ToggleConsole,
     ToggleKeybindings,
+    ToggleMemories,
     Respawn,
     Restart,
     SaveGame(u32),
@@ -72,6 +73,7 @@ pub enum Mode {
     Console,
     Dead,
     Keybindings,
+    Memories,
 }
 
 impl World {
@@ -109,6 +111,7 @@ impl World {
             glyph_env,
             binding_env,
             inspector_selection: 0,
+            memory_scroll: 0,
             player_attacked: Vec::new(),
             blocking: false,
             running: true,
@@ -189,6 +192,7 @@ impl World {
             glyph_env,
             binding_env,
             inspector_selection: 0,
+            memory_scroll: 0,
             player_attacked: Vec::new(),
             blocking: false,
             running: true,
@@ -271,7 +275,9 @@ impl World {
                 }
             }
             Intent::InspectorScroll(delta) => {
-                if self.mode == Mode::Inspector || self.mode == Mode::Keybindings {
+                if self.mode == Mode::Memories {
+                    self.scroll_memories(delta);
+                } else if self.mode == Mode::Inspector || self.mode == Mode::Keybindings {
                     self.scroll_inspector(delta);
                 }
                 ActionCost::Free
@@ -389,6 +395,14 @@ impl World {
                 } else {
                     self.has_new_bindings = false;
                     Mode::Keybindings
+                };
+                ActionCost::Free
+            }
+            Intent::ToggleMemories => {
+                self.mode = if self.mode == Mode::Memories {
+                    Mode::Normal
+                } else {
+                    Mode::Memories
                 };
                 ActionCost::Free
             }
@@ -1245,9 +1259,23 @@ impl World {
         }
     }
 
+    fn scroll_memories(&mut self, delta: i32) {
+        if delta < 0 {
+            self.memory_scroll = self
+                .memory_scroll
+                .saturating_sub(delta.unsigned_abs() as usize);
+        } else {
+            self.memory_scroll = self.memory_scroll.saturating_add(delta as usize);
+        }
+    }
+
     fn scroll_view(&mut self, delta: i32) {
         let target = match self.mode {
             Mode::Console => &mut self.console_output_scroll,
+            Mode::Memories => {
+                self.scroll_memories(delta);
+                return;
+            }
             Mode::Inspector | Mode::Keybindings => {
                 self.scroll_inspector(delta);
                 return;
@@ -1850,6 +1878,7 @@ fn default_bindings() -> HashMap<String, String> {
     m.insert(">".into(), "(descend!)".into());
     m.insert("<".into(), "(ascend!)".into());
     m.insert("i".into(), "(toggle-inspector!)".into());
+    m.insert("m".into(), "(toggle-memories!)".into());
     m.insert("`".into(), "(toggle-console!)".into());
     m.insert("tab".into(), "(toggle-keybindings!)".into());
     m.insert("q".into(), "(quit!)".into());
@@ -1905,6 +1934,11 @@ pub(crate) fn setup_glyph_env() -> Env {
         "toggle-keybindings!",
         "open or close the keybindings view",
         builtin_toggle_keybindings
+    );
+    reg!(
+        "toggle-memories!",
+        "open or close the collected memories view",
+        builtin_toggle_memories
     );
     reg!(
         "descend!",
@@ -2163,6 +2197,20 @@ fn builtin_toggle_keybindings(
     } else {
         world.has_new_bindings = false;
         Mode::Keybindings
+    };
+    Ok(Value::Nil)
+}
+
+fn builtin_toggle_memories(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    world.mode = if world.mode == Mode::Memories {
+        Mode::Normal
+    } else {
+        Mode::Memories
     };
     Ok(Value::Nil)
 }
@@ -3129,6 +3177,28 @@ mod tests {
         assert_eq!(cost, ActionCost::Free);
         assert_eq!(world.turn, 0);
         assert_eq!(world.mode, Mode::Inspector);
+    }
+
+    #[test]
+    fn memories_toggle_is_free() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+
+        let cost = world.apply_intent(Intent::ExecuteBinding("m".into()));
+
+        assert_eq!(cost, ActionCost::Free);
+        assert_eq!(world.turn, 0);
+        assert_eq!(world.mode, Mode::Memories);
+    }
+
+    #[test]
+    fn memories_scroll_uses_memory_offset() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Memories;
+
+        world.apply_intent(Intent::InspectorScroll(3));
+
+        assert_eq!(world.memory_scroll, 3);
+        assert_eq!(world.inspector_selection, 0);
     }
 
     #[test]

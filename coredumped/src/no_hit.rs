@@ -221,6 +221,7 @@ mod tests {
             glyph_env: crate::glyph::Env::extend(&crate::glyph::default_env()),
             binding_env: crate::glyph::Env::extend(&crate::glyph::default_env()),
             inspector_selection: 0,
+            memory_scroll: 0,
             player_attacked: Vec::new(),
             blocking: false,
             running: true,

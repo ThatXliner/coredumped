@@ -33,6 +33,7 @@ pub fn key_to_intent(event: KeyEvent, world: &World) -> Intent {
         }
         Mode::Inspector => inspector_key_to_intent(event.code),
         Mode::Keybindings => keybindings_key_to_intent(event.code),
+        Mode::Memories => memories_key_to_intent(event.code),
         Mode::Console => console_key_to_intent(event.code, shift, ctrl, alt),
         Mode::Dead => dead_key_to_intent(event.code, shift),
     }
@@ -56,6 +57,18 @@ fn key_to_binding_name(key: KeyCode) -> Option<String> {
 fn keybindings_key_to_intent(key: KeyCode) -> Intent {
     match key {
         KeyCode::Esc | KeyCode::Tab | KeyCode::BackTab => Intent::CloseOverlay,
+        KeyCode::Char('`') => Intent::ToggleConsole,
+        KeyCode::PageUp => Intent::InspectorScroll(-8),
+        KeyCode::PageDown => Intent::InspectorScroll(8),
+        KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => Intent::InspectorScroll(-1),
+        KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => Intent::InspectorScroll(1),
+        _ => Intent::Noop,
+    }
+}
+
+fn memories_key_to_intent(key: KeyCode) -> Intent {
+    match key {
+        KeyCode::Esc | KeyCode::Char('m') | KeyCode::Char('M') => Intent::CloseOverlay,
         KeyCode::Char('`') => Intent::ToggleConsole,
         KeyCode::PageUp => Intent::InspectorScroll(-8),
         KeyCode::PageDown => Intent::InspectorScroll(8),

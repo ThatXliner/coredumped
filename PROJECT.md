@@ -127,6 +127,7 @@ logs do not advance the simulation.
 | `Inspector` | Browse known rules and source. |
 | `Console` | Enter and evaluate Glyph. |
 | `Keybindings` | Show active bindings and newly learned commands. |
+| `Memories` | Review recovered memory fragments. |
 | `Dead` | Death overlay, respawn, restart, or quit. |
 
 ### ECS

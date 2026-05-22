@@ -55,7 +55,10 @@ pub fn render(ctx: &mut Frame, world: &World) {
         return;
     }
 
-    let needs_overlay = matches!(world.mode, Mode::Inspector | Mode::Keybindings);
+    let needs_overlay = matches!(
+        world.mode,
+        Mode::Inspector | Mode::Keybindings | Mode::Memories
+    );
     if needs_overlay {
         render_overlay_backdrop(ctx);
     }
@@ -63,6 +66,7 @@ pub fn render(ctx: &mut Frame, world: &World) {
     match world.mode {
         Mode::Inspector => render_inspector(ctx, world),
         Mode::Keybindings => render_keybindings(ctx, world),
+        Mode::Memories => render_memories(ctx, world),
         Mode::Console => render_console(ctx, world),
         _ => {}
     }
@@ -888,6 +892,60 @@ fn render_keybindings(ctx: &mut Frame, world: &World) {
 
     line_y = (y + height - 2).min(line_y + 1);
     print_clipped(ctx, inner_x, line_y, inner_w, "tab/esc close");
+}
+
+fn render_memories(ctx: &mut Frame, world: &World) {
+    let width = (ctx.width() - 4).clamp(1, 92);
+    let height = (ctx.height() - 4).clamp(1, 38);
+    let x = ((ctx.width() - width) / 2).max(0);
+    let y = ((ctx.height() - height) / 2).max(0);
+
+    fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
+    draw_box(ctx, x, y, width, height, " memories ");
+
+    let inner_x = x + 2;
+    let inner_w = (width - 4).max(1);
+    let content_rows = (height - 5).max(0) as usize;
+    let collected: Vec<_> = world
+        .fragment_registry
+        .all()
+        .iter()
+        .filter(|fragment| fragment.status == crate::fragment::FragmentStatus::Collected)
+        .collect();
+
+    let mut lines: Vec<(String, RGB)> = Vec::new();
+    if collected.is_empty() {
+        lines.push((
+            "(no recovered memories yet)".to_string(),
+            RGB::named(DARK_GRAY),
+        ));
+    } else {
+        for fragment in &collected {
+            lines.push((
+                format!("{}  weight {}", fragment.id, fragment.weight),
+                RGB::named(CYAN),
+            ));
+            for wrapped in wrap_text(&fragment.text, inner_w as usize) {
+                lines.push((format!("  {wrapped}"), RGB::named(WHITE)));
+            }
+            lines.push((String::new(), RGB::named(WHITE)));
+        }
+    }
+
+    let max_scroll = lines.len().saturating_sub(content_rows);
+    let scroll = world.memory_scroll.min(max_scroll);
+    let mut line_y = y + 2;
+    for (text, color) in lines.iter().skip(scroll).take(content_rows) {
+        print_clipped_color(ctx, inner_x, line_y, inner_w, text, *color);
+        line_y += 1;
+    }
+
+    let footer = format!(
+        "j/k scroll  m/esc close  {}/{} collected",
+        collected.len(),
+        world.fragment_registry.findable_count()
+    );
+    print_clipped(ctx, inner_x, y + height - 2, inner_w, &footer);
 }
 
 fn render_death_screen(ctx: &mut Frame, world: &World) {

@@ -7,6 +7,7 @@
 
 pub(crate) mod ai_builtins;
 pub mod app;
+pub mod diagnostics;
 pub mod ecs;
 pub mod entity;
 pub mod event_log;

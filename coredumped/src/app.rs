@@ -24,24 +24,13 @@ use crate::{
     game::{ActionCost, Intent},
     input::key_to_intent,
     render::render,
-    terminal::{detect_emoji_support, Frame},
+    terminal::Frame,
     world::World,
 };
 
 const COUNTDOWN_FRAMES: u32 = 30;
 const COUNTDOWN_FRAME_TIME: Duration = Duration::from_millis(33);
 const IDLE_POLL_TIME: Duration = Duration::from_millis(250);
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct RunOptions {
-    pub ascii_only: bool,
-}
-
-impl RunOptions {
-    fn emoji_enabled(self) -> bool {
-        !self.ascii_only && detect_emoji_support()
-    }
-}
 
 pub struct State {
     world: World,
@@ -51,11 +40,7 @@ pub struct State {
 
 impl State {
     pub fn new() -> Self {
-        Self::new_with_options(RunOptions::default())
-    }
-
-    fn new_with_options(options: RunOptions) -> Self {
-        let world = if crate::save::save_path(0).exists() {
+        let mut world = if crate::save::save_path(0).exists() {
             World::load_from_disk(0).unwrap_or_else(|e| {
                 eprintln!("Auto-load failed ({}), starting new game.", e);
                 let mut w = World::new_game();
@@ -66,8 +51,23 @@ impl State {
         } else {
             World::new_game()
         };
-        let mut frame = Frame::new(90, 50);
-        frame.set_emoji_enabled(options.emoji_enabled());
+        world.event_log.push(format!(
+            "Diagnostics log: {}",
+            crate::diagnostics::log_path().display()
+        ));
+        let player_pos = world.player_pos();
+        log::info!(
+            target: "xlyph::state",
+            "state initialized turn={} depth={} player=({},{}) entities={} enemies={} wizard_id={:?}",
+            world.turn,
+            world.depth,
+            player_pos.x,
+            player_pos.y,
+            world.renderable_entities().count(),
+            world.living_enemies().count(),
+            world.wizard_id.map(|id| id.raw())
+        );
+        let frame = Frame::new(90, 50);
 
         Self {
             world,
@@ -187,12 +187,8 @@ impl Default for State {
 }
 
 pub fn run() -> crossterm::Result<()> {
-    run_with_options(RunOptions::default())
-}
-
-pub fn run_with_options(options: RunOptions) -> crossterm::Result<()> {
     let mut terminal = TerminalSession::enter()?;
-    let mut state = State::new_with_options(options);
+    let mut state = State::new();
 
     loop {
         if !state.tick(&mut terminal.stdout)? {
@@ -235,15 +231,5 @@ impl Drop for TerminalSession {
         );
         let _ = terminal::disable_raw_mode();
         let _ = self.stdout.flush();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ascii_only_disables_emoji_detection() {
-        assert!(!RunOptions { ascii_only: true }.emoji_enabled());
     }
 }

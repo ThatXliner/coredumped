@@ -109,9 +109,8 @@ through to a procedural builder.
 | `Esc` | Close overlay / cancel quit |
 | `q` | Quit |
 
-Xlyph auto-enables emoji enemies in UTF-8 terminals that are likely to render
-them correctly. Launch with `--ascii-only` (alias `--ascii`) to force ASCII
-glyphs, or set `XYLPH_EMOJI=1` / `XYLPH_EMOJI=0` to override auto-detection.
+Xlyph renders the dungeon with single-cell ASCII glyphs so entities always
+line up with the tile grid.
 
 ## Documentation
 

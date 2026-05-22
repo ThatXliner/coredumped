@@ -149,14 +149,46 @@ fn builtin_step_toward(
         None => return Ok(Value::Bool(false)),
     };
 
-    if next_pos == target_pos
-        || !world.map.is_walkable(next_pos)
-        || world.ecs.entity_at_except(next_pos, entity).is_some()
-    {
+    if next_pos == target_pos || !world.map.is_walkable(next_pos) {
         return Ok(Value::Bool(false));
     }
-    world.ecs.set_position(entity, next_pos);
-    Ok(Value::Bool(true))
+
+    if let Some(blocker) = world.ecs.entity_at_except(next_pos, entity) {
+        log::warn!(
+            target: "xlyph::ai",
+            "move blocked turn={} depth={} actor={}#{} from=({},{}) to=({},{}) occupied_by={}#{}",
+            world.turn,
+            world.depth,
+            world.ecs.name(entity),
+            entity.raw(),
+            entity_pos.x,
+            entity_pos.y,
+            next_pos.x,
+            next_pos.y,
+            world.ecs.name(blocker),
+            blocker.raw()
+        );
+        return Ok(Value::Bool(false));
+    }
+
+    let moved = world.ecs.set_position(entity, next_pos);
+    if moved {
+        log::debug!(
+            target: "xlyph::ai",
+            "step-toward turn={} depth={} actor={}#{} from=({},{}) to=({},{}) target=({},{})",
+            world.turn,
+            world.depth,
+            world.ecs.name(entity),
+            entity.raw(),
+            entity_pos.x,
+            entity_pos.y,
+            next_pos.x,
+            next_pos.y,
+            target_pos.x,
+            target_pos.y
+        );
+    }
+    Ok(Value::Bool(moved))
 }
 
 fn builtin_random_step(
@@ -191,8 +223,22 @@ fn builtin_random_step(
             && candidate != player_pos
             && world.ecs.entity_at(candidate).is_none()
         {
-            world.ecs.set_position(entity, candidate);
-            return Ok(Value::Bool(true));
+            let moved = world.ecs.set_position(entity, candidate);
+            if moved {
+                log::debug!(
+                    target: "xlyph::ai",
+                    "random-step turn={} depth={} actor={}#{} from=({},{}) to=({},{})",
+                    world.turn,
+                    world.depth,
+                    world.ecs.name(entity),
+                    entity.raw(),
+                    pos.x,
+                    pos.y,
+                    candidate.x,
+                    candidate.y
+                );
+            }
+            return Ok(Value::Bool(moved));
         }
     }
     Ok(Value::Bool(false))
@@ -239,8 +285,24 @@ fn builtin_flee_step(
         }
     }
     if let Some(next) = best {
-        world.ecs.set_position(entity, next);
-        Ok(Value::Bool(true))
+        let moved = world.ecs.set_position(entity, next);
+        if moved {
+            log::debug!(
+                target: "xlyph::ai",
+                "flee-step turn={} depth={} actor={}#{} from=({},{}) to=({},{}) threat=({},{})",
+                world.turn,
+                world.depth,
+                world.ecs.name(entity),
+                entity.raw(),
+                pos.x,
+                pos.y,
+                next.x,
+                next.y,
+                threat_pos.x,
+                threat_pos.y
+            );
+        }
+        Ok(Value::Bool(moved))
     } else {
         Ok(Value::Bool(false))
     }

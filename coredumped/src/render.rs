@@ -128,29 +128,7 @@ fn draw_entity(ctx: &mut Frame, entity: EntityView, lit_tiles: &HashSet<Position
 
     let x = MAP_X + entity.pos.x;
     let y = MAP_Y + entity.pos.y;
-    if ctx.emoji_enabled() {
-        if let Some(emoji) = entity_emoji(entity.kind) {
-            if ctx.set_text(x, y, color, RGB::named(BLACK), emoji) {
-                return;
-            }
-        }
-    }
-
     ctx.set(x, y, color, RGB::named(BLACK), entity.glyph());
-}
-
-fn entity_emoji(kind: EntityKind) -> Option<&'static str> {
-    match kind {
-        EntityKind::Slime => Some("🟢"),
-        EntityKind::Goblin => Some("👺"),
-        EntityKind::Bat => Some("🦇"),
-        EntityKind::Ogre => Some("👹"),
-        EntityKind::Wizard => Some("🧙"),
-        EntityKind::Shade => Some("👤"),
-        EntityKind::Rage => Some("😡"),
-        EntityKind::Sentry => Some("🛡️"),
-        _ => None,
-    }
 }
 
 fn render_side_panel(ctx: &mut Frame, world: &World) {
@@ -1189,13 +1167,5 @@ mod tests {
                 " 1 | (bind-key :z (do",
             ]
         );
-    }
-
-    #[test]
-    fn emoji_entities_cover_enemies_and_wizard() {
-        assert_eq!(entity_emoji(EntityKind::Wizard), Some("🧙"));
-        assert_eq!(entity_emoji(EntityKind::Slime), Some("🟢"));
-        assert_eq!(entity_emoji(EntityKind::Goblin), Some("👺"));
-        assert_eq!(entity_emoji(EntityKind::Player), None);
     }
 }

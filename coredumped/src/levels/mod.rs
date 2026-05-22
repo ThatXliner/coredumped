@@ -68,6 +68,18 @@ pub fn build_level(world: &mut World, depth: u32) {
             }
         }
     }
+
+    let player_pos = world.player_pos();
+    log::info!(
+        target: "xlyph::level",
+        "built depth={} player=({},{}) entities={} enemies={} wizard_id={:?}",
+        depth,
+        player_pos.x,
+        player_pos.y,
+        world.renderable_entities().count(),
+        world.living_enemies().count(),
+        world.wizard_id.map(|id| id.raw())
+    );
 }
 
 #[cfg(test)]

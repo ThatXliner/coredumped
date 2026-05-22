@@ -11,18 +11,15 @@ struct Args {
     /// Delete the auto-save (slot 0) and player profile before starting
     #[arg(long)]
     wipe: bool,
-
-    /// Force ASCII entity glyphs even when emoji rendering is available
-    #[arg(long, visible_alias = "ascii")]
-    ascii_only: bool,
 }
 
 fn main() -> crossterm::Result<()> {
     let args = Args::parse();
+    if let Err(e) = xlyph_tui::diagnostics::init_file_logger() {
+        eprintln!("Logging disabled: {e}");
+    }
     if args.wipe {
         xlyph_tui::save::wipe();
     }
-    xlyph_tui::app::run_with_options(xlyph_tui::app::RunOptions {
-        ascii_only: args.ascii_only,
-    })
+    xlyph_tui::app::run()
 }

@@ -55,7 +55,6 @@ Run these from the repository root:
 ```bash
 cargo run -p xlyph-tui
 cargo run -p xlyph-tui -- --wipe
-cargo run -p xlyph-tui -- --ascii-only
 cargo check
 cargo test
 cargo fmt
@@ -66,7 +65,6 @@ The binary options are:
 | Option | Purpose |
 | --- | --- |
 | `--wipe` | Delete the auto-save and player profile before launch. |
-| `--ascii-only` / `--ascii` | Force ASCII entity glyphs even if emoji support is detected. |
 
 ## Runtime Flow
 

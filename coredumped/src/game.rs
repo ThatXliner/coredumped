@@ -491,9 +491,23 @@ impl World {
     }
 
     fn descend(&mut self) {
+        let from_depth = self.depth;
+        let from_pos = self.player_pos();
         self.depth += 1;
         self.clear_all_enemies();
         crate::levels::build_level(self, self.depth);
+        let to_pos = self.player_pos();
+        log::info!(
+            target: "xlyph::depth",
+            "descend turn={} from_depth={} to_depth={} from_pos=({},{}) to_pos=({},{})",
+            self.turn,
+            from_depth,
+            self.depth,
+            from_pos.x,
+            from_pos.y,
+            to_pos.x,
+            to_pos.y
+        );
         self.event_log
             .push(format!("You descend to depth {}.", self.depth));
         let _ = self.save_to_disk(0);
@@ -513,9 +527,23 @@ impl World {
             );
             return;
         }
+        let from_depth = self.depth;
+        let from_pos = self.player_pos();
         self.depth -= 1;
         self.clear_all_enemies();
         crate::levels::build_level(self, self.depth);
+        let to_pos = self.player_pos();
+        log::info!(
+            target: "xlyph::depth",
+            "ascend turn={} from_depth={} to_depth={} from_pos=({},{}) to_pos=({},{})",
+            self.turn,
+            from_depth,
+            self.depth,
+            from_pos.x,
+            from_pos.y,
+            to_pos.x,
+            to_pos.y
+        );
         self.event_log
             .push(format!("You ascend to depth {}.", self.depth));
         let _ = self.save_to_disk(0);
@@ -976,6 +1004,7 @@ impl World {
 
     fn finish_tick(&mut self) {
         self.turn += 1;
+        self.log_entity_overlaps("tick-start");
         // Rebuild fire cache at tick start — Vapor Canteen mutations
         // from the previous tick are now baked in.
         self.fire_cache.clear();
@@ -988,14 +1017,45 @@ impl World {
             }
         }
         self.check_gauntlet_barriers();
+        self.log_entity_overlaps("after-barriers");
         self.advance_enemies();
+        self.log_entity_overlaps("after-ai");
         self.repair_all_enemy_positions();
+        self.log_entity_overlaps("after-repair");
         self.player_attacked.clear();
         self.blocking = false;
 
         if self.player_hp().current <= 0 {
             self.mode = Mode::Dead;
             self.event_log.push("You have perished!");
+        }
+    }
+
+    fn log_entity_overlaps(&self, phase: &str) {
+        let mut by_pos: BTreeMap<(i32, i32), Vec<EntityView>> = BTreeMap::new();
+        for entity in self.ecs.renderable_entities() {
+            by_pos
+                .entry((entity.pos.x, entity.pos.y))
+                .or_default()
+                .push(entity);
+        }
+
+        for ((x, y), entities) in by_pos {
+            if entities.len() < 2 {
+                continue;
+            }
+
+            let occupants = entities
+                .iter()
+                .map(|entity| format!("{}#{}", entity.name(), entity.id.raw()))
+                .collect::<Vec<_>>()
+                .join(", ");
+            log::error!(
+                target: "xlyph::overlap",
+                "phase={phase} turn={} depth={} pos=({x},{y}) occupants=[{occupants}]",
+                self.turn,
+                self.depth,
+            );
         }
     }
 
@@ -2115,11 +2175,30 @@ fn builtin_descend(
 ) -> glyph::EvalResult<Value> {
     let pos = world.player_pos();
     if world.map.tile(pos) != crate::map::TileType::StairsDown {
+        log::warn!(
+            target: "xlyph::depth",
+            "descend blocked reason=no_stairs turn={} depth={} pos=({},{}) tile={:?}",
+            world.turn,
+            world.depth,
+            pos.x,
+            pos.y,
+            world.map.tile(pos)
+        );
         world.event_log.push("There are no stairs going down here.");
         return Ok(Value::Nil);
     }
     let has_attack_binding = world.bindings.values().any(|cmd| cmd.contains("do-attack"));
     if world.depth >= 1 && (!world.wizard_taught || !has_attack_binding) {
+        log::warn!(
+            target: "xlyph::depth",
+            "descend blocked reason=wizard_gate turn={} depth={} pos=({},{}) wizard_taught={} has_attack_binding={}",
+            world.turn,
+            world.depth,
+            pos.x,
+            pos.y,
+            world.wizard_taught,
+            has_attack_binding
+        );
         world.event_log.push("A shimmering barrier blocks the stairs. The wizard's voice echoes: \"Bind your attack to a key first! Open the console (`) and try (bind-key :z (do-attack)).\"");
         return Ok(Value::Nil);
     }
@@ -2135,6 +2214,15 @@ fn builtin_ascend(
 ) -> glyph::EvalResult<Value> {
     let pos = world.player_pos();
     if world.map.tile(pos) != crate::map::TileType::StairsUp {
+        log::warn!(
+            target: "xlyph::depth",
+            "ascend blocked reason=no_stairs turn={} depth={} pos=({},{}) tile={:?}",
+            world.turn,
+            world.depth,
+            pos.x,
+            pos.y,
+            world.map.tile(pos)
+        );
         world.event_log.push("There are no stairs going up here.");
         return Ok(Value::Nil);
     }

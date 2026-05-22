@@ -125,7 +125,28 @@ impl Ecs {
     }
 
     pub fn set_position(&mut self, id: EntityId, pos: Position) -> bool {
-        if !self.entities.contains(&id) || self.entity_at_except(pos, id).is_some() {
+        if !self.entities.contains(&id) {
+            log::warn!(
+                target: "xlyph::ecs",
+                "set_position rejected missing entity#{} to=({},{})",
+                id.raw(),
+                pos.x,
+                pos.y
+            );
+            return false;
+        }
+
+        if let Some(blocker) = self.entity_at_except(pos, id) {
+            log::warn!(
+                target: "xlyph::ecs",
+                "set_position rejected actor={}#{} to=({},{}) occupied_by={}#{}",
+                self.name(id),
+                id.raw(),
+                pos.x,
+                pos.y,
+                self.name(blocker),
+                blocker.raw()
+            );
             return false;
         }
 

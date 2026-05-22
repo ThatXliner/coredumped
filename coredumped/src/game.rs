@@ -1581,9 +1581,6 @@ impl World {
                     self.console_output.clear();
                     self.console_output_color = None;
                     let report = orig_err.report(&original);
-                    for line in report.lines() {
-                        self.event_log.push_colored(line, RGB::named(RED));
-                    }
                     self.console_output = report;
                     self.console_output_color = Some(RGB::named(RED));
                     self.console_buffer.clear();
@@ -1620,7 +1617,6 @@ impl World {
                 match err {
                     Some(e) => {
                         let msg = format!("Error: {}", e);
-                        self.event_log.push(&msg);
                         self.console_output = msg;
                         self.console_output_color = Some(RGB::named(RED));
                     }
@@ -1650,16 +1646,12 @@ impl World {
                             }
                         }
                         let msg = console_response(&self.console_output, &last);
-                        self.event_log.push(&msg);
                         self.console_output = msg;
                     }
                 }
             }
             Err(e) => {
                 let report = e.report(&command);
-                for line in report.lines() {
-                    self.event_log.push_colored(line, RGB::named(RED));
-                }
                 self.console_output = report;
                 self.console_output_color = Some(RGB::named(RED));
             }
@@ -2400,9 +2392,19 @@ fn builtin_help(
     _opts: &glyph::SandboxOptions,
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    if !args.is_empty() {
+    if args.len() > 1 {
+        return Ok(Value::String(
+            "(help): expected zero args or one page/function name".into(),
+        ));
+    }
+
+    if let Some(topic) = args.first() {
+        if let Some(page) = help_page(topic, world) {
+            return Ok(Value::String(page));
+        }
+
         // Args are already evaluated — handle the value directly
-        let result = match &args[0] {
+        let result = match topic {
             Value::Symbol(s) => {
                 // Quoted symbol: look up in env
                 match env.lookup(&s.name) {
@@ -2417,10 +2419,10 @@ fn builtin_help(
                     None => format!("No help found for '{}'", s),
                 }
             }
-            Value::Builtin(_) | Value::Closure(_) | Value::Macro(_) => format_value_help(&args[0]),
+            Value::Builtin(_) | Value::Closure(_) | Value::Macro(_) => format_value_help(topic),
             other => {
                 format!(
-                    "(help <name>): expected a function or symbol, got {}",
+                    "(help <name>): expected a page, function, or symbol; got {}",
                     other
                 )
             }
@@ -2428,9 +2430,84 @@ fn builtin_help(
         return Ok(Value::String(result));
     }
 
+    Ok(Value::String(help_index(world)))
+}
+
+fn help_page(topic: &Value, world: &World) -> Option<String> {
+    match topic {
+        Value::I64(page) => help_page_by_number(*page, world),
+        Value::Keyword(kw) => help_page_by_name(&kw.name, world),
+        Value::String(name) => help_page_by_name(name, world),
+        Value::Symbol(sym) => help_page_by_name(&sym.name, world),
+        _ => None,
+    }
+}
+
+fn help_page_by_number(page: i64, world: &World) -> Option<String> {
+    match page {
+        1 => Some(help_index(world)),
+        2 => Some(help_forms()),
+        3 => Some(help_builtins()),
+        4 => Some(help_game_commands(world)),
+        5 => Some(help_language_reference()),
+        6 => Some(help_tutorial()),
+        _ => Some(format!(
+            "No help page {page}. Try (help), (help :language), or (help :tutorial)."
+        )),
+    }
+}
+
+fn help_page_by_name(name: &str, world: &World) -> Option<String> {
+    match name.trim_start_matches(':').to_lowercase().as_str() {
+        "1" | "index" | "contents" | "overview" => Some(help_index(world)),
+        "2" | "forms" | "special-forms" => Some(help_forms()),
+        "3" | "builtins" | "functions" => Some(help_builtins()),
+        "4" | "game" | "commands" | "console" => Some(help_game_commands(world)),
+        "5" | "language" | "reference" | "lang" => Some(help_language_reference()),
+        "6" | "tutorial" | "learn" | "intro" => Some(help_tutorial()),
+        _ => None,
+    }
+}
+
+fn help_index(world: &World) -> String {
     let mut help = String::from(
         "\
-Available special forms:
+Glyph help (page 1/6)
+
+Use:
+  (help)          — show this index
+  (help 2)        — open a numbered page
+  (help :language) — open a named page
+  (help :tutorial) — learn by example
+  (help 'map)     — show help for a function or macro
+
+Available pages:
+  1  :index       using help
+  2  :forms       special forms
+  3  :builtins    core functions
+  4  :game        dungeon console commands
+  5  :language    language reference
+  6  :tutorial    short language tutorial
+
+Tips:
+  Page names can be keywords or strings: (help :game), (help \"game\").
+  Function names are easiest quoted: (help 'bind-key), (help '+).",
+    );
+
+    if world.player_can_attack {
+        help.push_str("\n  Attack is unlocked, so :game includes binding and attack commands.");
+    } else {
+        help.push_str("\n  Find the wizard to unlock attack and binding help.");
+    }
+
+    help
+}
+
+fn help_forms() -> String {
+    String::from(
+        "\
+Glyph help (page 2/6): special forms
+
   (quote form)       — return form unevaluated
   (if test then else) — conditional evaluation
   (do expr ...)      — evaluate sequentially, return last
@@ -2444,7 +2521,20 @@ Available special forms:
   (or expr ...)      — short-circuit logical or
   (match expr [pat body] ...) — pattern matching
 
-Built-in functions:
+Examples:
+  (let x 2 (+ x 3))
+  (do (println \"hi\") :done)
+  (if (> hp 0) :alive :dead)
+
+Next: (help 3), (help :language), or (help :tutorial)",
+    )
+}
+
+fn help_builtins() -> String {
+    String::from(
+        "\
+Glyph help (page 3/6): built-in functions
+
   + - * / %    — arithmetic (variadic)
   = != < > <= >= — comparisons (variadic, mixed int/float)
   .             — map access: (. map :key)
@@ -2459,16 +2549,23 @@ Built-in functions:
   apply         — call a function with a list of args
   slurp         — read a file from disk
 
-Syntax:
-  'form         — reader macro for (quote form)
-  [a + b]       — infix notation with precedence
-  a.b.c         — dotted access sugar
-  {a b :c :d}   — map literals
-  #[x y z]      — vector literals
-  #{:a :b}      — set literals
-  ;             — line comment
+Examples:
+  (map (fn [x] (* x 2)) (list 1 2 3))
+  (apply + (list 1 2 3))
+  (. {:name \"xlyph\" :depth 4} :depth)
 
-Console commands (game-specific):\n\
+For details on a function:
+  (help '+)
+  (help 'map)
+  (help \"println\")",
+    )
+}
+
+fn help_game_commands(world: &World) -> String {
+    let mut help = String::from(
+        "\
+Glyph help (page 4/6): game console commands
+
   (help)        — show this help text\n\
   (help <name>) — show help for a specific function\n\
   (save! [slot]) — save the game (F5 to quick-save)\n\
@@ -2494,7 +2591,73 @@ Console commands (game-specific):\n\
         );
     }
 
-    Ok(Value::String(help))
+    help.push_str("\n\nNext: (help :language) or (help :tutorial)");
+    help
+}
+
+fn help_language_reference() -> String {
+    String::from(
+        "\
+Glyph help (page 5/6): language reference
+
+Data:
+  nil true false — constants
+  42 -7 3.14    — numbers
+  \"text\"        — strings
+  :north        — keywords
+  (list 1 2)    — lists
+  #[1 2 3]      — vectors
+  #{:a :b}      — sets
+  {:hp 12}      — maps
+
+Syntax:
+  'form         — reader macro for (quote form)
+  [a + b]       — infix notation with precedence
+  a.b.c         — dotted access sugar
+  ; comment     — line comment
+
+Evaluation:
+  Lists call functions: (+ 1 2)
+  Special forms control evaluation: (if test then else)
+  Functions evaluate their arguments before running.
+  Quote data when you want the form itself: '(move! :north)
+
+Errors stay in the console output. Game events go to the event log.",
+    )
+}
+
+fn help_tutorial() -> String {
+    String::from(
+        "\
+Glyph help (page 6/6): short tutorial
+
+1. Try a value:
+  (+ 1 2)
+  (list :north :south)
+
+2. Name a temporary value:
+  (let hp 12
+    (if (> hp 0) :standing :down))
+
+3. Make a function:
+  ((fn [x] (* x x)) 5)
+
+4. Build data:
+  {:dir :east :steps (list 1 2 3)}
+
+5. Use game commands:
+  (player-facing)
+  (save!)
+
+6. Bind a command after the wizard teaches you:
+  (bind-key :z (do-attack :east))
+
+More:
+  (help :forms)
+  (help :builtins)
+  (help :game)
+  (help 'bind-key)",
+    )
 }
 
 fn builtin_heal(
@@ -3343,6 +3506,11 @@ mod tests {
         world.apply_intent(Intent::ConsoleSubmit);
 
         assert_eq!(world.console_output, "hello glyph");
+        assert!(!world
+            .event_log
+            .entries()
+            .iter()
+            .any(|entry| entry.text == "hello glyph"));
         assert!(world.console_buffer.is_empty());
     }
 
@@ -3355,7 +3523,49 @@ mod tests {
         world.apply_intent(Intent::ConsoleSubmit);
 
         assert_eq!(world.console_output, "=> line one\nline two");
+        assert!(!world
+            .event_log
+            .entries()
+            .iter()
+            .any(|entry| entry.text == "=> line one\nline two"));
         assert!(world.console_buffer.is_empty());
+    }
+
+    #[test]
+    fn console_help_output_stays_out_of_event_log() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "(help)".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert!(world.console_output.starts_with("=> Glyph help (page 1/6)"));
+        assert!(!world
+            .event_log
+            .entries()
+            .iter()
+            .any(|entry| entry.text.starts_with("=> Glyph help")));
+        assert!(world.console_buffer.is_empty());
+    }
+
+    #[test]
+    fn console_help_supports_numbered_and_named_pages() {
+        let mut world = world_with_single_enemy(Position::new(20, 5));
+        world.mode = Mode::Console;
+        world.console_buffer = "(help 5)".to_string();
+
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert!(world
+            .console_output
+            .starts_with("=> Glyph help (page 5/6): language reference"));
+
+        world.console_buffer = "(help :tutorial)".to_string();
+        world.apply_intent(Intent::ConsoleSubmit);
+
+        assert!(world
+            .console_output
+            .starts_with("=> Glyph help (page 6/6): short tutorial"));
     }
 
     #[test]
@@ -3369,6 +3579,7 @@ mod tests {
         assert!(world.console_output.contains("syntax error"));
         assert!(!world.console_output.contains('\u{1b}'));
         assert_eq!(world.console_output_color, Some(RGB::named(RED)));
+        assert!(!world.event_log.contains("syntax error"));
         assert!(world.console_buffer.is_empty());
     }
 

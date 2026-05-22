@@ -708,11 +708,16 @@ fn render_console(ctx: &mut Frame, world: &World) {
         let visible_output = output_available as usize;
         let max_start = lines.len().saturating_sub(visible_output);
         let start = max_start.saturating_sub(world.console_output_scroll);
+        let highlight_output = console_output_uses_syntax_highlighting(&world.console_output);
         for (i, line) in lines[start..].iter().enumerate().take(visible_output) {
+            let y = output_y + i as i32;
             if let Some(color) = world.console_output_color {
-                print_clipped_color(ctx, x + 2, output_y + i as i32, inner_width, line, color);
+                print_clipped_color(ctx, x + 2, y, inner_width, line, color);
+            } else if highlight_output {
+                let spans = highlight::highlight(line);
+                print_highlighted(ctx, x + 2, y, inner_width, &spans);
             } else {
-                print_clipped(ctx, x + 2, output_y + i as i32, inner_width, line);
+                print_clipped(ctx, x + 2, y, inner_width, line);
             }
         }
     }
@@ -789,6 +794,10 @@ fn cursor_visual_pos(text: &str, cursor_byte: usize, max_width: usize) -> (usize
 
 fn is_diagnostic_output(text: &str) -> bool {
     text.contains("Error: syntax error") && text.contains("[glyph:")
+}
+
+fn console_output_uses_syntax_highlighting(text: &str) -> bool {
+    text.starts_with("=> Glyph help ")
 }
 
 fn clipped_lines(text: &str, max_width: usize) -> Vec<String> {
@@ -1225,5 +1234,13 @@ mod tests {
                 " 1 | (bind-key :z (do",
             ]
         );
+    }
+
+    #[test]
+    fn help_output_uses_syntax_highlighting() {
+        assert!(console_output_uses_syntax_highlighting(
+            "=> Glyph help (page 5/6): language reference\n  (if test then else)"
+        ));
+        assert!(!console_output_uses_syntax_highlighting("=> (1 2 3)"));
     }
 }

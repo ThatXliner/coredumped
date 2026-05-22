@@ -188,6 +188,10 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         "Chain commands with (do ...):\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs N times:\n  (repeat 4 (do-attack :east))\n\nLearn more console commands with (help)",
     );
 
+    // Clear barrel at sign position before placing it
+    if let Some(barrel) = world.ecs.entity_at(Position::new(51, 24)) {
+        world.ecs.remove(barrel);
+    }
     world.ecs.spawn_sign(
         Position::new(51, 24),
         "Need help?\nTry running this in the console:\n  (bind-key :x (do (move! :south)\n    (repeat 3 (do-attack :east))))\n\nNow clear these barrels and\nfind the exit!",

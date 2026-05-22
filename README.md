@@ -47,13 +47,14 @@ Lisp runtime with graphics attached.
 - Custom ECS (entity-component-system), no external dependency
 - Deterministic turn model: `ActionCost::Tick` = player + enemies advance;
   `ActionCost::Free` = UI only
-- Playbook system: drop `.glyph` files in `~/.coredumped/playbooks/current/`,
+- Playbook system: drop `.glyph` files in `~/.xlyph/playbooks/current/`,
   they load on game start
 - Save/load (auto-save on quit, manual slots)
 
 ### What doesn't work yet
 
-- No full procedural generation (fixed maps, but 18 is enough for a run)
+- No full procedural campaign (authored maps are primary; later depths fall
+  back to generated rooms)
 - No full FoV / fog of war (flashlight serves to indicate direction)
 - No inventory beyond held keys and special items
 - Half-finished Glyph standard library (enough for enemies, not much else)
@@ -112,10 +113,21 @@ Xlyph auto-enables emoji enemies in UTF-8 terminals that are likely to render
 them correctly. Launch with `--ascii-only` (alias `--ascii`) to force ASCII
 glyphs, or set `XYLPH_EMOJI=1` / `XYLPH_EMOJI=0` to override auto-detection.
 
+## Documentation
+
+- [PROJECT.md](./PROJECT.md) explains the repository layout, runtime flow,
+  save/playbook paths, and contributor workflow.
+- [glyph-reference.md](./glyph-reference.md) is the guided Glyph language tour.
+- [language-spec.md](./language-spec.md) documents the implemented Glyph
+  semantics.
+- [level-design.md](./level-design.md) covers the campaign and narrative notes.
+- [game-architecture.md](./game-architecture.md) captures the larger design
+  vision.
+
 ## Development
 
 ```bash
-cargo test        # 122 tests, pure game logic (no renderer)
+cargo test        # pure game logic and language tests
 cargo fmt         # single crate, no config
 cargo check       # fast feedback
 ```

@@ -108,7 +108,7 @@ fn all_fragments() -> Vec<Fragment> {
         },
         Fragment {
             id: "frag-004".into(),
-            text: "She texted me a picture of a dog in a sweater. Just randomly. No reason. I realized someone was thinking about me when I wasn't in the room. I did not know that was something people did. I have the picture saved, and even to this day.".into(),
+            text: "She texted me a picture of a dog in a sweater. Just randomly, without any specific reason. That moment I realized it meant someone was thinking about me when I wasn't in the room. I did not know that was something people did. I have the picture saved, and even to this day.".into(),
             weight: 28,
             status: FragmentStatus::Hidden,
         },

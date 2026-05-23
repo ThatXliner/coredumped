@@ -158,4 +158,25 @@ mod tests {
 
         assert!(blocked.is_empty(), "{}", blocked.join("\n"));
     }
+
+    #[test]
+    fn quiet_halls_gate_barrels_spawn_on_walkable_tiles() {
+        let mut world = World::new_game();
+        build_level(&mut world, 3);
+
+        let blocked: Vec<_> = world
+            .ecs
+            .entity_ids()
+            .filter(|id| world.ecs.kind(*id) == Some(crate::EntityKind::Barrel))
+            .filter_map(|id| {
+                let pos = world.ecs.position(id)?;
+                (!world.map.is_walkable(pos)).then_some(pos)
+            })
+            .collect();
+
+        assert!(
+            blocked.is_empty(),
+            "quiet halls gate barrels spawned on blocked tiles: {blocked:?}"
+        );
+    }
 }

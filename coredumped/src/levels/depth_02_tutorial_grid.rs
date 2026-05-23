@@ -182,9 +182,11 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         Position::new(37, 30),
         "Welcome to the Puzzle Room! This is a LOT of barrels...the exit is under one of them\nTry binding a combo to one key to make things faster",
     );
-
+    if let Some(barrel) = world.ecs.entity_at(Position::new(40, 32)) {
+        world.ecs.remove(barrel);
+    }
     world.ecs.spawn_sign(
-        Position::new(37, 31),
+        Position::new(40, 32),
         "Chain commands with (do ...):\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs N times:\n  (repeat 4 (do-attack :east))\n\nLearn more console commands with (help)",
     );
 

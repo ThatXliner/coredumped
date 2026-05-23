@@ -96,13 +96,13 @@ fn all_fragments() -> Vec<Fragment> {
         },
         Fragment {
             id: "frag-002".into(),
-            text: "She stayed late after a party to help me clean. Just the two of us, picking up plastic cups in the dark. She said \"this is the best part of the night\" and I pretended not to hear because if I heard it I'd have to admit I felt it too. But I did heard it. I also felt it.".into(),
+            text: "She stayed late after an end-of-year party to help me clean. Just the two of us, picking up plastic cups in the dark. She said \"this is the best part of the night\" and I pretended not to hear because if I heard it I'd have to admit I felt it too. But I did heard it. I also felt it.".into(),
             weight: 32,
             status: FragmentStatus::Hidden,
         },
         Fragment {
             id: "frag-003".into(),
-            text: "The first time she told me about her family. How close they were. How they called each other every Sunday. How they still took family trips, not out of obligation, but because they genuinely liked being together. I nodded and smiled and felt something crack open in my chest. I didn't know families did that. I still don't.".into(),
+            text: "When the kids at the summer camp were asleep, us counselors could spend a little time resting together, and that's the first time she told me about her family. How close they were. How they called each other every Sunday. How they still took family trips, not out of obligation, but because they genuinely liked being together. I nodded and smiled and felt something crack open in my chest. I didn't know families did that. I still don't.".into(),
             weight: 35,
             status: FragmentStatus::Hidden,
         },

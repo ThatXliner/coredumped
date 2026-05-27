@@ -110,7 +110,7 @@ cd web-assets && python3 -m http.server 8080
 
 Beta. Playable from depth 0 to 17 with an ending. Expect rough edges and things that kill you without explanation.
 
-~17k lines of Rust. Small enough to learn from in an afternoon.
+Some of the gameplay may be completely broken or just boring. Please, file an [issue](https://github.com/ThatXliner/coredumped/issues)!
 
 ## License
 

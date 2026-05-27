@@ -2103,6 +2103,11 @@ pub(crate) fn setup_glyph_env() -> Env {
         "open a hidden registry handle",
         builtin_open_registry
     );
+    reg!(
+        "player",
+        "query player state: (player :pos), (player :hp), (player :facing), (player :console-buffer)",
+        builtin_player
+    );
 
     ai_builtins::register_all(&env);
 
@@ -3372,6 +3377,63 @@ fn builtin_inspect_fragment(
         None => Err(glyph::EvalError::Custom(format!(
             "no fragment with id: {}",
             fragment_id
+        ))),
+    }
+}
+
+fn builtin_player(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let key = match args.first() {
+        Some(Value::Keyword(kw)) => kw.name.as_str(),
+        Some(other) => {
+            return Err(glyph::EvalError::TypeError {
+                expected: "keyword",
+                got: other.to_string(),
+            })
+        }
+        None => {
+            return Err(glyph::EvalError::Custom(
+                "usage: (player :pos), (player :hp), (player :facing), (player :console-buffer)"
+                    .into(),
+            ))
+        }
+    };
+
+    match key {
+        "pos" => {
+            let pos = world.player_pos();
+            Ok(Value::List(vec![
+                Value::I64(pos.x as i64),
+                Value::I64(pos.y as i64),
+            ]))
+        }
+        "hp" => {
+            let hp = world.player_hp();
+            Ok(Value::I64(hp.current as i64))
+        }
+        "max-hp" => {
+            let hp = world.player_hp();
+            Ok(Value::I64(hp.max as i64))
+        }
+        "facing" => {
+            let dir = match world.player_facing {
+                Direction::North => "north",
+                Direction::South => "south",
+                Direction::East => "east",
+                Direction::West => "west",
+            };
+            Ok(glyph::kw(dir))
+        }
+        "console-buffer" => Ok(Value::String(world.console_buffer.clone())),
+        "depth" => Ok(Value::I64(world.depth as i64)),
+        "turn" => Ok(Value::I64(world.turn as i64)),
+        _ => Err(glyph::EvalError::Custom(format!(
+            "unknown player attribute: {}. Try :pos, :hp, :facing, :console-buffer, :depth, :turn",
+            key
         ))),
     }
 }

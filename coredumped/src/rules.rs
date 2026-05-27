@@ -227,8 +227,8 @@ impl RuleRegistry {
                 Rule {
                     id: "slime-hunt",
                     name: "slime-hunt",
-                    phase: RulePhase::EnemyAi,  // Runs during enemy turn
-                    cost: RuleCost::Tick,       // Uses up a game tick
+                    phase: RulePhase::EnemyAi, // Runs during enemy turn
+                    cost: RuleCost::Tick,      // Uses up a game tick
                     source_lines: &[
                         "(defrule slime-hunt",
                         "  {:phase :enemy-ai :cost :tick}",
@@ -276,8 +276,8 @@ impl RuleRegistry {
                 Rule {
                     id: "flashlight",
                     name: "flashlight",
-                    phase: RulePhase::Render,   // Runs during drawing
-                    cost: RuleCost::Free,       // Doesn't cost a turn
+                    phase: RulePhase::Render, // Runs during drawing
+                    cost: RuleCost::Free,     // Doesn't cost a turn
                     source_lines: &[
                         "(defrule flashlight",
                         "  {:phase :render :cost :free}",
@@ -512,15 +512,13 @@ impl RuleRegistry {
                 Rule {
                     id: "fire/burn",
                     name: "fire/burn",
-                    phase: RulePhase::TileEffect,  // Runs during tile effect phase
+                    phase: RulePhase::TileEffect, // Runs during tile effect phase
                     cost: RuleCost::Tick,
                     source_lines: &[
                         "(defrule fire/burn",
                         "  {:phase :tile-effect :cost :tick}",
                         "  ;; Fire tile: deals 1 damage per tick while standing on it.",
-                        "  ;; Checks fire cache built at start of each tick.",
-                        "  ;; Cache mutated mid-tick (e.g. Vapor Canteen)",
-                        "  ;; does not revalidate until next tick.",
+                        "  ;; Checks fire cache built at START of each tick.",
                         "  (if (fire? *pos*)",
                         "    (do",
                         "      (log \"The fire burns you! You take 1 damage.\")",
@@ -638,7 +636,7 @@ impl RuleRegistry {
     pub fn tile_rule(&self, tile: crate::map::TileType) -> Option<&Rule> {
         match tile {
             crate::map::TileType::Fire => self.get("fire/burn"),
-            _ => None,  // Most tiles don't have special rules
+            _ => None, // Most tiles don't have special rules
         }
     }
 
@@ -680,14 +678,14 @@ impl RuleRegistry {
             // Some rules are always visible (like flashlight)
             if Self::ALWAYS_VISIBLE.contains(&rule.id) {
                 ids.insert(rule.id.to_string());
-                continue;  // Skip to next rule
+                continue; // Skip to next rule
             }
 
             // Check if we've seen an entity that uses this rule
             for kind in seen_entities {
                 if kind.rule_name() == rule.id {
                     ids.insert(rule.id.to_string());
-                    break;  // Found a match, no need to keep checking
+                    break; // Found a match, no need to keep checking
                 }
             }
 

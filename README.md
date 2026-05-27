@@ -53,15 +53,11 @@ Requires [Rust](https://rustup.rs/). Native build has better performance and sav
 
 ## What makes it different
 
-Every roguelike has rules, but most hide them behind source code or wiki pages.
-CoreDumped puts them on screen and lets you poke at them.
+Every roguelike has rules, but these rules are typically only displayed on screen, forcing the gamer to infer them. CoreDumped puts the code itself available on the screen and lets you poke at them. Exploiting the holes is *part of the game*.
 
 - **Inspector panel** shows real Glyph (custom Lisp) source for every AI rule
 - **Console** lets you eval expressions, inspect state, bind keys
 - **The dungeon is a Lisp runtime** with graphics attached
-
-The long bet: if the game shows you its moving parts, the mystery shifts
-from "how does this work" to "what can I make it do."
 
 ## Features
 
@@ -87,7 +83,7 @@ Three crates:
 pub enum ActionCost { Free, Tick, Quit }
 ```
 
-Every gameplay action costs a tick; UI actions are free. This invariant is tested.
+Every gameplay action costs a tick; UI actions are free.
 
 ## Documentation
 

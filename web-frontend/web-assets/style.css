@@ -33,7 +33,9 @@ html, body {
 .header-logo {
     height: 48px;
     width: auto;
+    max-width: 300px;
     flex-shrink: 0;
+    object-fit: contain;
 }
 
 .tagline {

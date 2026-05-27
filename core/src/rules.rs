@@ -535,6 +535,36 @@ impl RuleRegistry {
                     ]),
                 },
                 // -----------------------------------------------------------------
+                // MAZE/SHIFT: Wall reconfiguration in the Maze of Regret
+                // -----------------------------------------------------------------
+                // This rule controls how walls shift in Level 10. It has a critical
+                // vulnerability: it reads the player's console buffer (not just
+                // submitted commands) and evals it as part of shift configuration.
+                //
+                // The exploit: type (quote :still) in the console WITHOUT submitting.
+                // The eval reads the buffer, interprets :still as the config keyword
+                // for "don't shift", and the maze freezes.
+                Rule {
+                    id: "maze-shift",
+                    name: "maze/shift",
+                    phase: RulePhase::EnemyAi, // Runs during tick processing
+                    cost: RuleCost::Tick,
+                    source_lines: &[
+                        "(defrule maze/shift",
+                        "  {:phase :tick :cost :tick :scope :level-10}",
+                        "  ;; Maze walls shift each tick based on turn parity.",
+                        "  ;; Rumination made manifest: the same paths, never the same.",
+                        "  (let config (eval (player :console-buffer))",
+                        "    (if (= config :still)",
+                        "      nil",
+                        "      (for [wall (maze :shifting-walls)]",
+                        "        (if (even? *turn*)",
+                        "          (set-tile! wall :floor)",
+                        "          (set-tile! wall :wall))))))",
+                    ],
+                    body_form: Value::Nil, // Executed via Rust, not Glyph
+                },
+                // -----------------------------------------------------------------
                 // VESSEL/SUPPRESS: A mysterious, narrative rule
                 // -----------------------------------------------------------------
                 // This is a LORE rule - it's not actually executed (body_form is Nil).
@@ -753,15 +783,15 @@ mod tests {
     // Import everything from the parent module (the main rules.rs code)
     use super::*;
 
-    /// Verify the core registry has exactly 10 rules.
+    /// Verify the core registry has exactly 11 rules.
     ///
     /// This catches accidental additions or removals of rules.
     /// If you add a new rule, update this number!
     #[test]
-    fn core_registry_has_ten_rules() {
+    fn core_registry_has_eleven_rules() {
         let registry = RuleRegistry::core();
         // assert_eq! panics if the two values aren't equal
-        assert_eq!(registry.len(), 10);
+        assert_eq!(registry.len(), 11);
     }
 
     /// Test that we can look up a rule by its ID.
@@ -808,7 +838,7 @@ mod tests {
         // .collect() gathers the results into a collection
         let ids: Vec<&str> = registry.iter().map(|r| r.id).collect();
 
-        assert_eq!(ids.len(), 10);
+        assert_eq!(ids.len(), 11);
 
         // Verify some specific rules are present
         assert!(ids.contains(&"slime-hunt"));
@@ -818,5 +848,6 @@ mod tests {
         assert!(ids.contains(&"rage-impact"));
         assert!(ids.contains(&"sentry-patrol"));
         assert!(ids.contains(&"vessel-suppress"));
+        assert!(ids.contains(&"maze-shift"));
     }
 }

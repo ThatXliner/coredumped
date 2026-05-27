@@ -148,6 +148,8 @@ impl World {
             gauntlet_barrier_locked: HashSet::new(),
             barrel_room_protected: false,
             fire_cache: HashSet::new(),
+            maze_shifting_walls: HashSet::new(),
+            maze_shift_frozen: false,
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
@@ -234,6 +236,8 @@ impl World {
             gauntlet_barrier_locked: HashSet::new(),
             barrel_room_protected: false,
             fire_cache: HashSet::new(),
+            maze_shifting_walls: HashSet::new(),
+            maze_shift_frozen: false,
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
@@ -597,6 +601,8 @@ impl World {
         self.on_wizard_interact = None;
         self.gauntlet_barrier_locked.clear();
         self.fire_cache.clear();
+        self.maze_shifting_walls.clear();
+        self.maze_shift_frozen = false;
         self.explored_tiles.clear();
     }
 
@@ -1084,6 +1090,7 @@ impl World {
             }
         }
         self.check_gauntlet_barriers();
+        self.shift_maze_walls();
         self.log_entity_overlaps("after-barriers");
         self.advance_enemies();
         self.log_entity_overlaps("after-ai");
@@ -1095,6 +1102,49 @@ impl World {
         if self.player_hp().current <= 0 {
             self.mode = Mode::Dead;
             self.event_log.push("You have perished!");
+        }
+    }
+
+    fn shift_maze_walls(&mut self) {
+        if self.depth != 10 || self.maze_shifting_walls.is_empty() {
+            return;
+        }
+
+        // Check for exploit: if console buffer contains (quote :still), freeze maze
+        // This is the "eval injection" — the maze/shift rule reads the buffer
+        // without checking if it was submitted.
+        if !self.maze_shift_frozen {
+            let buffer = self.console_buffer.trim();
+            if buffer.contains("(quote :still)")
+                || buffer.contains("':still")
+                || buffer == ":still"
+            {
+                self.maze_shift_frozen = true;
+                self.event_log.push_colored(
+                    "The walls shudder... and stop. The maze holds its breath.",
+                    RGB::named(CYAN),
+                );
+                return;
+            }
+        }
+
+        if self.maze_shift_frozen {
+            return;
+        }
+
+        // Toggle walls based on turn parity
+        let is_wall_phase = self.turn % 2 == 0;
+        let walls: Vec<Position> = self.maze_shifting_walls.iter().copied().collect();
+        for pos in walls {
+            let new_tile = if is_wall_phase {
+                TileType::Wall
+            } else {
+                TileType::Floor
+            };
+            // Don't shift if player or enemy is standing there
+            if self.ecs.entity_at(pos).is_none() {
+                self.map.set_tile(pos, new_tile);
+            }
         }
     }
 

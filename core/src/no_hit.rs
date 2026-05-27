@@ -258,6 +258,8 @@ mod tests {
             gauntlet_barrier_locked: HashSet::new(),
             barrel_room_protected: false,
             fire_cache: HashSet::new(),
+            maze_shifting_walls: HashSet::new(),
+            maze_shift_frozen: false,
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,

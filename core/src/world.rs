@@ -133,6 +133,13 @@ pub struct World {
     /// Fire-tile cache rebuilt at tick start. Vapor Canteen can mutate mid-tick.
     pub fire_cache: HashSet<Position>,
 
+    /// Positions of walls that can shift in the Maze of Regret (depth 10).
+    /// These walls toggle between Wall and Floor each tick unless frozen.
+    pub maze_shifting_walls: HashSet<Position>,
+
+    /// When true, maze walls stop shifting. Set by the console injection exploit.
+    pub maze_shift_frozen: bool,
+
     /// Tick-local distance field reused by AI pathfinding builtins.
     pub(crate) dijkstra_cache_target_idx: Option<usize>,
     pub(crate) dijkstra_cache_map: Vec<f32>,
@@ -209,6 +216,8 @@ impl World {
             gauntlet_barrier_locked: HashSet::new(),
             barrel_room_protected: false,
             fire_cache: HashSet::new(),
+            maze_shifting_walls: HashSet::new(),
+            maze_shift_frozen: false,
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,

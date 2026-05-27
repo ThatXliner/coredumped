@@ -61,8 +61,38 @@ pub(crate) fn build_boiling_heart(world: &mut World) {
     map.set_tile(player_start, TileType::StairsUp);
     map.set_tile(stairs_down, TileType::StairsDown);
 
+    // Lamps embedded in walls — bright yellow, light up the arena
+    let lamp_positions = [
+        // Top wall
+        (rx + 5, ry - 1),
+        (rx + 15, ry - 1),
+        (rx + 25, ry - 1),
+        (rx + 35, ry - 1),
+        // Bottom wall
+        (rx + 5, ry + rh),
+        (rx + 15, ry + rh),
+        (rx + 25, ry + rh),
+        (rx + 35, ry + rh),
+        // Left wall
+        (rx - 1, ry + 6),
+        (rx - 1, ry + 18),
+        // Right wall
+        (rx + rw, ry + 6),
+        (rx + rw, ry + 18),
+    ];
+    for (lx, ly) in lamp_positions {
+        map.set_tile(Position::new(lx, ly), TileType::Lamp);
+    }
+
     world.map = map;
     world.ecs.set_position(world.player_id, player_start);
+
+    // Pre-explore entire boss arena — lamps light it up
+    for y in (ry - 1)..=(ry + rh) {
+        for x in (rx - 1)..=(rx + rw) {
+            world.explored_tiles.insert(Position::new(x, y));
+        }
+    }
 
     // Rage boss near stairs — blocks exit
     let rage_pos = Position::new(rx + rw - 4, ry + rh / 2);

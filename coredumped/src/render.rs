@@ -80,6 +80,8 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
 
     let cam_x = world.camera_x;
     let cam_y = world.camera_y;
+    let player_pos = world.player_pos();
+    let flashlight_radius = FLASHLIGHT_RADIUS as f32;
 
     for vy in 0..VIEWPORT_HEIGHT {
         for vx in 0..VIEWPORT_WIDTH {
@@ -101,19 +103,37 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
                 continue;
             }
 
-            let (glyph, fg) = match (world.map.tile(pos), lit) {
-                // Lit tiles: full color
+            // Distance-based fade for lit tiles
+            let fade = if lit {
+                let dx = (pos.x - player_pos.x) as f32;
+                let dy = (pos.y - player_pos.y) as f32;
+                let dist = (dx * dx + dy * dy).sqrt();
+                // Fade from 1.0 (close) to 0.4 (at radius edge)
+                1.0 - (dist / flashlight_radius) * 0.6
+            } else {
+                1.0
+            };
+
+            let (glyph, base_fg) = match (world.map.tile(pos), lit) {
+                // Lit tiles: full color (will be faded by distance)
                 (TileType::StairsDown, true) => ('>', RGB::named(CYAN)),
                 (TileType::StairsUp, true) => ('<', RGB::named(MAGENTA)),
                 (TileType::Floor, true) => ('.', RGB::named(GOLD)),
                 (TileType::Wall, true) => ('#', RGB::named(LIGHT_YELLOW)),
                 (TileType::Fire, true) => ('^', RGB::named(RED)),
+                (TileType::Lamp, _) => ('#', RGB::named(YELLOW)),
                 // Remembered tiles: dimmed but readable
                 (TileType::StairsDown, false) => ('>', RGB::from_u8(60, 120, 120)),
                 (TileType::StairsUp, false) => ('<', RGB::from_u8(100, 60, 100)),
                 (TileType::Floor, false) => ('.', RGB::from_u8(70, 70, 70)),
                 (TileType::Wall, false) => ('#', RGB::from_u8(100, 100, 100)),
                 (TileType::Fire, false) => ('^', RGB::from_u8(120, 60, 60)),
+            };
+
+            let fg = if lit && !matches!(world.map.tile(pos), TileType::Lamp) {
+                RGB::from_f32(base_fg.r * fade, base_fg.g * fade, base_fg.b * fade)
+            } else {
+                base_fg
             };
             ctx.set(MAP_X + vx, MAP_Y + vy, fg, RGB::named(BLACK), glyph);
         }

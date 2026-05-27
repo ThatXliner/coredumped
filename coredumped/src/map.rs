@@ -25,6 +25,7 @@ pub enum TileType {
     StairsDown,
     StairsUp,
     Fire,
+    Lamp,
 }
 
 #[derive(Clone, Debug)]
@@ -505,7 +506,7 @@ impl Map {
     }
 
     pub fn is_walkable(&self, pos: Position) -> bool {
-        self.contains(pos) && self.tile(pos) != TileType::Wall
+        self.contains(pos) && !matches!(self.tile(pos), TileType::Wall | TileType::Lamp)
     }
 
     pub fn flashlight_tiles(&self, origin: Position, facing: Direction) -> HashSet<Position> {
@@ -590,7 +591,7 @@ impl Algorithm2D for Map {
 
 impl BaseMap for Map {
     fn is_opaque(&self, idx: usize) -> bool {
-        self.tiles[idx] == TileType::Wall
+        matches!(self.tiles[idx], TileType::Wall | TileType::Lamp)
     }
 
     fn get_available_exits(&self, idx: usize) -> SmallVec<[(usize, f32); 10]> {

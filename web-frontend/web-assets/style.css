@@ -110,7 +110,7 @@ html, body {
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 1rem;
     background: #0d0d0d;
     border-top: 1px solid #1a1a1a;
     text-align: center;
@@ -124,6 +124,24 @@ html, body {
     border-radius: 3px;
     font-family: "Cascadia Code", "Fira Code", monospace;
     color: #8f8;
+}
+
+.footer-controls {
+    margin-bottom: 0.25rem;
+}
+
+.footer-promo {
+    font-size: 0.7rem;
+    color: #555;
+}
+
+.footer-promo a {
+    color: #7af;
+    text-decoration: none;
+}
+
+.footer-promo a:hover {
+    text-decoration: underline;
 }
 
 @media (max-width: 600px) {

@@ -256,6 +256,7 @@ mod tests {
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
+            barrel_room_protected: false,
             fire_cache: HashSet::new(),
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),

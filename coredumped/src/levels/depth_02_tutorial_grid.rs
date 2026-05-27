@@ -161,4 +161,12 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         Position::new(40, 32),
         "Chain commands with (do ...):\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs N times:\n  (repeat 4 (do-attack :east))\n\nBind it to a key and go wild.",
     );
+
+    // Pressure plate near barrel room entrance - closes door when stepped on
+    if let Some(barrel) = world.ecs.entity_at(Position::new(38, 29)) {
+        world.ecs.remove(barrel);
+    }
+    world
+        .map
+        .set_tile(Position::new(38, 29), crate::map::TileType::PressurePlate);
 }

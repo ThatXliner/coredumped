@@ -128,12 +128,14 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
                 (TileType::Wall, true) => ('#', RGB::named(LIGHT_YELLOW)),
                 (TileType::Fire, true) => ('^', RGB::named(RED)),
                 (TileType::Lamp, _) => ('#', RGB::named(YELLOW)),
+                (TileType::PressurePlate, true) => ('_', RGB::named(GREEN)),
                 // Remembered tiles: dimmed but readable
                 (TileType::StairsDown, false) => ('>', RGB::from_u8(60, 120, 120)),
                 (TileType::StairsUp, false) => ('<', RGB::from_u8(100, 60, 100)),
                 (TileType::Floor, false) => ('.', RGB::from_u8(70, 70, 70)),
                 (TileType::Wall, false) => ('#', RGB::from_u8(100, 100, 100)),
                 (TileType::Fire, false) => ('^', RGB::from_u8(120, 60, 60)),
+                (TileType::PressurePlate, false) => ('_', RGB::from_u8(40, 80, 40)),
             };
 
             let fg = if lit && !matches!(world.map.tile(pos), TileType::Lamp) {
@@ -141,13 +143,25 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
             } else {
                 base_fg
             };
-            ctx.set(MAP_X + vx, MAP_Y + vy, fg, RGB::named(BLACK), glyph);
+
+            // Green shimmer for protected barrel room
+            let bg = if world.barrel_room_protected && is_in_barrel_room(pos) && lit {
+                RGB::from_u8(0, 30, 0)
+            } else {
+                RGB::named(BLACK)
+            };
+            ctx.set(MAP_X + vx, MAP_Y + vy, fg, bg, glyph);
         }
     }
 
     for entity in world.renderable_entities() {
         draw_entity(ctx, world, entity, lit_tiles);
     }
+}
+
+fn is_in_barrel_room(pos: Position) -> bool {
+    // Room 8 bounds: x=36..52, y=24..33
+    pos.x >= 36 && pos.x < 52 && pos.y >= 24 && pos.y < 33
 }
 
 fn draw_entity(ctx: &mut Frame, world: &World, entity: EntityView, lit_tiles: &HashSet<Position>) {
@@ -198,6 +212,13 @@ fn draw_entity(ctx: &mut Frame, world: &World, entity: EntityView, lit_tiles: &H
         (EntityKind::ShadeEcho, false) => (RGB::named(DARK_GRAY), RGB::named(BLACK)),
         (EntityKind::VaporCanteen, true) => (RGB::named(CYAN), RGB::from_u8(0, 20, 40)),
         (EntityKind::VaporCanteen, false) => (RGB::named(DARK_BLUE), RGB::named(BLACK)),
+    };
+
+    // Green shimmer for entities in protected barrel room
+    let bg = if world.barrel_room_protected && is_in_barrel_room(entity.pos) && lit {
+        RGB::from_u8(0, 30, 0)
+    } else {
+        bg
     };
 
     let x = MAP_X + screen_x;

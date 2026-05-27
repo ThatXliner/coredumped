@@ -14,15 +14,18 @@ use crate::{
     event_log::LogEntry,
     game::Mode,
     glyph::highlight::{self, Span},
-    map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
+    map::{TileType, FLASHLIGHT_RADIUS},
     terminal::Frame,
     world::World,
 };
 
 const MAP_X: i32 = 1;
 const MAP_Y: i32 = 1;
-const MAP_BOX_WIDTH: i32 = MAP_WIDTH + 2;
-const MAP_BOX_HEIGHT: i32 = MAP_HEIGHT + 2;
+/// Viewport dimensions — the visible portion of the map.
+pub const VIEWPORT_WIDTH: i32 = 40;
+pub const VIEWPORT_HEIGHT: i32 = 24;
+const MAP_BOX_WIDTH: i32 = VIEWPORT_WIDTH + 2;
+const MAP_BOX_HEIGHT: i32 = VIEWPORT_HEIGHT + 2;
 const PANEL_MIN_WIDTH: i32 = 18;
 const MIN_BOTTOM_LOG_HEIGHT: i32 = 10;
 
@@ -75,64 +78,131 @@ pub fn render(ctx: &mut Frame, world: &World) {
 fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
     draw_box(ctx, 0, 0, MAP_BOX_WIDTH, MAP_BOX_HEIGHT, " dungeon ");
 
-    for y in 0..world.map.height {
-        for x in 0..world.map.width {
-            let pos = Position::new(x, y);
+    let cam_x = world.camera_x;
+    let cam_y = world.camera_y;
+    let player_pos = world.player_pos();
+    let flashlight_radius = FLASHLIGHT_RADIUS as f32;
+
+    for vy in 0..VIEWPORT_HEIGHT {
+        for vx in 0..VIEWPORT_WIDTH {
+            let map_x = cam_x + vx;
+            let map_y = cam_y + vy;
+            let pos = Position::new(map_x, map_y);
+
+            if !world.map.contains(pos) {
+                ctx.set(MAP_X + vx, MAP_Y + vy, RGB::named(BLACK), RGB::named(BLACK), ' ');
+                continue;
+            }
+
             let lit = lit_tiles.contains(&pos);
-            let (glyph, fg) = match (world.map.tile(pos), lit) {
-                (TileType::StairsDown, _) => ('>', RGB::named(CYAN)),
-                (TileType::StairsUp, _) => ('<', RGB::named(MAGENTA)),
+            let explored = world.explored_tiles.contains(&pos);
+
+            // Fog of war: unexplored tiles are hidden
+            if !lit && !explored {
+                ctx.set(MAP_X + vx, MAP_Y + vy, RGB::named(BLACK), RGB::named(BLACK), ' ');
+                continue;
+            }
+
+            // Distance-based fade for lit tiles (starts after 4 tiles)
+            let fade = if lit {
+                let dx = (pos.x - player_pos.x) as f32;
+                let dy = (pos.y - player_pos.y) as f32;
+                let dist = (dx * dx + dy * dy).sqrt();
+                let fade_start = 4.0;
+                if dist <= fade_start {
+                    1.0
+                } else {
+                    let fade_dist = dist - fade_start;
+                    let fade_range = flashlight_radius - fade_start;
+                    1.0 - (fade_dist / fade_range) * 0.6
+                }
+            } else {
+                1.0
+            };
+
+            let (glyph, base_fg) = match (world.map.tile(pos), lit) {
+                // Lit tiles: full color (will be faded by distance)
+                (TileType::StairsDown, true) => ('>', RGB::named(CYAN)),
+                (TileType::StairsUp, true) => ('<', RGB::named(MAGENTA)),
                 (TileType::Floor, true) => ('.', RGB::named(GOLD)),
                 (TileType::Wall, true) => ('#', RGB::named(LIGHT_YELLOW)),
-                (TileType::Floor, false) => ('.', RGB::named(DARK_GRAY)),
-                (TileType::Wall, false) => ('#', RGB::named(GRAY)),
                 (TileType::Fire, true) => ('^', RGB::named(RED)),
-                (TileType::Fire, false) => ('^', RGB::named(DARK_RED)),
+                (TileType::Lamp, _) => ('#', RGB::named(YELLOW)),
+                // Remembered tiles: dimmed but readable
+                (TileType::StairsDown, false) => ('>', RGB::from_u8(60, 120, 120)),
+                (TileType::StairsUp, false) => ('<', RGB::from_u8(100, 60, 100)),
+                (TileType::Floor, false) => ('.', RGB::from_u8(70, 70, 70)),
+                (TileType::Wall, false) => ('#', RGB::from_u8(100, 100, 100)),
+                (TileType::Fire, false) => ('^', RGB::from_u8(120, 60, 60)),
             };
-            ctx.set(MAP_X + x, MAP_Y + y, fg, RGB::named(BLACK), glyph);
+
+            let fg = if lit && !matches!(world.map.tile(pos), TileType::Lamp) {
+                RGB::from_f32(base_fg.r * fade, base_fg.g * fade, base_fg.b * fade)
+            } else {
+                base_fg
+            };
+            ctx.set(MAP_X + vx, MAP_Y + vy, fg, RGB::named(BLACK), glyph);
         }
     }
 
     for entity in world.renderable_entities() {
-        draw_entity(ctx, entity, lit_tiles);
+        draw_entity(ctx, world, entity, lit_tiles);
     }
 }
 
-fn draw_entity(ctx: &mut Frame, entity: EntityView, lit_tiles: &HashSet<Position>) {
-    let lit = lit_tiles.contains(&entity.pos) || entity.kind == EntityKind::Player;
-    let color = match (entity.kind, lit) {
-        (EntityKind::Player, _) => RGB::named(YELLOW),
-        (EntityKind::Slime, true) => RGB::named(ORANGE),
-        (EntityKind::Slime, false) => RGB::named(DARK_GREEN),
-        (EntityKind::Goblin, true) => RGB::named(RED),
-        (EntityKind::Goblin, false) => RGB::named(DARK_RED),
-        (EntityKind::Bat, true) => RGB::named(WHITE),
-        (EntityKind::Bat, false) => RGB::named(GRAY),
-        (EntityKind::Ogre, true) => RGB::named(MAGENTA),
-        (EntityKind::Ogre, false) => RGB::named(PURPLE),
-        (EntityKind::Wizard, true) => RGB::named(BLUE),
-        (EntityKind::Wizard, false) => RGB::named(DARK_BLUE),
-        (EntityKind::Barrel, true) => RGB::from_u8(180, 100, 30),
-        (EntityKind::Barrel, false) => RGB::from_u8(80, 50, 20),
-        (EntityKind::Sign, true) => RGB::from_u8(200, 200, 100),
-        (EntityKind::Sign, false) => RGB::from_u8(120, 120, 60),
-        (EntityKind::Fragment, true) => RGB::named(GREEN),
-        (EntityKind::Fragment, false) => RGB::named(DARK_GREEN),
-        (EntityKind::Shade, true) => RGB::named(GRAY),
-        (EntityKind::Shade, false) => RGB::named(DARK_GRAY),
-        (EntityKind::Rage, true) => RGB::named(RED),
-        (EntityKind::Rage, false) => RGB::named(DARK_RED),
-        (EntityKind::Sentry, true) => RGB::named(WHITE),
-        (EntityKind::Sentry, false) => RGB::named(GRAY),
-        (EntityKind::ShadeEcho, true) => RGB::named(CYAN),
-        (EntityKind::ShadeEcho, false) => RGB::named(DARK_GRAY),
-        (EntityKind::VaporCanteen, true) => RGB::named(CYAN),
-        (EntityKind::VaporCanteen, false) => RGB::named(DARK_BLUE),
+fn draw_entity(ctx: &mut Frame, world: &World, entity: EntityView, lit_tiles: &HashSet<Position>) {
+    let screen_x = entity.pos.x - world.camera_x;
+    let screen_y = entity.pos.y - world.camera_y;
+
+    if screen_x < 0 || screen_x >= VIEWPORT_WIDTH || screen_y < 0 || screen_y >= VIEWPORT_HEIGHT {
+        return;
+    }
+
+    let is_player = entity.kind == EntityKind::Player;
+    let is_static = matches!(
+        entity.kind,
+        EntityKind::Sign | EntityKind::Wizard | EntityKind::Barrel | EntityKind::Fragment
+    );
+    let lit = lit_tiles.contains(&entity.pos) || is_player;
+    let explored = world.explored_tiles.contains(&entity.pos);
+
+    // Static objects visible if explored, enemies only if lit
+    if !lit && !is_player && !(is_static && explored) {
+        return;
+    }
+    let (fg, bg) = match (entity.kind, lit) {
+        (EntityKind::Player, _) => (RGB::named(YELLOW), RGB::named(BLACK)),
+        (EntityKind::Slime, true) => (RGB::named(ORANGE), RGB::named(BLACK)),
+        (EntityKind::Slime, false) => (RGB::named(DARK_GREEN), RGB::named(BLACK)),
+        (EntityKind::Goblin, true) => (RGB::named(RED), RGB::named(BLACK)),
+        (EntityKind::Goblin, false) => (RGB::named(DARK_RED), RGB::named(BLACK)),
+        (EntityKind::Bat, true) => (RGB::named(WHITE), RGB::named(BLACK)),
+        (EntityKind::Bat, false) => (RGB::named(GRAY), RGB::named(BLACK)),
+        (EntityKind::Ogre, true) => (RGB::named(MAGENTA), RGB::named(BLACK)),
+        (EntityKind::Ogre, false) => (RGB::named(PURPLE), RGB::named(BLACK)),
+        (EntityKind::Wizard, true) => (RGB::named(CYAN), RGB::from_u8(0, 0, 60)),
+        (EntityKind::Wizard, false) => (RGB::named(BLUE), RGB::from_u8(0, 0, 40)),
+        (EntityKind::Barrel, true) => (RGB::from_u8(180, 100, 30), RGB::named(BLACK)),
+        (EntityKind::Barrel, false) => (RGB::from_u8(80, 50, 20), RGB::named(BLACK)),
+        (EntityKind::Sign, true) => (RGB::from_u8(200, 200, 100), RGB::named(BLACK)),
+        (EntityKind::Sign, false) => (RGB::from_u8(120, 120, 60), RGB::named(BLACK)),
+        (EntityKind::Fragment, true) => (RGB::named(GREEN), RGB::from_u8(0, 30, 0)),
+        (EntityKind::Fragment, false) => (RGB::named(DARK_GREEN), RGB::named(BLACK)),
+        (EntityKind::Shade, true) => (RGB::named(GRAY), RGB::from_u8(20, 20, 20)),
+        (EntityKind::Shade, false) => (RGB::named(DARK_GRAY), RGB::named(BLACK)),
+        (EntityKind::Rage, true) => (RGB::named(RED), RGB::from_u8(40, 0, 0)),
+        (EntityKind::Rage, false) => (RGB::named(DARK_RED), RGB::named(BLACK)),
+        (EntityKind::Sentry, true) => (RGB::named(WHITE), RGB::from_u8(30, 30, 30)),
+        (EntityKind::Sentry, false) => (RGB::named(GRAY), RGB::named(BLACK)),
+        (EntityKind::ShadeEcho, true) => (RGB::named(CYAN), RGB::from_u8(0, 30, 30)),
+        (EntityKind::ShadeEcho, false) => (RGB::named(DARK_GRAY), RGB::named(BLACK)),
+        (EntityKind::VaporCanteen, true) => (RGB::named(CYAN), RGB::from_u8(0, 20, 40)),
+        (EntityKind::VaporCanteen, false) => (RGB::named(DARK_BLUE), RGB::named(BLACK)),
     };
 
-    let x = MAP_X + entity.pos.x;
-    let y = MAP_Y + entity.pos.y;
-    ctx.set(x, y, color, RGB::named(BLACK), entity.glyph());
+    let x = MAP_X + screen_x;
+    let y = MAP_Y + screen_y;
+    ctx.set(x, y, fg, bg, entity.glyph());
 }
 
 fn render_side_panel(ctx: &mut Frame, world: &World) {
@@ -522,10 +592,17 @@ fn print_section_header(ctx: &mut Frame, x: i32, y: i32, max_width: i32, title: 
 /// that contains a living entity.
 fn render_entity_tooltip(ctx: &mut Frame, world: &World) {
     let (mx, my) = ctx.mouse_pos();
-    let map_x = mx - MAP_X;
-    let map_y = my - MAP_Y;
+    let screen_x = mx - MAP_X;
+    let screen_y = my - MAP_Y;
 
-    if map_x < 0 || map_x >= world.map.width || map_y < 0 || map_y >= world.map.height {
+    if screen_x < 0 || screen_x >= VIEWPORT_WIDTH || screen_y < 0 || screen_y >= VIEWPORT_HEIGHT {
+        return;
+    }
+
+    let map_x = world.camera_x + screen_x;
+    let map_y = world.camera_y + screen_y;
+
+    if !world.map.contains(Position::new(map_x, map_y)) {
         return;
     }
 

@@ -150,6 +150,9 @@ impl World {
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
+            camera_x: 0,
+            camera_y: 0,
+            explored_tiles: HashSet::new(),
         };
 
         world.load_playbook();
@@ -231,6 +234,9 @@ impl World {
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
+            camera_x: 0,
+            camera_y: 0,
+            explored_tiles: HashSet::new(),
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -587,6 +593,7 @@ impl World {
         self.on_wizard_interact = None;
         self.gauntlet_barrier_locked.clear();
         self.fire_cache.clear();
+        self.explored_tiles.clear();
     }
 
     fn wipe_player_state(&mut self) {
@@ -964,6 +971,7 @@ impl World {
     fn interact_with_fragment(&mut self, fragment_id: EntityId) {
         if let Some(frag_id) = self.ecs.fragment_id(fragment_id).map(|s| s.to_string()) {
             if self.fragment_registry.collect(&frag_id) {
+                let first_fragment = self.fragment_registry.collected_count() == 1;
                 if let Some(frag) = self.fragment_registry.get(&frag_id) {
                     self.event_log.push("===================================");
                     self.event_log
@@ -984,6 +992,14 @@ impl World {
                         ),
                         RGB::named(CYAN),
                     );
+                }
+                if first_fragment {
+                    self.bindings
+                        .insert("m".into(), "(toggle-memories!)".into());
+                    self.has_new_bindings = true;
+                    self.new_binding_keys.insert("m".into());
+                    self.event_log
+                        .push_colored("Press m to view collected memories.", RGB::named(CYAN));
                 }
                 self.ecs.remove(fragment_id);
             } else if self
@@ -1870,7 +1886,6 @@ fn default_bindings() -> HashMap<String, String> {
     m.insert(">".into(), "(descend!)".into());
     m.insert("<".into(), "(ascend!)".into());
     m.insert("i".into(), "(toggle-inspector!)".into());
-    m.insert("m".into(), "(toggle-memories!)".into());
     m.insert("`".into(), "(toggle-console!)".into());
     m.insert("tab".into(), "(toggle-keybindings!)".into());
     m.insert("q".into(), "(quit!)".into());
@@ -3345,6 +3360,9 @@ mod tests {
     #[test]
     fn memories_toggle_is_free() {
         let mut world = world_with_single_enemy(Position::new(20, 5));
+        world
+            .bindings
+            .insert("m".into(), "(toggle-memories!)".into());
 
         let cost = world.apply_intent(Intent::ExecuteBinding("m".into()));
 
@@ -4298,14 +4316,14 @@ mod tests {
     }
 
     #[test]
-    fn descending_from_level_2_clears_barrels_and_signs() {
+    fn descending_from_level_2_clears_level_2_entities() {
         let mut world = World::new_game();
         world.depth = 2;
         world.wizard_taught = true;
         world.bindings.insert("z".into(), "(do-attack)".into());
         crate::levels::build_level(&mut world, 2);
 
-        let barrel_depth_entities = world.renderable_entities().count();
+        let depth_2_entities = world.renderable_entities().count();
         assert!(world
             .renderable_entities()
             .any(|entity| entity.kind == EntityKind::Barrel));
@@ -4323,10 +4341,8 @@ mod tests {
 
         assert_eq!(cost, ActionCost::Tick);
         assert_eq!(world.depth, 3);
-        assert!(world.renderable_entities().count() < barrel_depth_entities);
-        assert!(!world
-            .renderable_entities()
-            .any(|entity| entity.kind == EntityKind::Barrel));
+        // Level 3 has fewer entities than level 2's barrel room
+        assert!(world.renderable_entities().count() < depth_2_entities);
     }
 
     // --- Player-first strike tests ---

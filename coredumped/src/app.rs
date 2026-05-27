@@ -81,6 +81,8 @@ impl State {
         self.world.mark_visible_entities();
         self.world.mark_visible_tiles();
         self.world.refresh_rule_discovery();
+        self.world
+            .update_camera(crate::render::VIEWPORT_WIDTH, crate::render::VIEWPORT_HEIGHT);
 
         self.frame.clear();
         render(&mut self.frame, &self.world);

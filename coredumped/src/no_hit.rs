@@ -260,6 +260,9 @@ mod tests {
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
+            camera_x: 0,
+            camera_y: 0,
+            explored_tiles: HashSet::new(),
         }
     }
 

@@ -164,6 +164,7 @@ impl World {
                     crate::map::TileType::StairsDown => 'D',
                     crate::map::TileType::StairsUp => 'U',
                     crate::map::TileType::Fire => '^',
+                    crate::map::TileType::Lamp => 'L',
                 },
             )
             .collect();
@@ -274,6 +275,7 @@ impl World {
                 'D' => crate::map::TileType::StairsDown,
                 'U' => crate::map::TileType::StairsUp,
                 '^' => crate::map::TileType::Fire,
+                'L' => crate::map::TileType::Lamp,
                 _ => crate::map::TileType::Floor,
             };
             let pos = map.position_for_idx(i);

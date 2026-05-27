@@ -138,6 +138,13 @@ pub struct World {
     /// Called when player bumps wizard post-teaching.
     /// Return `true` to heal player, `false` to refuse.
     pub on_wizard_interact: Option<fn(&mut World) -> bool>,
+
+    /// Camera position (top-left corner of viewport in map coordinates).
+    pub camera_x: i32,
+    pub camera_y: i32,
+
+    /// Tiles the player has seen (fog of war). Persists across the current level.
+    pub explored_tiles: HashSet<Position>,
 }
 
 impl World {
@@ -198,6 +205,9 @@ impl World {
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
+            camera_x: 0,
+            camera_y: 0,
+            explored_tiles: HashSet::new(),
         }
     }
 
@@ -281,11 +291,12 @@ impl World {
         }
     }
 
-    /// Mark tile types in the flashlight cone as seen.
+    /// Mark tile types in the flashlight cone as seen and add to explored tiles.
     pub fn mark_visible_tiles(&mut self) {
         self.ensure_lit_tiles();
         for pos in &self.cached_flashlight {
             self.seen_tile_types.insert(self.map.tile(*pos));
+            self.explored_tiles.insert(*pos);
         }
     }
 
@@ -301,6 +312,16 @@ impl World {
                 self.event_log.push("New rule detected. Press I to see it.");
             }
         }
+    }
+
+    /// Update camera to center on player, clamped to map bounds.
+    pub fn update_camera(&mut self, viewport_width: i32, viewport_height: i32) {
+        let pos = self.player_pos();
+        let half_w = viewport_width / 2;
+        let half_h = viewport_height / 2;
+
+        self.camera_x = (pos.x - half_w).clamp(0, (self.map.width - viewport_width).max(0));
+        self.camera_y = (pos.y - half_h).clamp(0, (self.map.height - viewport_height).max(0));
     }
 }
 

@@ -291,6 +291,17 @@ fn render_side_panel(ctx: &mut Frame, world: &World) {
         let log_height = panel_y + panel_height - 1 - y;
         render_event_log_panel(ctx, world, c1, y, w, log_height);
     }
+
+    // "New content" indicator at panel bottom
+    let indicator = new_content_indicator(world);
+    if let Some((text, key)) = indicator {
+        let hint = format!("{} ({})", text, key);
+        let hint_y = panel_y + panel_height - 1;
+        let hint_x = panel_x + panel_width - 1 - hint.len() as i32;
+        if hint_x > panel_x {
+            print_clipped_color(ctx, hint_x, hint_y, hint.len() as i32, &hint, RGB::named(CYAN));
+        }
+    }
 }
 
 fn render_key_summary(
@@ -1191,6 +1202,19 @@ fn display_key(key: &str) -> &str {
         ">" => "shift+.",
         "<" => "shift+,",
         k => k,
+    }
+}
+
+/// Returns (label, key) for new content indicator, or None if no new content.
+fn new_content_indicator(world: &World) -> Option<(&'static str, &'static str)> {
+    let has_new_rules = !world.new_rule_ids.is_empty() && world.mode != Mode::Inspector;
+    let has_new_bindings = world.has_new_bindings && world.mode != Mode::Keybindings;
+
+    match (has_new_rules, has_new_bindings) {
+        (true, true) => Some(("new rules & bindings", "i/Tab")),
+        (true, false) => Some(("new rules", "i")),
+        (false, true) => Some(("new bindings", "Tab")),
+        (false, false) => None,
     }
 }
 

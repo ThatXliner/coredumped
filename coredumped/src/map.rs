@@ -267,10 +267,13 @@ impl Map {
         }
     }
 
-    /// Generate a cellular automata cave with depth-scaled enemies.
+    /// Generate a cellular automata cave with depth-scaled enemies (default size).
     pub fn generate_cave(depth: u32) -> MapGenOutput {
-        let width = MAP_WIDTH;
-        let height = MAP_HEIGHT;
+        Self::generate_cave_sized(MAP_WIDTH, MAP_HEIGHT, depth)
+    }
+
+    /// Generate a cellular automata cave with custom dimensions.
+    pub fn generate_cave_sized(width: i32, height: i32, depth: u32) -> MapGenOutput {
         let mut map = Self {
             width,
             height,

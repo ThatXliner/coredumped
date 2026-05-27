@@ -1,8 +1,9 @@
 use super::helpers::apply_map;
-use crate::{
-    map::{Map, MAP_HEIGHT, MAP_WIDTH},
-    world::World,
-};
+use crate::{map::Map, world::World};
+
+/// Procedural maps grow with depth for exploration variety.
+const PROC_MAP_WIDTH: i32 = 80;
+const PROC_MAP_HEIGHT: i32 = 50;
 
 // ---------------------------------------------------------------------------
 // Procedural depths (default)
@@ -10,9 +11,9 @@ use crate::{
 
 pub(crate) fn build_procedural_level(world: &mut World, depth: u32) {
     let gen = if depth % 2 == 0 {
-        Map::generate_cave(depth)
+        Map::generate_cave_sized(PROC_MAP_WIDTH, PROC_MAP_HEIGHT, depth)
     } else {
-        Map::generate(MAP_WIDTH, MAP_HEIGHT, depth)
+        Map::generate(PROC_MAP_WIDTH, PROC_MAP_HEIGHT, depth)
     };
 
     // Borrow spawn lists before moving `gen.map`

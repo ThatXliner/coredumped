@@ -108,12 +108,12 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
                 (TileType::Floor, true) => ('.', RGB::named(GOLD)),
                 (TileType::Wall, true) => ('#', RGB::named(LIGHT_YELLOW)),
                 (TileType::Fire, true) => ('^', RGB::named(RED)),
-                // Remembered tiles: dim/muted
-                (TileType::StairsDown, false) => ('>', RGB::from_u8(40, 80, 80)),
-                (TileType::StairsUp, false) => ('<', RGB::from_u8(60, 40, 60)),
-                (TileType::Floor, false) => ('.', RGB::from_u8(30, 30, 30)),
-                (TileType::Wall, false) => ('#', RGB::from_u8(50, 50, 50)),
-                (TileType::Fire, false) => ('^', RGB::from_u8(60, 30, 30)),
+                // Remembered tiles: dimmed but readable
+                (TileType::StairsDown, false) => ('>', RGB::from_u8(60, 120, 120)),
+                (TileType::StairsUp, false) => ('<', RGB::from_u8(100, 60, 100)),
+                (TileType::Floor, false) => ('.', RGB::from_u8(70, 70, 70)),
+                (TileType::Wall, false) => ('#', RGB::from_u8(100, 100, 100)),
+                (TileType::Fire, false) => ('^', RGB::from_u8(120, 60, 60)),
             };
             ctx.set(MAP_X + vx, MAP_Y + vy, fg, RGB::named(BLACK), glyph);
         }
@@ -139,39 +139,39 @@ fn draw_entity(ctx: &mut Frame, world: &World, entity: EntityView, lit_tiles: &H
     if !lit && !is_player {
         return;
     }
-    let color = match (entity.kind, lit) {
-        (EntityKind::Player, _) => RGB::named(YELLOW),
-        (EntityKind::Slime, true) => RGB::named(ORANGE),
-        (EntityKind::Slime, false) => RGB::named(DARK_GREEN),
-        (EntityKind::Goblin, true) => RGB::named(RED),
-        (EntityKind::Goblin, false) => RGB::named(DARK_RED),
-        (EntityKind::Bat, true) => RGB::named(WHITE),
-        (EntityKind::Bat, false) => RGB::named(GRAY),
-        (EntityKind::Ogre, true) => RGB::named(MAGENTA),
-        (EntityKind::Ogre, false) => RGB::named(PURPLE),
-        (EntityKind::Wizard, true) => RGB::named(BLUE),
-        (EntityKind::Wizard, false) => RGB::named(DARK_BLUE),
-        (EntityKind::Barrel, true) => RGB::from_u8(180, 100, 30),
-        (EntityKind::Barrel, false) => RGB::from_u8(80, 50, 20),
-        (EntityKind::Sign, true) => RGB::from_u8(200, 200, 100),
-        (EntityKind::Sign, false) => RGB::from_u8(120, 120, 60),
-        (EntityKind::Fragment, true) => RGB::named(GREEN),
-        (EntityKind::Fragment, false) => RGB::named(DARK_GREEN),
-        (EntityKind::Shade, true) => RGB::named(GRAY),
-        (EntityKind::Shade, false) => RGB::named(DARK_GRAY),
-        (EntityKind::Rage, true) => RGB::named(RED),
-        (EntityKind::Rage, false) => RGB::named(DARK_RED),
-        (EntityKind::Sentry, true) => RGB::named(WHITE),
-        (EntityKind::Sentry, false) => RGB::named(GRAY),
-        (EntityKind::ShadeEcho, true) => RGB::named(CYAN),
-        (EntityKind::ShadeEcho, false) => RGB::named(DARK_GRAY),
-        (EntityKind::VaporCanteen, true) => RGB::named(CYAN),
-        (EntityKind::VaporCanteen, false) => RGB::named(DARK_BLUE),
+    let (fg, bg) = match (entity.kind, lit) {
+        (EntityKind::Player, _) => (RGB::named(YELLOW), RGB::named(BLACK)),
+        (EntityKind::Slime, true) => (RGB::named(ORANGE), RGB::named(BLACK)),
+        (EntityKind::Slime, false) => (RGB::named(DARK_GREEN), RGB::named(BLACK)),
+        (EntityKind::Goblin, true) => (RGB::named(RED), RGB::named(BLACK)),
+        (EntityKind::Goblin, false) => (RGB::named(DARK_RED), RGB::named(BLACK)),
+        (EntityKind::Bat, true) => (RGB::named(WHITE), RGB::named(BLACK)),
+        (EntityKind::Bat, false) => (RGB::named(GRAY), RGB::named(BLACK)),
+        (EntityKind::Ogre, true) => (RGB::named(MAGENTA), RGB::named(BLACK)),
+        (EntityKind::Ogre, false) => (RGB::named(PURPLE), RGB::named(BLACK)),
+        (EntityKind::Wizard, true) => (RGB::named(CYAN), RGB::from_u8(0, 0, 60)),
+        (EntityKind::Wizard, false) => (RGB::named(BLUE), RGB::from_u8(0, 0, 40)),
+        (EntityKind::Barrel, true) => (RGB::from_u8(180, 100, 30), RGB::named(BLACK)),
+        (EntityKind::Barrel, false) => (RGB::from_u8(80, 50, 20), RGB::named(BLACK)),
+        (EntityKind::Sign, true) => (RGB::from_u8(200, 200, 100), RGB::named(BLACK)),
+        (EntityKind::Sign, false) => (RGB::from_u8(120, 120, 60), RGB::named(BLACK)),
+        (EntityKind::Fragment, true) => (RGB::named(GREEN), RGB::from_u8(0, 30, 0)),
+        (EntityKind::Fragment, false) => (RGB::named(DARK_GREEN), RGB::named(BLACK)),
+        (EntityKind::Shade, true) => (RGB::named(GRAY), RGB::from_u8(20, 20, 20)),
+        (EntityKind::Shade, false) => (RGB::named(DARK_GRAY), RGB::named(BLACK)),
+        (EntityKind::Rage, true) => (RGB::named(RED), RGB::from_u8(40, 0, 0)),
+        (EntityKind::Rage, false) => (RGB::named(DARK_RED), RGB::named(BLACK)),
+        (EntityKind::Sentry, true) => (RGB::named(WHITE), RGB::from_u8(30, 30, 30)),
+        (EntityKind::Sentry, false) => (RGB::named(GRAY), RGB::named(BLACK)),
+        (EntityKind::ShadeEcho, true) => (RGB::named(CYAN), RGB::from_u8(0, 30, 30)),
+        (EntityKind::ShadeEcho, false) => (RGB::named(DARK_GRAY), RGB::named(BLACK)),
+        (EntityKind::VaporCanteen, true) => (RGB::named(CYAN), RGB::from_u8(0, 20, 40)),
+        (EntityKind::VaporCanteen, false) => (RGB::named(DARK_BLUE), RGB::named(BLACK)),
     };
 
     let x = MAP_X + screen_x;
     let y = MAP_Y + screen_y;
-    ctx.set(x, y, color, RGB::named(BLACK), entity.glyph());
+    ctx.set(x, y, fg, bg, entity.glyph());
 }
 
 fn render_side_panel(ctx: &mut Frame, world: &World) {

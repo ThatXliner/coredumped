@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
@@ -30,8 +30,8 @@ jobs:
 
       - name: Build WASM
         run: |
-          cd coredumped
-          wasm-pack build --target web --out-dir web/pkg --no-default-features --features web,prelude
+          cd web-frontend
+          wasm-pack build --target web --out-dir web-assets/pkg
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -39,7 +39,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: coredumped/web
+          path: web-frontend/web-assets
 
   deploy:
     environment:

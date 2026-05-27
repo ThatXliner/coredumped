@@ -4,146 +4,117 @@
 
 *A roguelike where the enemies run on Lisp you can read, edit, and break.*
 
-Welcome, traveler.
+**[Play in Browser](https://bryanhu.com/coredumped/)** | [Install](#install)
+
+---
 
 Before thee lies a dungeon of rules, memories, slimes, and suspiciously readable
 machinery. **CoreDumped** is a text-graphical roguelike about understanding,
 editing, and eventually rewriting the rules of the thing trying to kill you.
 
-It's also a tragic game about love, family, CYBERSECURITY EXPLOITS, and the beauty of coding macros to do repetitive tacks. I hope you like it, and enjoy the journey. If you're too impatient, the lore is documented [here](./level-design.md).
+It's also a tragic game about love, family, CYBERSECURITY EXPLOITS, and the beauty of coding macros to do repetitive tasks. If you're impatient, the lore is documented [here](./level-design.md).
 
-CoreDumped is built on the **Xlyph** engine, a reusable framework for
-Glyph-powered (a custom LISP) roguelikes. The engine provides the ECS, map,
-rules registry, rendering, and Glyph language runtime. The terminal frontend is
-drawn directly with `crossterm`; the engine uses small bracket crates for color,
-geometry, pathfinding, and random numbers.
+## Install
 
-## Play
+### Browser (Recommended)
+
+**[Play now at bryanhu.com/coredumped](https://bryanhu.com/coredumped/)**
+
+No installation required. Works in any modern browser with WebAssembly support.
+
+### Terminal (Native)
 
 ```bash
-cargo run -p xlyph-tui
+# Clone and run
+git clone https://github.com/ThatXliner/coredumped.git
+cd coredumped
+cargo run -p coredumped-tui
+
+# Or install globally
+cargo install --path tui
+coredumped
 ```
 
-Move with arrow keys or hjkl, descend stairs, inspect enemies, and when you
-feel like poking around, open the console with backtick and submit code with
-Enter.
-
-## Why
-
-Every roguelike has rules, but most hide them behind source code or wiki pages.
-CoreDumped puts them on screen and lets you poke at them.
-
-The long bet is that if the game shows you its moving parts, the mystery shifts
-from "how does this work" to "what can I make it do." The inspector and console
-are the core interface rather than a hack bolted on top, and the dungeon is a
-Lisp runtime with graphics attached.
-
-### What works now
-
-- ~18 hand-crafted levels (17 narrative + procedural fallback)
-- Turn-based movement, pathing enemies, directional flashlight
-- Inspector panel showing real Glyph source for every AI rule
-- Working Glyph console — eval expressions, inspect state, bind keys
-- Custom ECS (entity-component-system), no external dependency
-- Deterministic turn model: `ActionCost::Tick` = player + enemies advance;
-  `ActionCost::Free` = UI only
-- Playbook system: drop `.glyph` files in `~/.xlyph/playbooks/current/`,
-  they load on game start
-- Save/load (auto-save on quit, manual slots)
-
-### What doesn't work yet
-
-- No full procedural campaign (authored maps are primary; later depths fall
-  back to generated rooms)
-- No full FoV / fog of war (flashlight serves to indicate direction)
-- No inventory beyond held keys and special items
-- Half-finished Glyph standard library (enough for enemies, not much else)
-- Not balanced. At all.
-
-## Architecture
-
-**Engine/game split**: The **Xlyph** engine handles the ECS, map, rules
-registry, Glyph runtime, and event log. **CoreDumped** is the game built on top
-of it with levels, world state, save system, and player profile. They share a
-repo but someone could build different levels on the same engine.
-
-**ECS**: Custom in-house with no external dependency. `EntityId` is a stable
-handle and component stores are `BTreeMap<EntityId, T>` with marker sets for
-alive and enemy-ai tracking. There is no systems abstraction layer; game logic
-reads and writes the ECS directly, which keeps the codebase around forty source
-files total.
-
-**Turn model**:
-
-```rust
-pub enum ActionCost { Free, Tick, Quit }
-```
-
-Every gameplay action costs a tick, and every tick advances enemies once. UI
-actions like the inspector, console, and typing are free, and this invariant is
-tested.
-
-**Glyph embedding**: Each `BuiltinFn` signature takes a `World` reference
-alongside the value stack, environment, and sandbox options. Game builtins for
-printing, inspecting, and toggling the console access World directly, and the
-same eval path runs enemy AI rules, console expressions, and keybindings
-without FFI or a scripting bridge: everything is Rust functions registered in
-the environment.
-
-**Levels are callbacks**: Each depth (0–17) is a function that receives `&mut World`
-and places entities, sets terrain, configures wizard dialogue. Depth 18+ falls
-through to a procedural builder.
+Requires [Rust](https://rustup.rs/). Native build has better performance and save/load support.
 
 ## Controls
 
 | Key | Action |
 | --- | --- |
-| Arrow keys / `h j k l` | Move / bump |
+| Arrow keys / `h j k l` | Move / bump attack |
 | `.` | Wait one tick |
-| `i` | Toggle inspector |
+| `i` | Toggle inspector (view enemy AI rules) |
 | `m` | Toggle collected memories |
 | <code>\`</code> | Toggle console |
 | `Enter` | Submit console expression |
-| `PageUp` / `PageDown` / mouse wheel | Scroll log, console output, or overlay |
-| `Home` / `End`, `Ctrl+A`, `Ctrl+K`, `Ctrl+U`, `Ctrl+W` | Edit console input |
-| `Alt+B` / `Alt+F` or word-arrow keys | Move by console word |
-| `Esc` | Close overlay / cancel quit |
+| `PageUp` / `PageDown` / scroll | Scroll panels |
+| `Esc` | Close overlay / cancel |
 | `q` | Quit |
 
-Xlyph renders the dungeon with single-cell ASCII glyphs so entities always
-line up with the tile grid.
+## What makes it different
+
+Every roguelike has rules, but most hide them behind source code or wiki pages.
+CoreDumped puts them on screen and lets you poke at them.
+
+- **Inspector panel** shows real Glyph (custom Lisp) source for every AI rule
+- **Console** lets you eval expressions, inspect state, bind keys
+- **The dungeon is a Lisp runtime** with graphics attached
+
+The long bet: if the game shows you its moving parts, the mystery shifts
+from "how does this work" to "what can I make it do."
+
+## Features
+
+- 18 hand-crafted levels with narrative
+- Turn-based movement, pathing enemies, directional flashlight
+- Working Glyph console and inspector
+- Custom ECS, no external dependencies
+- Deterministic turn model (every action costs a tick, UI is free)
+- Playbook system: drop `.glyph` files in `~/.xlyph/playbooks/current/`
+- Save/load (native only)
+
+## Architecture
+
+Three crates:
+
+| Crate | Purpose |
+|-------|---------|
+| `core/` | Platform-agnostic game engine: ECS, map, rules, Glyph runtime |
+| `tui/` | Terminal frontend (crossterm) |
+| `web-frontend/` | Browser frontend (WASM + xterm.js) |
+
+```rust
+pub enum ActionCost { Free, Tick, Quit }
+```
+
+Every gameplay action costs a tick; UI actions are free. This invariant is tested.
 
 ## Documentation
 
-- [PROJECT.md](./PROJECT.md) explains the repository layout, runtime flow,
-  save/playbook paths, and contributor workflow.
-- [glyph-reference.md](./glyph-reference.md) is the guided Glyph language tour.
-- [language-spec.md](./language-spec.md) documents the implemented Glyph
-  semantics.
-- [level-design.md](./level-design.md) covers the campaign and narrative notes.
-- [game-architecture.md](./game-architecture.md) captures the larger design
-  vision.
+- [PROJECT.md](./PROJECT.md) — repo layout, runtime flow, contributor workflow
+- [glyph-reference.md](./glyph-reference.md) — Glyph language tour
+- [language-spec.md](./language-spec.md) — Glyph semantics
+- [level-design.md](./level-design.md) — campaign and narrative notes
+- [game-architecture.md](./game-architecture.md) — design vision
 
 ## Development
 
 ```bash
-cargo test        # pure game logic and language tests
-cargo fmt         # single crate, no config
-cargo check       # fast feedback
-```
+cargo test          # game logic + language tests
+cargo check         # fast feedback
+cargo fmt           # format
 
-The most important tests verify the turn invariant: that gameplay costs ticks,
-UI actions do not, and enemies advance exactly once per tick.
+# Build web version locally
+cd web-frontend
+./web-assets/build.sh
+cd web-assets && python3 -m http.server 8080
+```
 
 ## Status
 
-This is a beta, playable from depth 0 to depth 17 with an ending in place.
-Expect rough edges, missing content, and things that kill you without
-explanation.
+Beta. Playable from depth 0 to 17 with an ending. Expect rough edges and things that kill you without explanation.
 
-The engine comes to about 13k lines of Rust, half of which is the Glyph
-interpreter; if the project stops here, the codebase is small enough that
-someone could learn from it in an afternoon.
+~17k lines of Rust. Small enough to learn from in an afternoon.
 
 ## License
 

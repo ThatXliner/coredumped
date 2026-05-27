@@ -118,6 +118,12 @@ pub struct World {
     /// Set when the Rage impact overflow has disabled registry write-protect.
     pub registry_write_unlocked: bool,
 
+    /// Force of the last attack. Used by the rage-impact exploit.
+    pub last_impact_force: i32,
+
+    /// Kind of target hit by the last attack. Used by the rage-impact exploit.
+    pub last_impact_target: Option<EntityKind>,
+
     /// Tracks which key IDs the player holds (from killing key-goblins in Level 8).
     pub held_keys: Vec<String>,
 
@@ -211,6 +217,8 @@ impl World {
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            last_impact_force: 0,
+            last_impact_target: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),

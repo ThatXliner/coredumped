@@ -143,6 +143,8 @@ impl World {
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            last_impact_force: 0,
+            last_impact_target: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
@@ -231,6 +233,8 @@ impl World {
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            last_impact_force: 0,
+            last_impact_target: None,
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
@@ -714,16 +718,6 @@ impl World {
         }
     }
 
-    fn maybe_unlock_registry_from_impact(&mut self, target_kind: EntityKind, force: i32) {
-        if target_kind == EntityKind::Rage && force > 12 && !self.registry_write_unlocked {
-            self.registry_write_unlocked = true;
-            self.event_log.push_colored(
-                "The impact payload overruns its buffer. Somewhere deeper, registry write-protect clicks off.",
-                RGB::named(CYAN),
-            );
-        }
-    }
-
     fn apply_player_move(&mut self, direction: Direction) -> ActionCost {
         let (dx, dy) = direction.delta();
         let target = self.player_pos().offset(dx, dy);
@@ -856,6 +850,10 @@ impl World {
         let (dx, dy) = direction.delta();
         let target = self.player_pos().offset(dx, dy);
 
+        // Store impact info for Glyph builtins
+        self.last_impact_force = force;
+        self.last_impact_target = None;
+
         if !self.map.is_walkable(target) {
             self.event_log.push_colored(
                 "You strike the wall. Nothing happens.",
@@ -871,11 +869,11 @@ impl World {
             }
             let target_name = self.ecs.name(target_id);
             let target_kind = self.ecs.kind(target_id).unwrap_or(EntityKind::Slime);
+            self.last_impact_target = Some(target_kind);
             let hp = self
                 .ecs
                 .damage(target_id, 1)
                 .expect("combat targets should have an Hp component");
-            self.maybe_unlock_registry_from_impact(target_kind, force);
 
             self.event_log.push_colored(
                 format!("You strike the {target_name} for 1 damage."),
@@ -2108,6 +2106,26 @@ pub(crate) fn setup_glyph_env() -> Env {
         "query player state: (player :pos), (player :hp), (player :facing), (player :console-buffer)",
         builtin_player
     );
+    reg!(
+        "last-impact-force",
+        "get the force of the last attack: (last-impact-force)",
+        builtin_last_impact_force
+    );
+    reg!(
+        "impact-payload",
+        "get the payload bytes from the last impact (size = force × target mass)",
+        builtin_impact_payload
+    );
+    reg!(
+        "bytes",
+        "allocate a byte buffer: (bytes 64) returns a list of zeros",
+        builtin_bytes
+    );
+    reg!(
+        "copy-bytes!",
+        "copy src bytes into dest buffer: (copy-bytes! dest src)",
+        builtin_copy_bytes
+    );
 
     ai_builtins::register_all(&env);
 
@@ -2405,7 +2423,7 @@ pub(crate) fn bind_do_attack(env: &glyph::Env) {
         "do-attack",
         Value::Builtin(glyph::BuiltinFn {
             name: "do-attack",
-            doc: "",
+            doc: "attack in a direction: (do-attack), (do-attack :east), (do-attack :north 5)",
             func: builtin_do_attack,
         }),
     );
@@ -3438,6 +3456,103 @@ fn builtin_player(
     }
 }
 
+fn builtin_last_impact_force(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    Ok(Value::I64(world.last_impact_force as i64))
+}
+
+fn builtin_impact_payload(
+    _args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let mass = match world.last_impact_target {
+        Some(EntityKind::Rage) => 8,
+        Some(_) => 4,
+        None => 0,
+    };
+    let size = world.last_impact_force * mass;
+    Ok(Value::List(vec![Value::I64(0); size as usize]))
+}
+
+fn builtin_bytes(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    _world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let size = match args.first() {
+        Some(Value::I64(n)) if *n >= 0 => *n as usize,
+        Some(other) => {
+            return Err(glyph::EvalError::TypeError {
+                expected: "positive integer",
+                got: other.to_string(),
+            })
+        }
+        None => {
+            return Err(glyph::EvalError::WrongArgCount {
+                expected: 1,
+                got: 0,
+            })
+        }
+    };
+    Ok(Value::List(vec![Value::I64(0); size]))
+}
+
+fn builtin_copy_bytes(
+    args: &[Value],
+    _env: &Env,
+    _opts: &glyph::SandboxOptions,
+    world: &mut World,
+) -> glyph::EvalResult<Value> {
+    let (dest, src) = match args {
+        [dest, src] => (dest, src),
+        _ => {
+            return Err(glyph::EvalError::WrongArgCount {
+                expected: 2,
+                got: args.len(),
+            })
+        }
+    };
+
+    let dest_len = match dest {
+        Value::List(v) => v.len(),
+        _ => {
+            return Err(glyph::EvalError::TypeError {
+                expected: "list (byte buffer)",
+                got: dest.to_string(),
+            })
+        }
+    };
+
+    let src_len = match src {
+        Value::List(v) => v.len(),
+        _ => {
+            return Err(glyph::EvalError::TypeError {
+                expected: "list (byte buffer)",
+                got: src.to_string(),
+            })
+        }
+    };
+
+    if src_len > dest_len {
+        if world.last_impact_target == Some(EntityKind::Rage) && !world.registry_write_unlocked {
+            world.registry_write_unlocked = true;
+            world.event_log.push_colored(
+                "Buffer overflow! The impact payload overruns its buffer. Registry write-protect disabled.",
+                RGB::named(CYAN),
+            );
+        }
+    }
+
+    Ok(Value::Nil)
+}
+
 impl Default for World {
     fn default() -> Self {
         Self::new()
@@ -4236,10 +4351,27 @@ mod tests {
         world.ecs.spawn_rage(Position::new(6, 5));
         world.player_can_attack = true;
         let env = setup_do_attack_test_env();
-        let forms = crate::glyph::read_string("(do-attack :east 13)").unwrap();
 
+        // Step 1: Hit rage with force > 12 (stores impact info)
+        let attack = crate::glyph::read_string("(do-attack :east 13)").unwrap();
         crate::glyph::eval_with_opts(
-            &forms[0],
+            &attack[0],
+            &env,
+            crate::glyph::SandboxOptions::default(),
+            &mut world,
+        )
+        .unwrap();
+
+        // Attack stores impact but doesn't unlock yet
+        assert!(!world.registry_write_unlocked);
+        assert_eq!(world.last_impact_force, 13);
+        assert_eq!(world.last_impact_target, Some(EntityKind::Rage));
+
+        // Step 2: Trigger overflow via copy-bytes!
+        // Payload size = 13 * 8 (rage mass) = 104 bytes > 64 byte buffer
+        let overflow = crate::glyph::read_string("(copy-bytes! (bytes 64) (impact-payload))").unwrap();
+        crate::glyph::eval_with_opts(
+            &overflow[0],
             &env,
             crate::glyph::SandboxOptions::default(),
             &mut world,
@@ -4247,7 +4379,7 @@ mod tests {
         .unwrap();
 
         assert!(world.registry_write_unlocked);
-        assert!(world.event_log.contains("write-protect clicks off"));
+        assert!(world.event_log.contains("Buffer overflow"));
     }
 
     #[test]

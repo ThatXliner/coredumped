@@ -3,14 +3,14 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use coredumped_core::game::{ActionCost, Intent, Mode};
+use coredumped_core::render::render;
+use coredumped_core::terminal::Frame;
+use coredumped_core::world::World;
+
 use wasm_bindgen::prelude::*;
 
-use crate::game::{ActionCost, Intent};
-use crate::render::render;
-use crate::terminal::Frame;
-use crate::world::World;
-
-use super::XtermBridge;
+use crate::XtermBridge;
 
 struct WebState {
     world: World,
@@ -37,7 +37,7 @@ impl WebState {
         self.world.mark_visible_tiles();
         self.world.refresh_rule_discovery();
         self.world
-            .update_camera(crate::render::VIEWPORT_WIDTH, crate::render::VIEWPORT_HEIGHT);
+            .update_camera(coredumped_core::render::VIEWPORT_WIDTH, coredumped_core::render::VIEWPORT_HEIGHT);
 
         self.frame.clear();
         self.world.render_frame = self.world.render_frame.wrapping_add(1);
@@ -67,8 +67,6 @@ impl WebState {
 }
 
 fn parse_xterm_key(key: &str, world: &World) -> Intent {
-    use crate::game::Mode;
-
     match world.mode {
         Mode::Normal => parse_normal_key(key, world),
         Mode::Inspector => parse_inspector_key(key),

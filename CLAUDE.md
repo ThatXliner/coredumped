@@ -9,8 +9,8 @@ CoreDumped is a text-graphical roguelike about inspecting and eventually rewriti
 ## Commands
 
 ```bash
-# Run the game
-cargo run -p xlyph-tui
+# Run the game (TUI)
+cargo run -p coredumped-tui
 
 # Build check (no run)
 cargo check
@@ -20,13 +20,26 @@ cargo test
 
 # Format
 cargo fmt
+
+# Build web version
+cd web-frontend && ./web-assets/build.sh
 ```
 
-The workspace has one crate: `coredumped` (package name `xlyph-tui`). No other automation beyond Cargo.
+## Workspace Structure
+
+The workspace has three crates:
+
+| Crate | Package Name | Purpose |
+|-------|--------------|---------|
+| `core/` | `coredumped-core` | Game engine: ECS, map, rules, rendering logic, save/load |
+| `tui/` | `coredumped-tui` | Terminal frontend using crossterm |
+| `web-frontend/` | `coredumped-web` | WebAssembly frontend using xterm.js |
 
 ## Architecture
 
-All source lives under `coredumped/src/`. The terminal UI is direct `crossterm`; pathing and shared math use `bracket-pathfinding`, `bracket-geometry`, `bracket-color`, and `bracket-random`.
+### Core (`core/src/`)
+
+Platform-agnostic game engine. Both TUI and web frontends depend on this crate.
 
 **Simulation core** — `game.rs`
 - `World` owns the map, turn counter, UI mode, event log, console buffer, player-facing direction, inspector scroll, and an `Ecs` store. It is the single source of truth.
@@ -42,26 +55,37 @@ All source lives under `coredumped/src/`. The terminal UI is direct `crossterm`;
 - Fixed 55×30 static map. Implements `Algorithm2D` and `BaseMap` for pathfinding.
 - Flashlight ray-caster: selects tiles within a radius cone in the facing direction, then Bresenham-traces each ray until a wall.
 
-**Key translation** — `input.rs`
-- Mode-aware routing: `key_to_intent(KeyEvent, &World) -> Intent` dispatches to normal/inspector/console sub-functions.
-- Normal mode: arrow keys / hjkl → Move, `.` → Wait, `i` → ToggleInspector, backtick → ToggleConsole, Escape/q → Quit.
-- Inspector mode: Escape/i → CloseOverlay, arrow/jk → scroll, backtick → ToggleConsole.
-- Console mode: Escape → CloseOverlay, backtick → ToggleConsole, Backspace/Enter handled, alphanumerics → ConsoleInput.
-
 **Rendering** — `render.rs`
 - Read-only projection of `World`. Draws the map (floor `.` / wall `#`), flashlight-lit tiles in warm colors, entities as colored glyphs, right-side panel (turn/hp/mode/controls/inspector), bottom event log, console overlay, and entity tooltip on mouse hover.
 
+**Terminal abstraction** — `terminal.rs`
+- `Frame` is a cell buffer with `set()`, `print_color()`, and `to_ansi_string()`. Platform frontends consume `Frame` for rendering.
+
 **Rules** — `rules.rs`
-- `RuleRegistry` stores `Rule` structs with id, name, phase (EnemyAi / Render), cost (Tick / Free), and static source lines. Currently hard-coded with two rules (`slime-hunt`, `flashlight`). Displayed in the inspector panel and meant to grow into a live registry with overlays.
+- `RuleRegistry` stores `Rule` structs with id, name, phase (EnemyAi / Render), cost (Tick / Free), and static source lines. Displayed in the inspector panel.
 
 **Event log** — `event_log.rs`
 - Append-only ring buffer capped at 100 lines. Game systems push human-readable strings; the renderer shows the most recent entries.
 
-**App shell** — `app.rs`
-- `State` owns the crossterm event loop. `tick()` reads terminal events, translates keys to intents, applies them to `World`, and renders. The only module that talks to crossterm's alternate-screen/raw-mode APIs.
+### TUI (`tui/src/`)
+
+Crossterm-based terminal frontend.
+
+- `app.rs` — Event loop: reads terminal events, translates keys to intents, applies to `World`, renders via `Frame.flush()`.
+- `input.rs` — Mode-aware key translation: `key_to_intent(KeyEvent, &World) -> Intent`.
+- `terminal_ext.rs` — Crossterm-specific `Frame.flush()` implementation.
+
+### Web (`web-frontend/`)
+
+WebAssembly frontend using xterm.js.
+
+- `src/lib.rs` — wasm-bindgen bindings for xterm.js bridge.
+- `src/app.rs` — Web event loop with RAF + key callbacks.
+- `web-assets/` — HTML, CSS, JS, and build script.
 
 ## Key design rules
 
 - Every gameplay action costs a tick; UI actions (inspector, console, typing) are free. This invariant is tested.
 - Rendering is always a read-only projection — do not mutate `World` from `render.rs`.
 - Tests live inline in `game.rs` and `rules.rs` (no separate test files). Tests construct `World` directly and run pure game logic without the renderer.
+- Core crate is platform-agnostic — no crossterm or wasm-bindgen dependencies.

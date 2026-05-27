@@ -1,15 +1,5 @@
 use bracket_color::prelude::{BLACK, RGB, WHITE};
 
-#[cfg(not(target_arch = "wasm32"))]
-use std::io::Write;
-
-#[cfg(not(target_arch = "wasm32"))]
-use crossterm::{
-    cursor::MoveTo,
-    queue,
-    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
-};
-
 #[derive(Clone, Copy)]
 struct Cell {
     glyph: char,
@@ -90,25 +80,6 @@ impl Frame {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn flush(&self, out: &mut impl Write) -> crossterm::Result<()> {
-        for y in 0..self.height {
-            queue!(out, MoveTo(0, y as u16))?;
-            for x in 0..self.width {
-                let cell = self.cells[(y * self.width + x) as usize];
-                queue!(
-                    out,
-                    SetForegroundColor(to_terminal_color(cell.fg)),
-                    SetBackgroundColor(to_terminal_color(cell.bg)),
-                    Print(cell.glyph)
-                )?;
-            }
-        }
-        queue!(out, ResetColor)?;
-        out.flush()?;
-        Ok(())
-    }
-
     pub fn to_ansi_string(&self) -> String {
         let mut output = String::with_capacity((self.width * self.height * 30) as usize);
         output.push_str("\x1b[H");
@@ -134,14 +105,14 @@ impl Frame {
         output.push_str("\x1b[0m");
         output
     }
-}
 
-#[cfg(not(target_arch = "wasm32"))]
-fn to_terminal_color(rgb: RGB) -> Color {
-    Color::Rgb {
-        r: color_byte(rgb.r),
-        g: color_byte(rgb.g),
-        b: color_byte(rgb.b),
+    pub fn cells(&self) -> impl Iterator<Item = (i32, i32, char, RGB, RGB)> + '_ {
+        (0..self.height).flat_map(move |y| {
+            (0..self.width).map(move |x| {
+                let cell = self.cells[(y * self.width + x) as usize];
+                (x, y, cell.glyph, cell.fg, cell.bg)
+            })
+        })
     }
 }
 

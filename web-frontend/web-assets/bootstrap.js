@@ -1,4 +1,4 @@
-import init from './pkg/xlyph_tui.js';
+import init from './pkg/coredumped_web.js';
 
 async function run() {
     await init();

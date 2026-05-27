@@ -219,6 +219,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "coredumped-core"
+version = "0.1.0"
+dependencies = [
+ "ariadne",
+ "bracket-color",
+ "bracket-geometry",
+ "bracket-pathfinding",
+ "bracket-random",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "coredumped-tui"
+version = "0.1.0"
+dependencies = [
+ "bracket-color",
+ "clap",
+ "coredumped-core",
+ "crossterm",
+ "log",
+]
+
+[[package]]
+name = "coredumped-web"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "coredumped-core",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "crossterm"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -857,27 +894,6 @@ name = "windows_x86_64_msvc"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
-
-[[package]]
-name = "xlyph-tui"
-version = "0.1.0"
-dependencies = [
- "ariadne",
- "bracket-color",
- "bracket-geometry",
- "bracket-pathfinding",
- "bracket-random",
- "clap",
- "console_error_panic_hook",
- "crossterm",
- "js-sys",
- "log",
- "serde",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
 
 [[package]]
 name = "yansi"

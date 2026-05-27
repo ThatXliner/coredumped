@@ -3,12 +3,10 @@
 //! This module maps raw terminal key events into game intents while respecting
 //! the current UI mode.
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use coredumped_core::game::{Intent, Mode};
+use coredumped_core::world::World;
 
-use crate::{
-    game::{Intent, Mode},
-    world::World,
-};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub fn key_to_intent(event: KeyEvent, world: &World) -> Intent {
     let shift = event.modifiers.contains(KeyModifiers::SHIFT);

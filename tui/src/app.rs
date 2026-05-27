@@ -9,6 +9,12 @@ use std::{
     time::Duration,
 };
 
+use coredumped_core::game::{ActionCost, Intent};
+use coredumped_core::render::render;
+use coredumped_core::terminal::Frame;
+use coredumped_core::world::World;
+use coredumped_core::{diagnostics, save};
+
 use bracket_color::prelude::{RED, RGB};
 use crossterm::{
     cursor::{Hide, Show},
@@ -20,13 +26,8 @@ use crossterm::{
     terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, SetTitle},
 };
 
-use crate::{
-    game::{ActionCost, Intent},
-    input::key_to_intent,
-    render::render,
-    terminal::Frame,
-    world::World,
-};
+use crate::input::key_to_intent;
+use crate::terminal_ext::FrameExt;
 
 const COUNTDOWN_FRAMES: u32 = 30;
 const COUNTDOWN_FRAME_TIME: Duration = Duration::from_millis(33);
@@ -40,7 +41,7 @@ pub struct State {
 
 impl State {
     pub fn new() -> Self {
-        let mut world = if crate::save::save_path(0).exists() {
+        let mut world = if save::save_path(0).exists() {
             World::load_from_disk(0).unwrap_or_else(|e| {
                 eprintln!("Auto-load failed ({}), starting new game.", e);
                 let mut w = World::new_game();
@@ -53,7 +54,7 @@ impl State {
         };
         world.event_log.push(format!(
             "Diagnostics log: {}",
-            crate::diagnostics::log_path().display()
+            diagnostics::log_path().display()
         ));
         let player_pos = world.player_pos();
         log::info!(
@@ -82,7 +83,7 @@ impl State {
         self.world.mark_visible_tiles();
         self.world.refresh_rule_discovery();
         self.world
-            .update_camera(crate::render::VIEWPORT_WIDTH, crate::render::VIEWPORT_HEIGHT);
+            .update_camera(coredumped_core::render::VIEWPORT_WIDTH, coredumped_core::render::VIEWPORT_HEIGHT);
 
         self.frame.clear();
         self.world.render_frame = self.world.render_frame.wrapping_add(1);

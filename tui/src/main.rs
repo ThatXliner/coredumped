@@ -15,11 +15,11 @@ struct Args {
 
 fn main() -> crossterm::Result<()> {
     let args = Args::parse();
-    if let Err(e) = xlyph_tui::diagnostics::init_file_logger() {
+    if let Err(e) = coredumped_core::diagnostics::init_file_logger() {
         eprintln!("Logging disabled: {e}");
     }
     if args.wipe {
-        xlyph_tui::save::wipe();
+        coredumped_core::save::wipe();
     }
-    xlyph_tui::app::run()
+    coredumped_tui::app::run()
 }

@@ -8,7 +8,7 @@ extern "C" {
     pub fn log(s: &str);
 }
 
-#[wasm_bindgen(module = "/web/xterm_bridge.js")]
+#[wasm_bindgen(module = "/web-assets/xterm_bridge.js")]
 extern "C" {
     pub type XtermBridge;
 

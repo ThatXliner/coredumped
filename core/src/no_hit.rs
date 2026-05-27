@@ -264,6 +264,7 @@ mod tests {
             camera_x: 0,
             camera_y: 0,
             explored_tiles: HashSet::new(),
+            render_frame: 0,
         }
     }
 

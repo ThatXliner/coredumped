@@ -75,78 +75,51 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
 
     // Place signs and enemies per room
 
-    // Room 0: Movement
-    world.ecs.spawn_sign(
-        Position::new(3, 6),
-        "Move with arrow keys or hjkl.\nYou can fight now — try your bound attack key!\nOf course, even fighting has a cost...",
-    );
+    // Room 0: Combat practice
     world.ecs.spawn_slime(Position::new(14, 6));
     world.ecs.spawn_bat(Position::new(10, 8));
 
     // Room 1: Inspector
     world.ecs.spawn_sign(
         Position::new(20, 6),
-        "Press i to open the inspector.\nHover over things to learn\ntheir names and properties.",
+        "Press i to open the inspector.\nHover over things to learn their names.\n\nKnowledge is power down here.",
     );
     world.ecs.spawn_slime(Position::new(31, 6));
     world.ecs.spawn_bat(Position::new(27, 8));
 
-    // Room 2: Wizard room
+    // Room 2: Wizard + first fragment
     let wizard_pos = Position::new(38, 6);
     world.ecs.spawn_sign(
         Position::new(44, 4),
-        "Green diamonds (♦) hold memory fragments...\nI wonder who put them there",
+        "Green diamonds hold memory fragments.\nI wonder who left them here...",
     );
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
     world.ecs.spawn_fragment(Position::new(50, 9), "frag-001");
 
-    // Room 3: Wait
+    // Room 3: Wait mechanic
     world.ecs.spawn_sign(
         Position::new(3, 17),
-        "Press . to wait. Time passes\nand enemies move too.\nYou can also use (wait!) in bindings.",
+        "Press . to wait.\nTime only moves when you do.\n\nSometimes standing still is the right move.",
     );
     world.ecs.spawn_slime(Position::new(12, 20));
 
-    // Room 4: Enemy inspection
-    world.ecs.spawn_sign(
-        Position::new(20, 17),
-        "Each enemy has HP. Inspect\nthem with i to learn their\nstrengths and weaknesses.",
-    );
+    // Room 4: Enemy variety — let them discover through play
     world.ecs.spawn_slime(Position::new(31, 20));
     world.ecs.spawn_bat(Position::new(28, 16));
     world.ecs.spawn_goblin(Position::new(24, 18));
-    world.ecs.spawn_sign(
-        Position::new(33, 15),
-        "Bats have only 2 HP but\nflutter unpredictably.\n\nTry hovering over the enemies for more information\n\nUse i to inspect the rules that dictate their behavior\nbut this only works after\nyou've seen them with your flashlight",
-    );
-    world.ecs.spawn_sign(
-        Position::new(17, 19),
-        "Goblins have 5 HP and\nhit harder. Tactical\npositioning matters.",
-    );
 
     // Room 5: Console
     world.ecs.spawn_sign(
         Position::new(37, 17),
-        "Press ` for the console.\nTry simple expressions:\n  (player-facing)\n  (+ 1 2)\n  (help)\nLanguage runs the dungeon.",
-    );
-    world.ecs.spawn_sign(
-        Position::new(37, 20),
-        "Each enemy type has a glyph:\ns slime, b bat, g goblin.\n\nThey differ in speed and strength.",
+        "Press ` for the console.\nThe dungeon runs on code.\n\nTry: (help)",
     );
     world.ecs.spawn_slime(Position::new(48, 20));
     world.ecs.spawn_slime(Position::new(42, 17));
 
-    // Room 6: Help
-    world.ecs.spawn_sign(
-        Position::new(3, 28),
-        "Stairs down are below.\nEach level challenges you\ndifferently. Adapt.",
-    );
+    // Room 6: Breathing room
     world.ecs.spawn_slime(Position::new(14, 29));
-    world
-        .ecs
-        .spawn_sign(Position::new(14, 31), "You're doing just fine.");
 
-    // Room 7: "Nothing is wrong"
+    // Room 7: Thematic — denial
     world
         .ecs
         .spawn_sign(Position::new(20, 28), "Nothing is wrong.");
@@ -176,26 +149,16 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     // Hide stairs under barrel
     world.ecs.spawn_barrel(stairs_down);
 
-    // Signs in barrel room
-
+    // Barrel room: hint first, solution second
     world.ecs.spawn_sign(
         Position::new(37, 30),
-        "Welcome to the Puzzle Room! This is a LOT of barrels...the exit is under one of them\nTry binding a combo to one key to make things faster",
+        "So many barrels...\nThe exit is under one of them.\n\nClearing these one by one would take forever.\nThere must be a faster way.",
     );
     if let Some(barrel) = world.ecs.entity_at(Position::new(40, 32)) {
         world.ecs.remove(barrel);
     }
     world.ecs.spawn_sign(
         Position::new(40, 32),
-        "Chain commands with (do ...):\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs N times:\n  (repeat 4 (do-attack :east))\n\nLearn more console commands with (help)",
-    );
-
-    // Clear barrel at sign position before placing it
-    if let Some(barrel) = world.ecs.entity_at(Position::new(51, 24)) {
-        world.ecs.remove(barrel);
-    }
-    world.ecs.spawn_sign(
-        Position::new(51, 24),
-        "Need help?\nTry running this in the console:\n  (bind-key :x (do (move! :south)\n    (repeat 3 (do-attack :east))))\n\nNow clear these barrels and\nfind the exit!",
+        "Chain commands with (do ...):\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs N times:\n  (repeat 4 (do-attack :east))\n\nBind it to a key and go wild.",
     );
 }

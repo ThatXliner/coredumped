@@ -29,6 +29,7 @@ export class XtermBridge {
         }
 
         this.fitAddon.fit();
+        this.terminal.focus();
 
         this.keyCallback = null;
         this.resizeCallback = null;

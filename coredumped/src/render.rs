@@ -153,10 +153,15 @@ fn draw_entity(ctx: &mut Frame, world: &World, entity: EntityView, lit_tiles: &H
     }
 
     let is_player = entity.kind == EntityKind::Player;
+    let is_static = matches!(
+        entity.kind,
+        EntityKind::Sign | EntityKind::Wizard | EntityKind::Barrel | EntityKind::Fragment
+    );
     let lit = lit_tiles.contains(&entity.pos) || is_player;
+    let explored = world.explored_tiles.contains(&entity.pos);
 
-    // Only show entities in lit areas (player always visible, enemies hidden in fog)
-    if !lit && !is_player {
+    // Static objects visible if explored, enemies only if lit
+    if !lit && !is_player && !(is_static && explored) {
         return;
     }
     let (fg, bg) = match (entity.kind, lit) {

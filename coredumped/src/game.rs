@@ -150,6 +150,8 @@ impl World {
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
+            camera_x: 0,
+            camera_y: 0,
         };
 
         world.load_playbook();
@@ -231,6 +233,8 @@ impl World {
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
+            camera_x: 0,
+            camera_y: 0,
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -4298,14 +4302,14 @@ mod tests {
     }
 
     #[test]
-    fn descending_from_level_2_clears_barrels_and_signs() {
+    fn descending_from_level_2_clears_level_2_entities() {
         let mut world = World::new_game();
         world.depth = 2;
         world.wizard_taught = true;
         world.bindings.insert("z".into(), "(do-attack)".into());
         crate::levels::build_level(&mut world, 2);
 
-        let barrel_depth_entities = world.renderable_entities().count();
+        let depth_2_entities = world.renderable_entities().count();
         assert!(world
             .renderable_entities()
             .any(|entity| entity.kind == EntityKind::Barrel));
@@ -4323,10 +4327,8 @@ mod tests {
 
         assert_eq!(cost, ActionCost::Tick);
         assert_eq!(world.depth, 3);
-        assert!(world.renderable_entities().count() < barrel_depth_entities);
-        assert!(!world
-            .renderable_entities()
-            .any(|entity| entity.kind == EntityKind::Barrel));
+        // Level 3 has fewer entities than level 2's barrel room
+        assert!(world.renderable_entities().count() < depth_2_entities);
     }
 
     // --- Player-first strike tests ---

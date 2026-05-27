@@ -138,6 +138,10 @@ pub struct World {
     /// Called when player bumps wizard post-teaching.
     /// Return `true` to heal player, `false` to refuse.
     pub on_wizard_interact: Option<fn(&mut World) -> bool>,
+
+    /// Camera position (top-left corner of viewport in map coordinates).
+    pub camera_x: i32,
+    pub camera_y: i32,
 }
 
 impl World {
@@ -198,6 +202,8 @@ impl World {
             dijkstra_cache_target_idx: None,
             dijkstra_cache_map: Vec::new(),
             on_wizard_interact: None,
+            camera_x: 0,
+            camera_y: 0,
         }
     }
 
@@ -301,6 +307,16 @@ impl World {
                 self.event_log.push("New rule detected. Press I to see it.");
             }
         }
+    }
+
+    /// Update camera to center on player, clamped to map bounds.
+    pub fn update_camera(&mut self, viewport_width: i32, viewport_height: i32) {
+        let pos = self.player_pos();
+        let half_w = viewport_width / 2;
+        let half_h = viewport_height / 2;
+
+        self.camera_x = (pos.x - half_w).clamp(0, (self.map.width - viewport_width).max(0));
+        self.camera_y = (pos.y - half_h).clamp(0, (self.map.height - viewport_height).max(0));
     }
 }
 

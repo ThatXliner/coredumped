@@ -14,15 +14,18 @@ use crate::{
     event_log::LogEntry,
     game::Mode,
     glyph::highlight::{self, Span},
-    map::{TileType, FLASHLIGHT_RADIUS, MAP_HEIGHT, MAP_WIDTH},
+    map::{TileType, FLASHLIGHT_RADIUS},
     terminal::Frame,
     world::World,
 };
 
 const MAP_X: i32 = 1;
 const MAP_Y: i32 = 1;
-const MAP_BOX_WIDTH: i32 = MAP_WIDTH + 2;
-const MAP_BOX_HEIGHT: i32 = MAP_HEIGHT + 2;
+/// Viewport dimensions — the visible portion of the map.
+pub const VIEWPORT_WIDTH: i32 = 40;
+pub const VIEWPORT_HEIGHT: i32 = 24;
+const MAP_BOX_WIDTH: i32 = VIEWPORT_WIDTH + 2;
+const MAP_BOX_HEIGHT: i32 = VIEWPORT_HEIGHT + 2;
 const PANEL_MIN_WIDTH: i32 = 18;
 const MIN_BOTTOM_LOG_HEIGHT: i32 = 10;
 
@@ -75,9 +78,20 @@ pub fn render(ctx: &mut Frame, world: &World) {
 fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
     draw_box(ctx, 0, 0, MAP_BOX_WIDTH, MAP_BOX_HEIGHT, " dungeon ");
 
-    for y in 0..world.map.height {
-        for x in 0..world.map.width {
-            let pos = Position::new(x, y);
+    let cam_x = world.camera_x;
+    let cam_y = world.camera_y;
+
+    for vy in 0..VIEWPORT_HEIGHT {
+        for vx in 0..VIEWPORT_WIDTH {
+            let map_x = cam_x + vx;
+            let map_y = cam_y + vy;
+            let pos = Position::new(map_x, map_y);
+
+            if !world.map.contains(pos) {
+                ctx.set(MAP_X + vx, MAP_Y + vy, RGB::named(BLACK), RGB::named(BLACK), ' ');
+                continue;
+            }
+
             let lit = lit_tiles.contains(&pos);
             let (glyph, fg) = match (world.map.tile(pos), lit) {
                 (TileType::StairsDown, _) => ('>', RGB::named(CYAN)),
@@ -89,16 +103,23 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
                 (TileType::Fire, true) => ('^', RGB::named(RED)),
                 (TileType::Fire, false) => ('^', RGB::named(DARK_RED)),
             };
-            ctx.set(MAP_X + x, MAP_Y + y, fg, RGB::named(BLACK), glyph);
+            ctx.set(MAP_X + vx, MAP_Y + vy, fg, RGB::named(BLACK), glyph);
         }
     }
 
     for entity in world.renderable_entities() {
-        draw_entity(ctx, entity, lit_tiles);
+        draw_entity(ctx, world, entity, lit_tiles);
     }
 }
 
-fn draw_entity(ctx: &mut Frame, entity: EntityView, lit_tiles: &HashSet<Position>) {
+fn draw_entity(ctx: &mut Frame, world: &World, entity: EntityView, lit_tiles: &HashSet<Position>) {
+    let screen_x = entity.pos.x - world.camera_x;
+    let screen_y = entity.pos.y - world.camera_y;
+
+    if screen_x < 0 || screen_x >= VIEWPORT_WIDTH || screen_y < 0 || screen_y >= VIEWPORT_HEIGHT {
+        return;
+    }
+
     let lit = lit_tiles.contains(&entity.pos) || entity.kind == EntityKind::Player;
     let color = match (entity.kind, lit) {
         (EntityKind::Player, _) => RGB::named(YELLOW),
@@ -130,8 +151,8 @@ fn draw_entity(ctx: &mut Frame, entity: EntityView, lit_tiles: &HashSet<Position
         (EntityKind::VaporCanteen, false) => RGB::named(DARK_BLUE),
     };
 
-    let x = MAP_X + entity.pos.x;
-    let y = MAP_Y + entity.pos.y;
+    let x = MAP_X + screen_x;
+    let y = MAP_Y + screen_y;
     ctx.set(x, y, color, RGB::named(BLACK), entity.glyph());
 }
 
@@ -522,10 +543,17 @@ fn print_section_header(ctx: &mut Frame, x: i32, y: i32, max_width: i32, title: 
 /// that contains a living entity.
 fn render_entity_tooltip(ctx: &mut Frame, world: &World) {
     let (mx, my) = ctx.mouse_pos();
-    let map_x = mx - MAP_X;
-    let map_y = my - MAP_Y;
+    let screen_x = mx - MAP_X;
+    let screen_y = my - MAP_Y;
 
-    if map_x < 0 || map_x >= world.map.width || map_y < 0 || map_y >= world.map.height {
+    if screen_x < 0 || screen_x >= VIEWPORT_WIDTH || screen_y < 0 || screen_y >= VIEWPORT_HEIGHT {
+        return;
+    }
+
+    let map_x = world.camera_x + screen_x;
+    let map_y = world.camera_y + screen_y;
+
+    if !world.map.contains(Position::new(map_x, map_y)) {
         return;
     }
 

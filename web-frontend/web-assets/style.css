@@ -12,58 +12,41 @@ html, body {
     color: #e0e0e0;
 }
 
-#header {
+#banner {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    padding: 0.5rem 1rem;
+    padding: 1rem 1rem 0.75rem;
     background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
     border-bottom: 1px solid #2a2a2a;
-    flex-wrap: wrap;
     gap: 0.5rem;
 }
 
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-}
-
-.logo {
-    height: 32px;
-    width: auto;
-    border-radius: 4px;
-    flex-shrink: 0;
-}
-
-.header-text h1 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #fff;
-    margin: 0;
+.banner-logo {
+    max-width: min(400px, 90vw);
+    height: auto;
 }
 
 .tagline {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: #888;
-    margin: 0;
+    text-align: center;
 }
 
-.header-right {
+.banner-buttons {
     display: flex;
     gap: 0.75rem;
-    align-items: center;
+    margin-top: 0.25rem;
 }
 
 .github-link, .star-button {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.4rem 0.75rem;
+    padding: 0.35rem 0.7rem;
     border-radius: 6px;
     text-decoration: none;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 500;
     transition: all 0.15s ease;
 }
@@ -90,7 +73,7 @@ html, body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: calc(100% - 100px);
+    height: calc(100% - 140px);
     padding: 0.5rem 1rem;
 }
 
@@ -148,16 +131,16 @@ html, body {
     text-decoration: underline;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 500px) {
     .tagline {
-        display: none;
+        font-size: 0.75rem;
     }
 
-    .header-text h1 {
-        font-size: 1rem;
+    .banner-logo {
+        max-width: 280px;
     }
 
-    .github-link span {
-        display: none;
+    #container {
+        height: calc(100% - 160px);
     }
 }

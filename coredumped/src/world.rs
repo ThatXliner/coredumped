@@ -148,6 +148,9 @@ pub struct World {
 
     /// Tiles the player has seen (fog of war). Persists across the current level.
     pub explored_tiles: HashSet<Position>,
+
+    /// Frame counter for animations (incremented each render).
+    pub render_frame: u64,
 }
 
 impl World {
@@ -212,6 +215,7 @@ impl World {
             camera_x: 0,
             camera_y: 0,
             explored_tiles: HashSet::new(),
+            render_frame: 0,
         }
     }
 

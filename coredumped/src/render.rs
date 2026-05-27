@@ -361,7 +361,7 @@ fn render_key_summary(
 
     let player_tile = world.map.tile(world.player_pos());
     for summary in summaries.iter().take(binding_rows) {
-        render_binding_summary(ctx, summary, x, y, width, world.turn, player_tile);
+        render_binding_summary(ctx, summary, x, y, width, world.render_frame, player_tile);
         y += 1;
         rows_used += 1;
     }
@@ -388,7 +388,7 @@ fn render_binding_summary(
     x: i32,
     y: i32,
     width: i32,
-    turn: u64,
+    frame: u64,
     player_tile: TileType,
 ) {
     if width <= 0 {
@@ -414,9 +414,9 @@ fn render_binding_summary(
         || (summary.command == "(ascend!)" && player_tile == TileType::StairsUp);
 
     if should_rainbow {
-        print_rainbow(ctx, x, y, label_width, &label, turn);
+        print_rainbow(ctx, x, y, label_width, &label, frame);
         if key_width > 0 && label_width + 1 < width {
-            print_rainbow(ctx, x + label_width + 1, y, width - label_width - 1, &key_text, turn);
+            print_rainbow(ctx, x + label_width + 1, y, width - label_width - 1, &key_text, frame);
         }
     } else {
         let label_color = if summary.is_new {
@@ -1204,27 +1204,36 @@ fn print_clipped_color(ctx: &mut Frame, x: i32, y: i32, max_width: i32, text: &s
     ctx.print_color(x, y, color, RGB::named(BLACK), &clipped);
 }
 
-fn print_rainbow(ctx: &mut Frame, x: i32, y: i32, max_width: i32, text: &str, turn: u64) {
+fn print_rainbow(ctx: &mut Frame, x: i32, y: i32, max_width: i32, text: &str, frame: u64) {
     if max_width <= 0 || y < 0 || y >= ctx.height() {
         return;
     }
 
-    let rainbow = [
-        RGB::named(RED),
-        RGB::named(ORANGE),
-        RGB::named(YELLOW),
-        RGB::named(GREEN),
-        RGB::named(CYAN),
-        RGB::named(BLUE),
-        RGB::named(MAGENTA),
-    ];
-
     let bg = RGB::named(BLACK);
-    let offset = turn as usize;
+    let char_count = text.chars().take(max_width as usize).count();
     for (i, ch) in text.chars().take(max_width as usize).enumerate() {
-        let color = rainbow[(i + offset) % rainbow.len()];
+        // Smooth cycling hue: frame advances the animation, i spreads across spectrum
+        let hue = ((frame as f32 * 0.05) + (i as f32 / char_count.max(1) as f32)) % 1.0;
+        let color = hsl_to_rgb(hue, 1.0, 0.6);
         ctx.set(x + i as i32, y, color, bg, ch);
     }
+}
+
+fn hsl_to_rgb(h: f32, s: f32, l: f32) -> RGB {
+    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+    let x = c * (1.0 - ((h * 6.0) % 2.0 - 1.0).abs());
+    let m = l - c / 2.0;
+
+    let (r, g, b) = match (h * 6.0) as u32 {
+        0 => (c, x, 0.0),
+        1 => (x, c, 0.0),
+        2 => (0.0, c, x),
+        3 => (0.0, x, c),
+        4 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+
+    RGB::from_f32(r + m, g + m, b + m)
 }
 
 fn top_panel_height(ctx: &Frame) -> i32 {

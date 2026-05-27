@@ -154,6 +154,7 @@ impl World {
             camera_x: 0,
             camera_y: 0,
             explored_tiles: HashSet::new(),
+            render_frame: 0,
         };
 
         world.load_playbook();
@@ -239,6 +240,7 @@ impl World {
             camera_x: 0,
             camera_y: 0,
             explored_tiles: HashSet::new(),
+            render_frame: 0,
         };
 
         crate::levels::build_level(&mut world, depth);

@@ -85,6 +85,7 @@ impl State {
             .update_camera(crate::render::VIEWPORT_WIDTH, crate::render::VIEWPORT_HEIGHT);
 
         self.frame.clear();
+        self.world.render_frame = self.world.render_frame.wrapping_add(1);
         render(&mut self.frame, &self.world);
         self.frame.flush(out)?;
 

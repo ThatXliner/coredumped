@@ -111,7 +111,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     // Room 5: Console
     world.ecs.spawn_sign(
         Position::new(37, 17),
-        "Press ` for the console.\nThe dungeon runs on code.\n\nTry: (help)",
+        "Press ` for the console.\nThe dungeon runs on code.\n\nTry: (help)\n\nTime fades away as you peer into the console.\nDon't worry about the enemies. Everything is fine.",
     );
     world.ecs.spawn_slime(Position::new(48, 20));
     world.ecs.spawn_slime(Position::new(42, 17));

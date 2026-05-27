@@ -338,8 +338,9 @@ fn render_key_summary(
         remaining_rows
     };
 
+    let player_tile = world.map.tile(world.player_pos());
     for summary in summaries.iter().take(binding_rows) {
-        render_binding_summary(ctx, summary, x, y, width);
+        render_binding_summary(ctx, summary, x, y, width, world.turn, player_tile);
         y += 1;
         rows_used += 1;
     }
@@ -360,7 +361,15 @@ struct BindingSummary {
     is_new: bool,
 }
 
-fn render_binding_summary(ctx: &mut Frame, summary: &BindingSummary, x: i32, y: i32, width: i32) {
+fn render_binding_summary(
+    ctx: &mut Frame,
+    summary: &BindingSummary,
+    x: i32,
+    y: i32,
+    width: i32,
+    turn: u64,
+    player_tile: TileType,
+) {
     if width <= 0 {
         return;
     }
@@ -378,21 +387,32 @@ fn render_binding_summary(ctx: &mut Frame, summary: &BindingSummary, x: i32, y: 
     } else {
         summary.label.clone()
     };
-    let label_color = if summary.is_new {
-        RGB::named(YELLOW)
-    } else {
-        RGB::named(WHITE)
-    };
 
-    print_clipped_color(ctx, x, y, label_width, &label, label_color);
-    if key_width > 0 && label_width + 1 < width {
-        print_clipped(
-            ctx,
-            x + label_width + 1,
-            y,
-            width - label_width - 1,
-            &key_text,
-        );
+    let should_rainbow = (summary.command == "(descend!)"
+        && player_tile == TileType::StairsDown)
+        || (summary.command == "(ascend!)" && player_tile == TileType::StairsUp);
+
+    if should_rainbow {
+        print_rainbow(ctx, x, y, label_width, &label, turn);
+        if key_width > 0 && label_width + 1 < width {
+            print_rainbow(ctx, x + label_width + 1, y, width - label_width - 1, &key_text, turn);
+        }
+    } else {
+        let label_color = if summary.is_new {
+            RGB::named(YELLOW)
+        } else {
+            RGB::named(WHITE)
+        };
+        print_clipped_color(ctx, x, y, label_width, &label, label_color);
+        if key_width > 0 && label_width + 1 < width {
+            print_clipped(
+                ctx,
+                x + label_width + 1,
+                y,
+                width - label_width - 1,
+                &key_text,
+            );
+        }
     }
 }
 
@@ -1161,6 +1181,29 @@ fn print_clipped_color(ctx: &mut Frame, x: i32, y: i32, max_width: i32, text: &s
 
     let clipped: String = text.chars().take(max_width as usize).collect();
     ctx.print_color(x, y, color, RGB::named(BLACK), &clipped);
+}
+
+fn print_rainbow(ctx: &mut Frame, x: i32, y: i32, max_width: i32, text: &str, turn: u64) {
+    if max_width <= 0 || y < 0 || y >= ctx.height() {
+        return;
+    }
+
+    let rainbow = [
+        RGB::named(RED),
+        RGB::named(ORANGE),
+        RGB::named(YELLOW),
+        RGB::named(GREEN),
+        RGB::named(CYAN),
+        RGB::named(BLUE),
+        RGB::named(MAGENTA),
+    ];
+
+    let bg = RGB::named(BLACK);
+    let offset = turn as usize;
+    for (i, ch) in text.chars().take(max_width as usize).enumerate() {
+        let color = rainbow[(i + offset) % rainbow.len()];
+        ctx.set(x + i as i32, y, color, bg, ch);
+    }
 }
 
 fn top_panel_height(ctx: &Frame) -> i32 {

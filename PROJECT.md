@@ -11,21 +11,19 @@ see [README.md](./README.md). For Glyph itself, see
 
 ## Project Shape
 
-The repository is a single Cargo workspace:
+The repository is a Cargo workspace with three crates:
 
 ```text
 .
 |-- Cargo.toml                 # workspace manifest
-|-- coredumped/
-|   |-- Cargo.toml             # package: xlyph-tui
+|-- core/                      # coredumped-core: platform-agnostic game engine
+|   |-- Cargo.toml
 |   `-- src/
-|       |-- main.rs            # CLI entrypoint
-|       |-- app.rs             # terminal event loop
+|       |-- lib.rs             # crate root
 |       |-- world.rs           # central game state
 |       |-- game.rs            # gameplay systems and Glyph game builtins
-|       |-- input.rs           # key/mouse events to intents
 |       |-- render.rs          # read-only terminal rendering
-|       |-- terminal.rs        # frame buffer and terminal helpers
+|       |-- terminal.rs        # frame buffer abstraction
 |       |-- ecs.rs             # entity/component storage
 |       |-- entity.rs          # entity ids, positions, kinds, HP, glyphs
 |       |-- map.rs             # terrain, pathing, visibility, map generation
@@ -38,6 +36,20 @@ The repository is a single Cargo workspace:
 |       |-- fragment.rs        # memory fragment data and collection status
 |       |-- no_hit.rs          # route analysis helper
 |       `-- diagnostics.rs     # file-backed logs
+|-- tui/                       # coredumped-tui: terminal frontend
+|   |-- Cargo.toml
+|   `-- src/
+|       |-- main.rs            # CLI entrypoint
+|       |-- lib.rs             # crate root
+|       |-- app.rs             # crossterm event loop
+|       |-- input.rs           # key/mouse events to intents
+|       `-- terminal_ext.rs    # crossterm-specific Frame::flush()
+|-- web-frontend/              # coredumped-web: browser frontend
+|   |-- Cargo.toml
+|   |-- src/
+|   |   |-- lib.rs             # wasm-bindgen xterm.js bindings
+|   |   `-- app.rs             # web event loop
+|   `-- web-assets/            # HTML, CSS, JS for deployment
 |-- README.md
 |-- glyph-reference.md
 |-- language-spec.md
@@ -45,19 +57,30 @@ The repository is a single Cargo workspace:
 `-- game-architecture.md       # concept/vision document
 ```
 
-The crate name on disk is `coredumped`; the Cargo package and binary are
-`xlyph-tui`.
+| Crate | Package Name | Purpose |
+|-------|--------------|---------|
+| `core/` | `coredumped-core` | Game engine: ECS, map, rules, Glyph runtime, rendering logic |
+| `tui/` | `coredumped-tui` | Terminal frontend using crossterm |
+| `web-frontend/` | `coredumped-web` | WebAssembly frontend using xterm.js |
 
 ## Common Commands
 
 Run these from the repository root:
 
 ```bash
-cargo run -p xlyph-tui
-cargo run -p xlyph-tui -- --wipe
+# Run terminal version
+cargo run -p coredumped-tui
+cargo run -p coredumped-tui -- --wipe
+
+# Build and test
 cargo check
 cargo test
 cargo fmt
+
+# Build web version locally
+cd web-frontend
+./web-assets/build.sh
+cd web-assets && python3 -m http.server 8080
 ```
 
 The binary options are:
@@ -71,21 +94,33 @@ The binary options are:
 The app is intentionally direct:
 
 ```text
-main.rs
-  -> app::run_with_options
+# TUI
+tui/main.rs
+  -> app::run
   -> State::tick
   -> input::key_to_intent
   -> World::apply_intent
   -> render::render
+
+# Web
+web-frontend/src/app.rs
+  -> main() (wasm_bindgen start)
+  -> XtermBridge callbacks
+  -> parse_xterm_key
+  -> World::apply_intent
+  -> render::render
 ```
 
-`app.rs` is the only module that owns the crossterm alternate screen, raw mode,
-event polling, mouse capture, and frame flushing. Everything else is ordinary
-Rust state and pure-ish logic, which keeps tests away from the terminal.
+`tui/app.rs` is the only module that owns the crossterm alternate screen, raw mode,
+event polling, mouse capture, and frame flushing. `web-frontend/src/app.rs` handles
+the equivalent for browsers via xterm.js callbacks and RAF.
 
-`input.rs` converts keys into `Intent` values based on the current `Mode`.
-`World::apply_intent` mutates the world and returns an `ActionCost`. Rendering
-then projects the updated `World` into a `Frame`.
+Everything else is ordinary Rust state and pure-ish logic in `core/`, which keeps
+tests away from platform-specific code.
+
+`input.rs` (TUI) and `parse_xterm_key` (web) convert keys into `Intent` values
+based on the current `Mode`. `World::apply_intent` mutates the world and returns
+an `ActionCost`. Rendering then projects the updated `World` into a `Frame`.
 
 ## Core Concepts
 
@@ -146,14 +181,14 @@ AI, tests, and route analysis.
 procedural room generation. The default dimensions are `MAP_WIDTH` by
 `MAP_HEIGHT`.
 
-Authored campaign levels live in `coredumped/src/levels/depth_*.rs`. The level
+Authored campaign levels live in `core/src/levels/depth_*.rs`. The level
 dispatcher is `levels::build_level`, which clears level entities, calls the
 builder for the requested depth, rebuilds caches, and logs the result. Depths
 after the authored campaign fall back to `levels/procedural.rs`.
 
 To add or adjust a level:
 
-1. Create or edit a builder in `coredumped/src/levels/`.
+1. Create or edit a builder in `core/src/levels/`.
 2. Use helpers from `levels/helpers.rs` to apply maps and place recurring items.
 3. Register the builder in `levels/mod.rs`.
 4. Add focused tests when placement, exits, fragments, or special rules can
@@ -171,7 +206,7 @@ prefer computing it from `World` or updating `World` before rendering in
 
 ### Glyph Runtime
 
-Glyph is embedded directly in Rust. The runtime lives in `coredumped/src/glyph/`:
+Glyph is embedded directly in Rust. The runtime lives in `core/src/glyph/`:
 
 | File | Responsibility |
 | --- | --- |
@@ -222,6 +257,9 @@ Save files persist a serializable snapshot of world state. Glyph runtime state i
 restored by replaying stored user source forms such as `const`, `defmacro`,
 `set!`, and `bind-key` onto a fresh environment.
 
+**Note:** Save/load is only available in the TUI version. The web version starts
+fresh each session.
+
 ## Development Guidelines
 
 Preserve these invariants when changing behavior:
@@ -229,12 +267,13 @@ Preserve these invariants when changing behavior:
 - Gameplay actions that change world state should return `ActionCost::Tick`.
 - UI-only actions should return `ActionCost::Free`.
 - Rendering should not mutate `World`.
-- The app shell should remain the only crossterm event-loop boundary.
+- The app shell should remain the only platform-specific event-loop boundary.
 - Save data should be explicit and versioned through `SaveData`.
 - User-authored Glyph state should be replayable from source.
 - Authored levels should leave player, exits, fragments, and enemy starts on
   walkable tiles.
 - Rule source shown in the inspector should match the behavior the runtime uses.
+- Core crate must remain platform-agnostic (no crossterm or wasm-bindgen deps).
 
 ## Testing Notes
 
@@ -242,9 +281,10 @@ Most tests are inline module tests. The useful test targets are:
 
 ```bash
 cargo test
-cargo test -p xlyph-tui game::
-cargo test -p xlyph-tui glyph::
-cargo test -p xlyph-tui levels::
+cargo test -p coredumped-core
+cargo test -p coredumped-core game::
+cargo test -p coredumped-core glyph::
+cargo test -p coredumped-core levels::
 ```
 
 For gameplay changes, add tests around `World::apply_intent` where possible. For

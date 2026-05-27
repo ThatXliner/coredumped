@@ -1,10 +1,11 @@
-# CoreDumped: Level Design — The Vessel
+# CoreDumped: Level Design
 
+<!--
 **Status**: Living design spec — current code plus intended direction
 **Based on**: game-architecture.md, current codebase (Rust + Glyph Lisp embed + crossterm)
 **Storyline**: Merged Vessel (dungeon = mind) + Debt ending mechanic (final choice = real Glyph patch)
 
-**Current implementation note**: Early memory fragments are intentionally seeded before the original Level 6 start point so the tutorial/Denial stretch has emotional texture. Some later placements act as fallback duplicates; the fragment registry only allows a memory to be collected once. The currently playable systems are the Rage registry unlock, Counting Room key choices, Vapor Canteen fire-cache bypass, and Core registry edits. Other exploit writeups below are design targets unless marked as implemented.
+**Current implementation note**: Early memory fragments are intentionally seeded before the original Level 6 start point so the tutorial/Denial stretch has emotional texture. Some later placements act as fallback duplicates; the fragment registry only allows a memory to be collected once. The currently playable systems are the Rage registry unlock, Counting Room key choices, Vapor Canteen fire-cache bypass, and Core registry edits. Other exploit writeups below are design targets unless marked as implemented. -->
 
 ---
 

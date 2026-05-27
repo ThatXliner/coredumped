@@ -1,7 +1,7 @@
 export class XtermBridge {
     constructor(containerId) {
         this.terminal = new Terminal({
-            fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", monospace',
+            fontFamily: '"JetBrains Mono", "Cascadia Code", "Fira Code", monospace',
             fontSize: 14,
             theme: {
                 background: '#0d0d0d',

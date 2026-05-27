@@ -1,0 +1,33 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    background: #0d0d0d;
+    overflow: hidden;
+}
+
+#container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    padding: 1rem;
+}
+
+#terminal {
+    background: #0d0d0d;
+    border-radius: 4px;
+    box-shadow: 0 0 20px rgba(0, 255, 100, 0.1);
+}
+
+.xterm {
+    padding: 8px;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+    display: none;
+}

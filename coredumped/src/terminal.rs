@@ -1,6 +1,9 @@
+use bracket_color::prelude::{BLACK, RGB, WHITE};
+
+#[cfg(not(target_arch = "wasm32"))]
 use std::io::Write;
 
-use bracket_color::prelude::{BLACK, RGB, WHITE};
+#[cfg(not(target_arch = "wasm32"))]
 use crossterm::{
     cursor::MoveTo,
     queue,
@@ -87,6 +90,7 @@ impl Frame {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn flush(&self, out: &mut impl Write) -> crossterm::Result<()> {
         for y in 0..self.height {
             queue!(out, MoveTo(0, y as u16))?;
@@ -104,8 +108,35 @@ impl Frame {
         out.flush()?;
         Ok(())
     }
+
+    pub fn to_ansi_string(&self) -> String {
+        let mut output = String::with_capacity((self.width * self.height * 30) as usize);
+        output.push_str("\x1b[H");
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let cell = self.cells[(y * self.width + x) as usize];
+                let fr = color_byte(cell.fg.r);
+                let fg = color_byte(cell.fg.g);
+                let fb = color_byte(cell.fg.b);
+                let br = color_byte(cell.bg.r);
+                let bg = color_byte(cell.bg.g);
+                let bb = color_byte(cell.bg.b);
+                output.push_str(&format!(
+                    "\x1b[38;2;{};{};{};48;2;{};{};{}m{}",
+                    fr, fg, fb, br, bg, bb, cell.glyph
+                ));
+            }
+            if y < self.height - 1 {
+                output.push_str("\r\n");
+            }
+        }
+        output.push_str("\x1b[0m");
+        output
+    }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn to_terminal_color(rgb: RGB) -> Color {
     Color::Rgb {
         r: color_byte(rgb.r),

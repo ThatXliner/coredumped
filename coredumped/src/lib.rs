@@ -6,6 +6,7 @@
 //! `render` draws the current state.
 
 pub(crate) mod ai_builtins;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod app;
 pub mod diagnostics;
 pub mod ecs;
@@ -14,6 +15,7 @@ pub mod event_log;
 pub mod fragment;
 pub mod game;
 pub mod glyph;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod input;
 pub(crate) mod levels;
 pub mod map;
@@ -24,6 +26,8 @@ pub mod render;
 pub mod rules;
 pub mod save;
 pub mod terminal;
+#[cfg(target_arch = "wasm32")]
+pub mod web;
 pub mod world;
 
 pub use ecs::Ecs;

@@ -103,13 +103,19 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
                 continue;
             }
 
-            // Distance-based fade for lit tiles
+            // Distance-based fade for lit tiles (starts after 4 tiles)
             let fade = if lit {
                 let dx = (pos.x - player_pos.x) as f32;
                 let dy = (pos.y - player_pos.y) as f32;
                 let dist = (dx * dx + dy * dy).sqrt();
-                // Fade from 1.0 (close) to 0.4 (at radius edge)
-                1.0 - (dist / flashlight_radius) * 0.6
+                let fade_start = 4.0;
+                if dist <= fade_start {
+                    1.0
+                } else {
+                    let fade_dist = dist - fade_start;
+                    let fade_range = flashlight_radius - fade_start;
+                    1.0 - (fade_dist / fade_range) * 0.6
+                }
             } else {
                 1.0
             };

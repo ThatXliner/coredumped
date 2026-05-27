@@ -152,6 +152,7 @@ impl World {
             on_wizard_interact: None,
             camera_x: 0,
             camera_y: 0,
+            explored_tiles: HashSet::new(),
         };
 
         world.load_playbook();
@@ -235,6 +236,7 @@ impl World {
             on_wizard_interact: None,
             camera_x: 0,
             camera_y: 0,
+            explored_tiles: HashSet::new(),
         };
 
         crate::levels::build_level(&mut world, depth);
@@ -591,6 +593,7 @@ impl World {
         self.on_wizard_interact = None;
         self.gauntlet_barrier_locked.clear();
         self.fire_cache.clear();
+        self.explored_tiles.clear();
     }
 
     fn wipe_player_state(&mut self) {

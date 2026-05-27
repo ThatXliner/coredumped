@@ -142,6 +142,9 @@ pub struct World {
     /// Camera position (top-left corner of viewport in map coordinates).
     pub camera_x: i32,
     pub camera_y: i32,
+
+    /// Tiles the player has seen (fog of war). Persists across the current level.
+    pub explored_tiles: HashSet<Position>,
 }
 
 impl World {
@@ -204,6 +207,7 @@ impl World {
             on_wizard_interact: None,
             camera_x: 0,
             camera_y: 0,
+            explored_tiles: HashSet::new(),
         }
     }
 
@@ -287,11 +291,12 @@ impl World {
         }
     }
 
-    /// Mark tile types in the flashlight cone as seen.
+    /// Mark tile types in the flashlight cone as seen and add to explored tiles.
     pub fn mark_visible_tiles(&mut self) {
         self.ensure_lit_tiles();
         for pos in &self.cached_flashlight {
             self.seen_tile_types.insert(self.map.tile(*pos));
+            self.explored_tiles.insert(*pos);
         }
     }
 

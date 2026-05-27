@@ -93,15 +93,27 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
             }
 
             let lit = lit_tiles.contains(&pos);
+            let explored = world.explored_tiles.contains(&pos);
+
+            // Fog of war: unexplored tiles are hidden
+            if !lit && !explored {
+                ctx.set(MAP_X + vx, MAP_Y + vy, RGB::named(BLACK), RGB::named(BLACK), ' ');
+                continue;
+            }
+
             let (glyph, fg) = match (world.map.tile(pos), lit) {
-                (TileType::StairsDown, _) => ('>', RGB::named(CYAN)),
-                (TileType::StairsUp, _) => ('<', RGB::named(MAGENTA)),
+                // Lit tiles: full color
+                (TileType::StairsDown, true) => ('>', RGB::named(CYAN)),
+                (TileType::StairsUp, true) => ('<', RGB::named(MAGENTA)),
                 (TileType::Floor, true) => ('.', RGB::named(GOLD)),
                 (TileType::Wall, true) => ('#', RGB::named(LIGHT_YELLOW)),
-                (TileType::Floor, false) => ('.', RGB::named(DARK_GRAY)),
-                (TileType::Wall, false) => ('#', RGB::named(GRAY)),
                 (TileType::Fire, true) => ('^', RGB::named(RED)),
-                (TileType::Fire, false) => ('^', RGB::named(DARK_RED)),
+                // Remembered tiles: dim/muted
+                (TileType::StairsDown, false) => ('>', RGB::from_u8(40, 80, 80)),
+                (TileType::StairsUp, false) => ('<', RGB::from_u8(60, 40, 60)),
+                (TileType::Floor, false) => ('.', RGB::from_u8(30, 30, 30)),
+                (TileType::Wall, false) => ('#', RGB::from_u8(50, 50, 50)),
+                (TileType::Fire, false) => ('^', RGB::from_u8(60, 30, 30)),
             };
             ctx.set(MAP_X + vx, MAP_Y + vy, fg, RGB::named(BLACK), glyph);
         }
@@ -120,7 +132,13 @@ fn draw_entity(ctx: &mut Frame, world: &World, entity: EntityView, lit_tiles: &H
         return;
     }
 
-    let lit = lit_tiles.contains(&entity.pos) || entity.kind == EntityKind::Player;
+    let is_player = entity.kind == EntityKind::Player;
+    let lit = lit_tiles.contains(&entity.pos) || is_player;
+
+    // Only show entities in lit areas (player always visible, enemies hidden in fog)
+    if !lit && !is_player {
+        return;
+    }
     let color = match (entity.kind, lit) {
         (EntityKind::Player, _) => RGB::named(YELLOW),
         (EntityKind::Slime, true) => RGB::named(ORANGE),

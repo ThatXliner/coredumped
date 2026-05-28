@@ -76,6 +76,11 @@ impl WebState {
                     self.handle_save_load_intent(&intent);
                 }
             }
+            // Handle deferred intents (e.g., wipe confirmation)
+            if let Some(deferred) = self.world.deferred_intent.take() {
+                self.handle_save_load_intent(&deferred);
+                self.tick();
+            }
         }
     }
 
@@ -95,6 +100,18 @@ impl WebState {
                     crate::log(&format!("Load failed: {}", e));
                 }
             },
+            Intent::WipeSave(slot) => {
+                if storage::has_save(*slot) {
+                    if let Err(e) = storage::delete_save(*slot) {
+                        self.world.event_log.push(format!("Cannot delete save: {}", e));
+                    } else {
+                        self.world.event_log.push(format!("Save slot {} deleted.", slot));
+                        self.world.quit_countdown = 3;
+                    }
+                } else {
+                    self.world.event_log.push(format!("Save slot {} does not exist.", slot));
+                }
+            }
             _ => {}
         }
     }

@@ -146,6 +146,10 @@ impl State {
                 if cost == ActionCost::Tick && self.world.quit_countdown == 0 {
                     self.countdown_frame = 0;
                 }
+                // Handle deferred intents (e.g., wipe confirmation)
+                if let Some(deferred) = self.world.deferred_intent.take() {
+                    self.world.apply_intent(deferred);
+                }
             }
             Event::Mouse(mouse) => {
                 self.frame

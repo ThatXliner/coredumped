@@ -59,6 +59,7 @@ pub enum Intent {
     Restart,
     SaveGame(u32),
     LoadGame(u32),
+    WipeSave(u32),
     OpenExternalEditor,
     Quit,
     Noop,
@@ -132,6 +133,7 @@ impl World {
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
+            deferred_intent: None,
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
             seen_tile_types: HashSet::new(),
@@ -222,6 +224,7 @@ impl World {
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
+            deferred_intent: None,
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
             seen_tile_types: HashSet::new(),
@@ -455,6 +458,23 @@ impl World {
                     Err(e) => {
                         self.event_log.push(format!("Load failed: {}", e));
                     }
+                }
+                ActionCost::Free
+            }
+            Intent::WipeSave(slot) => {
+                let path = crate::save::save_path(slot);
+                if path.exists() {
+                    if let Err(e) = std::fs::remove_file(&path) {
+                        self.event_log.push(format!("Cannot delete save: {}", e));
+                    } else {
+                        crate::player_profile::PlayerProfile::delete();
+                        self.event_log
+                            .push_colored(format!("Save slot {} deleted.", slot), RGB::named(RED));
+                        self.quit_countdown = 3;
+                    }
+                } else {
+                    self.event_log
+                        .push(format!("Save slot {} does not exist.", slot));
                 }
                 ActionCost::Free
             }
@@ -1652,20 +1672,7 @@ impl World {
         // Handle pending wipe confirmation
         if let Some(slot) = self.pending_wipe_slot.take() {
             if trimmed == "i am aware of what i am doing." {
-                let path = crate::save::save_path(slot);
-                if path.exists() {
-                    if let Err(e) = std::fs::remove_file(&path) {
-                        self.event_log.push(format!("Cannot delete save: {}", e));
-                    } else {
-                        crate::player_profile::PlayerProfile::delete();
-                        self.event_log
-                            .push_colored(format!("Save slot {} deleted.", slot), RGB::named(RED));
-                        self.quit_countdown = 3;
-                    }
-                } else {
-                    self.event_log
-                        .push(format!("Save slot {} does not exist.", slot));
-                }
+                self.deferred_intent = Some(Intent::WipeSave(slot));
             } else {
                 self.event_log.push("Wipe cancelled.");
             }

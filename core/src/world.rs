@@ -88,6 +88,10 @@ pub struct World {
     /// Slot number awaiting wipe confirmation. Set by (wipe!).
     pub pending_wipe_slot: Option<u32>,
 
+    /// Intent to execute after current apply_intent completes.
+    /// Used for platform-specific actions like wipe that need frontend handling.
+    pub deferred_intent: Option<crate::game::Intent>,
+
     /// Countdown to quit after wiping. 0 = not counting down.
     pub quit_countdown: u32,
 
@@ -206,6 +210,7 @@ impl World {
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
+            deferred_intent: None,
             quit_countdown: 0,
             seen_entity_kinds: HashSet::new(),
             seen_tile_types: HashSet::new(),

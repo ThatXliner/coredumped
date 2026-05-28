@@ -174,7 +174,7 @@ impl World {
         event_log.push("Move with arrows or hjkl. ` opens the console. i inspects code.");
         event_log.push("Ctrl+E in console opens external editor for multi-line input.");
         event_log.push("Your flashlight ray-casts in the direction you last moved.");
-        event_log.push("You are helpless. Find the wizard to learn the art of striking.");
+        event_log.push("You are helpless. Find the wizard to learn the art of striking. Bump into signs to read them");
         event_log.push(format!("Depth {depth}. Find the stairs down."));
 
         let registry = RuleRegistry::core();
@@ -590,17 +590,13 @@ impl World {
             if door_closed {
                 self.map.set_tile(door_pos, TileType::Floor);
                 self.map.set_tile(door_pos.offset(0, 1), TileType::Floor);
-                self.event_log.push_colored(
-                    "Click. The door opens.",
-                    RGB::named(GREEN),
-                );
+                self.event_log
+                    .push_colored("Click. The door opens.", RGB::named(GREEN));
             } else {
                 self.map.set_tile(door_pos, TileType::Wall);
                 self.map.set_tile(door_pos.offset(0, 1), TileType::Wall);
-                self.event_log.push_colored(
-                    "Click. The door slides shut behind you.",
-                    RGB::named(GREEN),
-                );
+                self.event_log
+                    .push_colored("Click. The door slides shut behind you.", RGB::named(GREEN));
             }
         }
     }
@@ -803,9 +799,7 @@ impl World {
         // without checking if it was submitted.
         if !self.maze_shift_frozen {
             let buffer = self.console_buffer.trim();
-            if buffer.contains("(quote :still)")
-                || buffer.contains("':still")
-                || buffer == ":still"
+            if buffer.contains("(quote :still)") || buffer.contains("':still") || buffer == ":still"
             {
                 self.maze_shift_frozen = true;
                 self.event_log.push_colored(
@@ -1081,7 +1075,6 @@ impl World {
         }
     }
 
-
     fn load_playbook(&mut self) {
         use bracket_color::prelude::GREEN;
         if !crate::playbook::has_playbook() {
@@ -1255,7 +1248,6 @@ fn default_bindings() -> HashMap<String, String> {
     m.insert("q".into(), "(quit!)".into());
     m
 }
-
 
 // Builtin functions moved to builtins.rs
 pub(crate) use crate::builtins::{bind_do_attack, setup_binding_env, setup_glyph_env};
@@ -2078,7 +2070,8 @@ mod tests {
 
         // Step 2: Trigger overflow via copy-bytes!
         // Payload size = 13 * 8 (rage mass) = 104 bytes > 64 byte buffer
-        let overflow = crate::glyph::read_string("(copy-bytes! (bytes 64) (impact-payload))").unwrap();
+        let overflow =
+            crate::glyph::read_string("(copy-bytes! (bytes 64) (impact-payload))").unwrap();
         crate::glyph::eval_with_opts(
             &overflow[0],
             &env,

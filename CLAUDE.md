@@ -22,7 +22,8 @@ cargo test
 cargo fmt
 
 # Build web version
-cd web-frontend && ./web-assets/build.sh
+cd web-frontend && bun run build:wasm  # WASM only
+cd web-frontend && bun run build:all   # WASM + Vite bundle
 ```
 
 ## Workspace Structure

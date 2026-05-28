@@ -17,6 +17,7 @@ pub mod fragment;
 pub mod game;
 pub mod glyph;
 pub(crate) mod interaction;
+pub(crate) mod level_mechanics;
 pub(crate) mod levels;
 pub mod map;
 pub mod no_hit;
@@ -27,6 +28,9 @@ pub mod rules;
 pub mod save;
 pub mod terminal;
 pub mod world;
+
+#[cfg(test)]
+mod tests;
 
 pub use ecs::Ecs;
 pub use entity::{Direction, EntityId, EntityKind, EntityView, Hp, Position, RenderGlyph};

@@ -18,14 +18,14 @@ pub(crate) fn build_first_scar(world: &mut World) {
     }
     apply_map(world, &gen);
 
-    // Sign hinting at the tone shift
-    world.ecs.spawn_sign(
-        Position::new(gen.player_start.x + 3, gen.player_start.y),
-        "The air down here is different.\nEverything feels... sharper.",
-    );
-
     // Wizard at midpoint — player alone at start for first time
     let wizard_pos = Position::new(MAP_WIDTH / 2, MAP_HEIGHT / 2);
+
+    // Sign hinting at the tone shift — placed near wizard in wider area
+    world.ecs.spawn_sign(
+        Position::new(wizard_pos.x + 2, wizard_pos.y),
+        "The air down here is different.\nEverything feels... sharper.",
+    );
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
     world.on_wizard_interact = Some(wizard_interact);
 }

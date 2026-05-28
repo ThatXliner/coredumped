@@ -82,7 +82,7 @@ pub(crate) fn build_the_clearing(world: &mut World) {
 
 fn wizard_interact(world: &mut World) -> bool {
     world.event_log.push_colored(
-        "\"I was so sure I was protecting you. But protection isn't supposed to make the world smaller. I made it a cage.\"",
+        "\"I was so sure I was protecting you. But protection isn't supposed to make the world smaller. I'm sorry; I made it a cage.\"",
         RGB::named(CYAN),
     );
     true

@@ -171,10 +171,8 @@ impl World {
 
         let mut event_log = EventLog::new();
         event_log.push("Xlyph runtime booted.");
-        event_log.push("Move with arrows or hjkl. ` opens the console. i inspects code.");
-        event_log.push("Ctrl+E in console opens external editor for multi-line input.");
-        event_log.push("Your flashlight ray-casts in the direction you last moved.");
-        event_log.push("You are helpless. Find the wizard to learn the art of striking. Bump into signs to read them");
+        event_log.push("Move with arrows or hjkl.  Bump into signs to read them.");
+        event_log.push("You are helpless. Find the wizard (W) to learn the art of striking.");
         event_log.push(format!("Depth {depth}. Find the stairs down."));
 
         let registry = RuleRegistry::core();

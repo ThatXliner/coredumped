@@ -28,10 +28,23 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: |
+          cd web-frontend
+          bun install
+
       - name: Build WASM
         run: |
           cd web-frontend
-          wasm-pack build --target web --out-dir web-assets/pkg
+          bun run build:wasm
+
+      - name: Build site
+        run: |
+          cd web-frontend
+          bun run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -39,7 +52,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: web-frontend/web-assets
+          path: web-frontend/dist
 
   deploy:
     environment:

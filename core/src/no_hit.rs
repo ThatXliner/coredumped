@@ -242,6 +242,7 @@ mod tests {
             confirming_quit: false,
             user_source: Vec::new(),
             pending_wipe_slot: None,
+            deferred_intent: None,
             quit_countdown: 0,
             seen_entity_kinds: std::collections::HashSet::new(),
             seen_tile_types: std::collections::HashSet::new(),

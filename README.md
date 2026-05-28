@@ -100,10 +100,15 @@ cargo test          # game logic + language tests
 cargo check         # fast feedback
 cargo fmt           # format
 
-# Build web version locally
+# Build and run web version locally
 cd web-frontend
-./web-assets/build.sh
-cd web-assets && python3 -m http.server 8080
+bun install
+bun run build:wasm  # compile Rust to WASM
+bun run dev         # start Vite dev server
+
+# Or build for production
+bun run build:all   # WASM + Vite bundle → dist/
+bun run preview     # preview production build
 ```
 
 ## Status

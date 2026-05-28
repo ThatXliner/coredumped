@@ -42,11 +42,13 @@ The workspace has three crates:
 
 Platform-agnostic game engine. Both TUI and web frontends depend on this crate.
 
-**Simulation core** — `game.rs`
+**Simulation core** — `game.rs` + `console.rs` + `builtins.rs`
 - `World` owns the map, turn counter, UI mode, event log, console buffer, player-facing direction, inspector scroll, and an `Ecs` store. It is the single source of truth.
 - `Intent` is the action enum produced by the input layer. `ActionCost` classifies every intent as `Free` (no time passes), `Tick` (advances turn + enemies), or `Quit`.
-- `Mode` (Normal / Inspector / Console) determines how keys are routed and what overlays draw.
-- Gameplay systems (player movement, wall bump, melee attack, enemy AI step, tick advancement, console submission, inspector scroll) live directly on `World` as methods. Enemy pathing uses bracket pathfinding helpers.
+- `Mode` (Normal / Inspector / Console / Dead / Keybindings / Memories) determines how keys are routed and what overlays draw.
+- Gameplay systems (player movement, wall bump, melee attack, enemy AI step, tick advancement, inspector scroll) live directly on `World` as methods. Enemy pathing uses bracket pathfinding helpers.
+- Console input handling (buffer ops, cursor movement, history, submission) is in `console.rs`.
+- Glyph builtin functions (move, attack, save/load, help pages, registry access) are in `builtins.rs`.
 
 **ECS** — `ecs.rs` and `entity.rs`
 - Custom in-house ECS: `EntityId` is a stable `usize` handle. Component stores are `BTreeMap<EntityId, T>` for position, HP, kind, render glyph. Marker sets (`BTreeSet<EntityId>`) track alive entities and enemy AI membership.

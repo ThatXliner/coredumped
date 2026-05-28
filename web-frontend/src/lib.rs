@@ -36,3 +36,4 @@ extern "C" {
 }
 
 pub mod app;
+pub mod storage;

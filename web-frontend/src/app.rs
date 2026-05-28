@@ -10,6 +10,7 @@ use coredumped_core::world::World;
 
 use wasm_bindgen::prelude::*;
 
+use crate::storage;
 use crate::XtermBridge;
 
 struct WebState {
@@ -23,7 +24,15 @@ impl WebState {
         let cols = terminal.cols() as i32;
         let rows = terminal.rows() as i32;
         let frame = Frame::new(cols, rows);
-        let world = World::new_game();
+
+        let world = if storage::has_save(0) {
+            storage::load_world(0).unwrap_or_else(|e| {
+                crate::log(&format!("Auto-load failed: {}", e));
+                World::new_game()
+            })
+        } else {
+            World::new_game()
+        };
 
         Self {
             world,
@@ -53,10 +62,40 @@ impl WebState {
     fn handle_key(&mut self, key: String) {
         let intent = parse_xterm_key(&key, &self.world);
         if !matches!(intent, Intent::Noop) {
-            let cost = self.world.apply_intent(intent);
-            if cost != ActionCost::Quit {
-                self.tick();
+            let cost = self.world.apply_intent(intent.clone());
+            match cost {
+                ActionCost::Quit => {}
+                ActionCost::Tick => {
+                    self.tick();
+                    if let Err(e) = storage::save_world(0, &self.world) {
+                        crate::log(&format!("Auto-save failed: {}", e));
+                    }
+                }
+                ActionCost::Free => {
+                    self.tick();
+                    self.handle_save_load_intent(&intent);
+                }
             }
+        }
+    }
+
+    fn handle_save_load_intent(&mut self, intent: &Intent) {
+        match intent {
+            Intent::SaveGame(slot) => {
+                if let Err(e) = storage::save_world(*slot, &self.world) {
+                    crate::log(&format!("Save failed: {}", e));
+                }
+            }
+            Intent::LoadGame(slot) => match storage::load_world(*slot) {
+                Ok(world) => {
+                    self.world = world;
+                    self.tick();
+                }
+                Err(e) => {
+                    crate::log(&format!("Load failed: {}", e));
+                }
+            },
+            _ => {}
         }
     }
 

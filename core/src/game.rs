@@ -149,7 +149,6 @@ impl World {
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
-            barrel_room_protected: false,
             fire_cache: HashSet::new(),
             maze_shifting_walls: HashSet::new(),
             maze_shift_frozen: false,
@@ -240,7 +239,6 @@ impl World {
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
-            barrel_room_protected: false,
             fire_cache: HashSet::new(),
             maze_shifting_walls: HashSet::new(),
             maze_shift_frozen: false,
@@ -584,29 +582,23 @@ impl World {
         matches!((pos.x, pos.y), (16, 12) | (28, 12) | (16, 18) | (28, 18))
     }
 
-    fn is_in_barrel_room(pos: Position) -> bool {
-        // Room 8 bounds: x=36..52, y=24..33
-        pos.x >= 36 && pos.x < 52 && pos.y >= 24 && pos.y < 33
-    }
-
     fn activate_pressure_plate(&mut self, pos: Position) {
-        // Barrel room pressure plate at (38, 29) - closes the door from room 7
+        // Barrel room pressure plate at (38, 29) - toggles door from room 7
         if self.depth == 2 && pos == Position::new(38, 29) {
-            self.barrel_room_protected = !self.barrel_room_protected;
-            // Door position between room 7 and 8
             let door_pos = Position::new(35, 28);
-            if self.barrel_room_protected {
-                self.map.set_tile(door_pos, TileType::Wall);
-                self.map.set_tile(door_pos.offset(0, 1), TileType::Wall);
-                self.event_log.push_colored(
-                    "Click. The door slides shut behind you.",
-                    RGB::named(GREEN),
-                );
-            } else {
+            let door_closed = self.map.tile(door_pos) == TileType::Wall;
+            if door_closed {
                 self.map.set_tile(door_pos, TileType::Floor);
                 self.map.set_tile(door_pos.offset(0, 1), TileType::Floor);
                 self.event_log.push_colored(
                     "Click. The door opens.",
+                    RGB::named(GREEN),
+                );
+            } else {
+                self.map.set_tile(door_pos, TileType::Wall);
+                self.map.set_tile(door_pos.offset(0, 1), TileType::Wall);
+                self.event_log.push_colored(
+                    "Click. The door slides shut behind you.",
                     RGB::named(GREEN),
                 );
             }
@@ -1019,16 +1011,6 @@ impl World {
             let result = glyph::eval_with_opts(&body_form, &enemy_env, sandbox.clone(), self);
             if self.ecs.is_alive(enemy_id) {
                 self.repair_enemy_position(enemy_id, previous_pos);
-
-                // Barrel room protection: revert if enemy tried to enter protected room
-                if self.barrel_room_protected {
-                    if let Some(new_pos) = self.ecs.position(enemy_id) {
-                        if Self::is_in_barrel_room(new_pos) && !Self::is_in_barrel_room(previous_pos)
-                        {
-                            self.ecs.set_position(enemy_id, previous_pos);
-                        }
-                    }
-                }
             }
 
             match result {

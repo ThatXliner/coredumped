@@ -137,9 +137,6 @@ pub struct World {
     /// Tracks which gauntlet barriers have been locked (Level 6).
     pub gauntlet_barrier_locked: HashSet<i32>,
 
-    /// When true, enemies cannot enter the barrel room (depth 2, room 8).
-    pub barrel_room_protected: bool,
-
     /// Fire-tile cache rebuilt at tick start. Vapor Canteen can mutate mid-tick.
     pub fire_cache: HashSet<Position>,
 
@@ -227,7 +224,6 @@ impl World {
             held_keys: Vec::new(),
             held_items: Vec::new(),
             gauntlet_barrier_locked: HashSet::new(),
-            barrel_room_protected: false,
             fire_cache: HashSet::new(),
             maze_shifting_walls: HashSet::new(),
             maze_shift_frozen: false,

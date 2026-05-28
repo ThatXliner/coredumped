@@ -89,8 +89,6 @@ pub struct SaveData {
     #[serde(default)]
     pub console_history: Vec<String>,
     #[serde(default)]
-    pub barrel_room_protected: bool,
-    #[serde(default)]
     pub maze_shifting_walls: Vec<(i32, i32)>,
     #[serde(default)]
     pub maze_shift_frozen: bool,
@@ -304,7 +302,6 @@ impl World {
                 .collect(),
             known_rule_ids: self.known_rule_ids.iter().cloned().collect(),
             console_history: self.console_history.clone(),
-            barrel_room_protected: self.barrel_room_protected,
             maze_shifting_walls: self.maze_shifting_walls.iter().map(|p| (p.x, p.y)).collect(),
             maze_shift_frozen: self.maze_shift_frozen,
         }
@@ -472,7 +469,6 @@ impl World {
         world.console_history = data.console_history.clone();
 
         // --- Level-specific state ---
-        world.barrel_room_protected = data.barrel_room_protected;
         world.maze_shifting_walls = data
             .maze_shifting_walls
             .iter()

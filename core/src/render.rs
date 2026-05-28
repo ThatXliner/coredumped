@@ -144,24 +144,13 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
                 base_fg
             };
 
-            // Green shimmer for protected barrel room
-            let bg = if world.barrel_room_protected && is_in_barrel_room(pos) && lit {
-                RGB::from_u8(0, 30, 0)
-            } else {
-                RGB::named(BLACK)
-            };
-            ctx.set(MAP_X + vx, MAP_Y + vy, fg, bg, glyph);
+            ctx.set(MAP_X + vx, MAP_Y + vy, fg, RGB::named(BLACK), glyph);
         }
     }
 
     for entity in world.renderable_entities() {
         draw_entity(ctx, world, entity, lit_tiles);
     }
-}
-
-fn is_in_barrel_room(pos: Position) -> bool {
-    // Room 8 bounds: x=36..52, y=24..33
-    pos.x >= 36 && pos.x < 52 && pos.y >= 24 && pos.y < 33
 }
 
 fn draw_entity(ctx: &mut Frame, world: &World, entity: EntityView, lit_tiles: &HashSet<Position>) {
@@ -212,13 +201,6 @@ fn draw_entity(ctx: &mut Frame, world: &World, entity: EntityView, lit_tiles: &H
         (EntityKind::ShadeEcho, false) => (RGB::named(DARK_GRAY), RGB::named(BLACK)),
         (EntityKind::VaporCanteen, true) => (RGB::named(CYAN), RGB::from_u8(0, 20, 40)),
         (EntityKind::VaporCanteen, false) => (RGB::named(DARK_BLUE), RGB::named(BLACK)),
-    };
-
-    // Green shimmer for entities in protected barrel room
-    let bg = if world.barrel_room_protected && is_in_barrel_room(entity.pos) && lit {
-        RGB::from_u8(0, 30, 0)
-    } else {
-        bg
     };
 
     let x = MAP_X + screen_x;

@@ -1,8 +1,10 @@
 export class XtermBridge {
     constructor(containerId) {
+        const fontSize = this.getResponsiveFontSize();
+
         this.terminal = new Terminal({
             fontFamily: '"JetBrains Mono", "Cascadia Code", "Fira Code", monospace',
-            fontSize: 14,
+            fontSize: fontSize,
             theme: {
                 background: '#0d0d0d',
                 foreground: '#f0f0f0',
@@ -45,11 +47,30 @@ export class XtermBridge {
         });
 
         window.addEventListener('resize', () => {
+            const newFontSize = this.getResponsiveFontSize();
+            if (this.terminal.options.fontSize !== newFontSize) {
+                this.terminal.options.fontSize = newFontSize;
+            }
             this.fitAddon.fit();
             if (this.resizeCallback) {
                 this.resizeCallback(this.terminal.cols, this.terminal.rows);
             }
         });
+    }
+
+    getResponsiveFontSize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const isLandscape = width > height;
+
+        if (isLandscape && height <= 450) return 8;
+        if (isLandscape && height <= 550) return 9;
+        if (isLandscape && height <= 700) return 10;
+        if (width <= 400) return 9;
+        if (width <= 500) return 10;
+        if (width <= 700) return 11;
+        if (width <= 900) return 12;
+        return 14;
     }
 
     write(data) {

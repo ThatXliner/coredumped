@@ -13,6 +13,12 @@ pub(crate) fn build_wizard_chamber(world: &mut World) {
     let gen = generate_wizard_box();
     apply_map(world, &gen);
     spawn_wizard_near_player(world);
+
+    // Hint sign about do-attack accepting an effort parameter
+    world.ecs.spawn_sign(
+        Position::new(20, 9),
+        "There's more parameters (do-attack) can take\nTry this in the console: (help do-attack)",
+    );
 }
 
 /// Build the map for the wizard's tutorial chamber: a 12×9 room in the center.

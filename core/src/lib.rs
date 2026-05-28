@@ -5,6 +5,10 @@
 //! frontends (TUI, web) depend on this crate.
 
 pub(crate) mod ai_builtins;
+pub(crate) mod builtins;
+pub(crate) mod combat;
+pub(crate) mod console;
+pub(crate) mod depth;
 pub mod diagnostics;
 pub mod ecs;
 pub mod entity;
@@ -12,6 +16,7 @@ pub mod event_log;
 pub mod fragment;
 pub mod game;
 pub mod glyph;
+pub(crate) mod interaction;
 pub(crate) mod levels;
 pub mod map;
 pub mod no_hit;

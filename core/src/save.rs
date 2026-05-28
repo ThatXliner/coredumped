@@ -78,6 +78,22 @@ pub struct SaveData {
     pub held_keys: Vec<String>,
     pub held_items: Vec<String>,
     pub gauntlet_barrier_locked: Vec<i32>,
+    #[serde(default)]
+    pub explored_tiles: Vec<(i32, i32)>,
+    #[serde(default)]
+    pub seen_entity_kinds: Vec<String>,
+    #[serde(default)]
+    pub seen_tile_types: Vec<String>,
+    #[serde(default)]
+    pub known_rule_ids: Vec<String>,
+    #[serde(default)]
+    pub console_history: Vec<String>,
+    #[serde(default)]
+    pub barrel_room_protected: bool,
+    #[serde(default)]
+    pub maze_shifting_walls: Vec<(i32, i32)>,
+    #[serde(default)]
+    pub maze_shift_frozen: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -147,6 +163,31 @@ fn kind_from_string(s: &str) -> EntityKind {
         "shade echo" => EntityKind::ShadeEcho,
         "vapor canteen" => EntityKind::VaporCanteen,
         _ => EntityKind::Slime,
+    }
+}
+
+fn tile_type_to_string(t: crate::map::TileType) -> String {
+    match t {
+        crate::map::TileType::Floor => "floor".into(),
+        crate::map::TileType::Wall => "wall".into(),
+        crate::map::TileType::StairsDown => "stairs_down".into(),
+        crate::map::TileType::StairsUp => "stairs_up".into(),
+        crate::map::TileType::Fire => "fire".into(),
+        crate::map::TileType::Lamp => "lamp".into(),
+        crate::map::TileType::PressurePlate => "pressure_plate".into(),
+    }
+}
+
+fn tile_type_from_string(s: &str) -> crate::map::TileType {
+    match s {
+        "floor" => crate::map::TileType::Floor,
+        "wall" => crate::map::TileType::Wall,
+        "stairs_down" => crate::map::TileType::StairsDown,
+        "stairs_up" => crate::map::TileType::StairsUp,
+        "fire" => crate::map::TileType::Fire,
+        "lamp" => crate::map::TileType::Lamp,
+        "pressure_plate" => crate::map::TileType::PressurePlate,
+        _ => crate::map::TileType::Floor,
     }
 }
 
@@ -250,6 +291,22 @@ impl World {
             held_keys: self.held_keys.clone(),
             held_items: self.held_items.clone(),
             gauntlet_barrier_locked: self.gauntlet_barrier_locked.iter().copied().collect(),
+            explored_tiles: self.explored_tiles.iter().map(|p| (p.x, p.y)).collect(),
+            seen_entity_kinds: self
+                .seen_entity_kinds
+                .iter()
+                .map(|k| kind_to_string(*k))
+                .collect(),
+            seen_tile_types: self
+                .seen_tile_types
+                .iter()
+                .map(|t| tile_type_to_string(*t))
+                .collect(),
+            known_rule_ids: self.known_rule_ids.iter().cloned().collect(),
+            console_history: self.console_history.clone(),
+            barrel_room_protected: self.barrel_room_protected,
+            maze_shifting_walls: self.maze_shifting_walls.iter().map(|p| (p.x, p.y)).collect(),
+            maze_shift_frozen: self.maze_shift_frozen,
         }
     }
 }
@@ -394,6 +451,34 @@ impl World {
         world.held_keys = data.held_keys.clone();
         world.held_items = data.held_items.clone();
         world.gauntlet_barrier_locked = data.gauntlet_barrier_locked.iter().copied().collect();
+
+        // --- Fog of war / discovery state ---
+        world.explored_tiles = data
+            .explored_tiles
+            .iter()
+            .map(|(x, y)| Position { x: *x, y: *y })
+            .collect();
+        world.seen_entity_kinds = data
+            .seen_entity_kinds
+            .iter()
+            .map(|s| kind_from_string(s))
+            .collect();
+        world.seen_tile_types = data
+            .seen_tile_types
+            .iter()
+            .map(|s| tile_type_from_string(s))
+            .collect();
+        world.known_rule_ids = data.known_rule_ids.iter().cloned().collect();
+        world.console_history = data.console_history.clone();
+
+        // --- Level-specific state ---
+        world.barrel_room_protected = data.barrel_room_protected;
+        world.maze_shifting_walls = data
+            .maze_shifting_walls
+            .iter()
+            .map(|(x, y)| Position { x: *x, y: *y })
+            .collect();
+        world.maze_shift_frozen = data.maze_shift_frozen;
 
         // --- Rebuild Glyph envs on top of minimal env ---
         world.glyph_env = crate::game::setup_glyph_env();

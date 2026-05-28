@@ -22,9 +22,9 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
         (2, 13, 16, 9),  // 3: Wait
         (19, 13, 16, 9), // 4: Enemy inspection
         (36, 13, 16, 9), // 5: Console
-        (2, 24, 16, 9),  // 6: Help / stairs
-        (19, 24, 16, 9), // 7: "Nothing is wrong"
-        (36, 24, 16, 9), // 8: Barrel puzzle
+        (2, 23, 16, 9),  // 6: Help / stairs (y=23 so bottom at y=31, wall at y=32)
+        (19, 23, 16, 9), // 7: "Nothing is wrong"
+        (36, 23, 16, 9), // 8: Barrel puzzle
     ];
 
     for &(rx, ry, rw, rh) in &rooms {
@@ -65,7 +65,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     // Player starts top-left
     let player_start = Position::new(4, 4);
     // Stairs down in room 8 (barrel room), hidden under barrel
-    let stairs_down = Position::new(36 + 14, 24 + 4);
+    let stairs_down = Position::new(36 + 14, 23 + 4);
 
     map.set_tile(player_start, TileType::StairsUp);
     map.set_tile(stairs_down, TileType::StairsDown);
@@ -117,17 +117,17 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     world.ecs.spawn_slime(Position::new(42, 17));
 
     // Room 6: Breathing room
-    world.ecs.spawn_slime(Position::new(14, 29));
+    world.ecs.spawn_slime(Position::new(14, 28));
 
     // Room 7: Thematic — denial
     world
         .ecs
-        .spawn_sign(Position::new(20, 28), "Nothing is wrong.");
-    world.ecs.spawn_slime(Position::new(31, 29));
-    world.ecs.spawn_bat(Position::new(26, 26));
+        .spawn_sign(Position::new(20, 27), "Nothing is wrong.");
+    world.ecs.spawn_slime(Position::new(31, 28));
+    world.ecs.spawn_bat(Position::new(26, 25));
 
     // Room 8: Barrel puzzle — fill with barrels, leave 3×3 clear at entrance (left door)
-    for y in 24..24 + 9 {
+    for y in 23..23 + 9 {
         for x in 36..36 + 16 {
             let pos = Position::new(x, y);
             if pos == stairs_down {
@@ -139,7 +139,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
 
     // Clear entrance area (left side of room 8, near door from room 7)
     for x in 36..=40 {
-        for y in 28..=30 {
+        for y in 27..=29 {
             if let Some(barrel) = world.ecs.entity_at(Position::new(x, y)) {
                 world.ecs.remove(barrel);
             }
@@ -151,22 +151,22 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
 
     // Barrel room: hint first, solution second
     world.ecs.spawn_sign(
-        Position::new(37, 30),
+        Position::new(37, 29),
         "So many barrels...\nThe exit is under one of them.\n\nClearing these one by one would take forever.\nThere must be a faster way.",
     );
-    if let Some(barrel) = world.ecs.entity_at(Position::new(40, 32)) {
+    if let Some(barrel) = world.ecs.entity_at(Position::new(40, 31)) {
         world.ecs.remove(barrel);
     }
     world.ecs.spawn_sign(
-        Position::new(40, 32),
+        Position::new(40, 31),
         "Chain commands with (do ...):\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs N times:\n  (repeat 4 (do-attack :east))\n\nBind it to a key and go wild.",
     );
 
     // Pressure plate near barrel room entrance - closes door when stepped on
-    if let Some(barrel) = world.ecs.entity_at(Position::new(38, 29)) {
+    if let Some(barrel) = world.ecs.entity_at(Position::new(38, 28)) {
         world.ecs.remove(barrel);
     }
     world
         .map
-        .set_tile(Position::new(38, 29), crate::map::TileType::PressurePlate);
+        .set_tile(Position::new(38, 28), crate::map::TileType::PressurePlate);
 }

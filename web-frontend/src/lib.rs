@@ -6,13 +6,11 @@ use wasm_bindgen::prelude::*;
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     pub fn log(s: &str);
-}
 
-#[wasm_bindgen(module = "/web-assets/xterm_bridge.js")]
-extern "C" {
+    // XtermBridge is exposed as a global by the bundled JS
     pub type XtermBridge;
 
-    #[wasm_bindgen(constructor)]
+    #[wasm_bindgen(constructor, js_class = "XtermBridge")]
     pub fn new(container_id: &str) -> XtermBridge;
 
     #[wasm_bindgen(method)]

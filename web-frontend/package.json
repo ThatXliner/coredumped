@@ -1,0 +1,22 @@
+{
+  "name": "coredumped-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:wasm": "wasm-pack build --target web --out-dir pkg",
+    "build:all": "bun run build:wasm && bun run build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5",
+    "vite-plugin-wasm": "^3.4.1"
+  },
+  "dependencies": {
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-webgl": "^0.18.0"
+  }
+}

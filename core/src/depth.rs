@@ -33,10 +33,16 @@ impl World {
             return;
         }
         if self.depth == 17 {
-            self.ending = Some(
-                "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit."
-                    .into(),
-            );
+            let had_memories = self.fragment_registry.collected_count();
+            self.fragment_registry.suppress_collected();
+            self.ending = Some(if had_memories > 0 {
+                format!(
+                    "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\n{} memories return to static.\nThe weight lifts. The details fade.\nWere they yours? It doesn't matter now.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.",
+                    had_memories
+                )
+            } else {
+                "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.".into()
+            });
             return;
         }
         let from_depth = self.depth;

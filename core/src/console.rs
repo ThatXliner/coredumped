@@ -224,17 +224,33 @@ impl World {
                         if self.depth == 17 {
                             let cmd = command.to_lowercase();
                             if cmd.contains("unregister") && cmd.contains("vessel") {
+                                self.fragment_registry.suppress_collected();
                                 self.ending = Some("DESTROY THE SELF\n\nvessel/suppress unregistered.\nNo replacement rule found.\nConsciousness: terminated.\n\nYou deleted the rule without replacement.\nThere is no defense now.\nYou dissolve into the system.\n\nPress q to quit."
                                     .into());
                             } else if cmd.contains("threshold") && cmd.contains("100") {
-                                self.ending = Some("MAINTAIN SUPPRESSION\n\nThreshold restored to 100.\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit."
-                                    .into());
+                                let had_memories = self.fragment_registry.collected_count();
+                                self.fragment_registry.suppress_collected();
+                                self.ending = Some(if had_memories > 0 {
+                                    format!(
+                                        "MAINTAIN SUPPRESSION\n\nThreshold restored to 100.\n{} memories return to static.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.",
+                                        had_memories
+                                    )
+                                } else {
+                                    "MAINTAIN SUPPRESSION\n\nThreshold restored to 100.\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.".into()
+                                });
                             } else if cmd.contains("threshold")
                                 || cmd.contains("disable")
                                 || cmd.contains("redirect")
                             {
-                                self.ending = Some("REINTEGRATE\n\nI remember now.\nThe yellow walls. The dog.\nThe reason I locked myself away.\nIt was worth it.\n\nYou lowered the threshold.\nPain returns — but so does joy.\nYou accept what you can remember.\nYou make peace with what's permanently lost.\n\nPress q to quit."
-                                    .into());
+                                let kept = self.fragment_registry.collected_count();
+                                self.ending = Some(if kept > 0 {
+                                    format!(
+                                        "REINTEGRATE\n\nI remember now.\nThe yellow walls. The dog.\nThe reason I locked myself away.\nIt was worth it.\n\nYou lowered the threshold.\n{} memories survive the crossing.\nPain returns — but so does joy.\nYou accept what you can remember.\nYou make peace with what's permanently lost.\n\nPress q to quit.",
+                                        kept
+                                    )
+                                } else {
+                                    "REINTEGRATE\n\nI remember now.\nThe yellow walls. The dog.\nThe reason I locked myself away.\nIt was worth it.\n\nYou lowered the threshold.\nPain returns — but so does joy.\nYou accept what you can remember.\nYou make peace with what's permanently lost.\n\nPress q to quit.".into()
+                                });
                             }
                         }
                         let msg = console_response(&self.console_output, &last);

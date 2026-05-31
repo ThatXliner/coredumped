@@ -30,127 +30,127 @@ pub(crate) fn setup_glyph_env() -> Env {
         };
     }
 
-    reg!("help", "show help: (help) or (help <name>)", builtin_help);
+    reg!("help", "show help\n\nSYNOPSIS\n  (help)           show help index (page 1)\n  (help N)         show page N (1-6)\n  (help :topic)    show named page (:forms, :builtins, :game, :language, :tutorial)\n  (help 'symbol)   show doc for a function, macro, or variable\n\nDESCRIPTION\n  Without arguments, displays a paginated help index.\n  With a page number or topic keyword, displays that help page.\n  With a quoted symbol, string, or function value, displays its doc string.\n\nRETURN VALUE\n  A string containing the help text.\n\nEXAMPLES\n  (help)            ; show index\n  (help 4)          ; game console commands\n  (help :tutorial)  ; short language tutorial\n  (help 'map)       ; doc for the map function\n  (help '+)         ; doc for +", builtin_help);
     reg!(
         "quit-terminal",
-        "close the console overlay",
+        "close the console overlay\n\nSYNOPSIS\n  (quit-terminal)\n\nDESCRIPTION\n  Closes the in-game console and returns to Normal mode.\n  Does not consume a turn. Equivalent to pressing Escape or ` while\n  the console is open.\n\nRETURN VALUE\n  The keyword :quit-terminal (used internally by the event loop).",
         builtin_quit_terminal
     );
-    reg!("quit!", "exit the game entirely", builtin_quit_bang);
-    reg!("move!", "move the player: (move! :north)", builtin_move);
-    reg!("wait!", "skip a turn", builtin_wait);
+    reg!("quit!", "exit the game\n\nSYNOPSIS\n  (quit!)\n\nDESCRIPTION\n  Exits the game. Requires confirmation: the first call prompts\n  \"Press q again to quit\"; calling quit! a second time auto-saves\n  to slot 0 and terminates. Any other action cancels the quit.\n\nSIDE EFFECTS\n  Auto-saves to slot 0 on confirmation.\n\nRETURN VALUE\n  nil", builtin_quit_bang);
+    reg!("move!", "move the player one tile\n\nSYNOPSIS\n  (move! direction)\n\nARGUMENTS\n  direction  A keyword: :north, :south, :east, or :west.\n\nDESCRIPTION\n  Moves the player one tile in the given direction and updates the\n  player's facing. If the destination is walkable and unoccupied, the\n  player moves there. If an enemy occupies the tile, movement is\n  blocked (no damage dealt — use do-attack for combat). Bumping a wall\n  has no effect. Consumes a turn on successful move.\n\nRETURN VALUE\n  nil\n\nERRORS\n  Wrong arg count or non-keyword direction.\n\nEXAMPLES\n  (move! :north)\n  (move! :east)", builtin_move);
+    reg!("wait!", "skip a turn\n\nSYNOPSIS\n  (wait!)\n\nDESCRIPTION\n  The player does nothing. Advances the turn counter by one and\n  allows all enemies to take their actions. Useful for waiting out\n  enemy patterns or letting cooldowns expire.\n\nRETURN VALUE\n  nil", builtin_wait);
     reg!(
         "block!",
-        "shove adjacent enemies back and guard",
+        "shove all adjacent enemies and raise guard\n\nSYNOPSIS\n  (block!)\n\nDESCRIPTION\n  Shoves every enemy adjacent to the player (in all 4 cardinal\n  directions) up to 3 tiles away from the player, then raises\n  a guard stance until the next turn. While blocking, incoming\n  melee attacks are negated with a \"You block the attack\" message.\n  Enemies that cannot be pushed (wall or entity behind them) receive\n  a \"doesn't budge\" message but are still marked as attacked.\n  Consumes a turn.\n\nRETURN VALUE\n  nil\n\nNOTES\n  If no enemies are adjacent, logs \"You raise your guard, but\n  nothing is near.\" The blocking flag is cleared at the start of\n  the next turn.",
         builtin_block
     );
     reg!(
         "shove!",
-        "shove an enemy (free action): (shove! :east)",
+        "shove an enemy in a direction (free action)\n\nSYNOPSIS\n  (shove!)\n  (shove! direction)\n\nARGUMENTS\n  direction  Optional. A keyword: :north, :south, :east, or :west.\n             Defaults to the player's current facing direction.\n\nDESCRIPTION\n  Pushes an adjacent enemy in the given direction away from the\n  player. Unlike block!, this is a FREE action — it does not\n  consume a turn and does not advance enemy AI. Updates the\n  player's facing to the specified direction.\n\nRETURN VALUE\n  nil\n\nERRORS\n  More than 1 argument, or non-keyword direction.\n\nEXAMPLES\n  (shove! :east)    ; shove enemy to the east\n  (shove!)          ; shove in current facing direction",
         builtin_shove
     );
     reg!(
         "toggle-inspector!",
-        "open or close the inspector",
+        "toggle the inspector panel\n\nSYNOPSIS\n  (toggle-inspector!)\n\nDESCRIPTION\n  Switches between Normal mode and Inspector mode. In Inspector\n  mode, the right panel displays registered rules and their source\n  code. Closing the inspector clears any new-rule highlight markers.\n  Free action — does not consume a turn.\n\nRETURN VALUE\n  nil",
         builtin_toggle_inspector
     );
     reg!(
         "toggle-console!",
-        "open or close the console",
+        "toggle the Glyph console\n\nSYNOPSIS\n  (toggle-console!)\n\nDESCRIPTION\n  Switches between Normal mode and Console mode. The console is\n  a Glyph REPL overlay where you can type and evaluate expressions.\n  Equivalent to pressing the ` key. Free action.\n\nRETURN VALUE\n  nil",
         builtin_toggle_console
     );
     reg!(
         "toggle-keybindings!",
-        "open or close the keybindings view",
+        "toggle the keybindings view\n\nSYNOPSIS\n  (toggle-keybindings!)\n\nDESCRIPTION\n  Switches between Normal mode and Keybindings mode. Displays all\n  currently bound keys and the Glyph expressions they evaluate.\n  Closing the view clears the new-binding highlight markers.\n  Free action.\n\nRETURN VALUE\n  nil",
         builtin_toggle_keybindings
     );
     reg!(
         "toggle-memories!",
-        "open or close the collected memories view",
+        "toggle the collected memories view\n\nSYNOPSIS\n  (toggle-memories!)\n\nDESCRIPTION\n  Switches between Normal mode and Memories mode. Displays all\n  memory fragments the player has collected during the current run.\n  Free action.\n\nRETURN VALUE\n  nil",
         builtin_toggle_memories
     );
     reg!(
         "descend!",
-        "go down the stairs if available",
+        "descend to the next dungeon level\n\nSYNOPSIS\n  (descend!)\n\nDESCRIPTION\n  Moves the player down one dungeon level. The player must be\n  standing on a StairsDown tile. On depth >= 1, descending also\n  requires that the wizard has taught the player to attack AND\n  the player has bound do-attack to a key.\n\nERRORS\n  Logs \"There are no stairs going down here.\" if the player is\n  not on stairs. Logs a wizard hint if the attack gate is unmet.\n\nRETURN VALUE\n  nil\n\nSEE ALSO\n  ascend!, do-attack, bind-key",
         builtin_descend
     );
-    reg!("ascend!", "go up the stairs if available", builtin_ascend);
+    reg!("ascend!", "ascend to the previous dungeon level\n\nSYNOPSIS\n  (ascend!)\n\nDESCRIPTION\n  Moves the player up one dungeon level. The player must be\n  standing on a StairsUp tile.\n\nERRORS\n  Logs \"There are no stairs going up here.\" if the player is not\n  on an up-staircase.\n\nRETURN VALUE\n  nil\n\nSEE ALSO\n  descend!", builtin_ascend);
     reg!(
         "player-facing",
-        "get the direction the player is facing: (player-facing)",
+        "get the player's current facing direction\n\nSYNOPSIS\n  (player-facing)\n\nDESCRIPTION\n  Returns the cardinal direction the player is currently facing.\n  The facing direction determines the flashlight cone and is the\n  default direction for do-attack and shove! when called without\n  arguments.\n\nRETURN VALUE\n  A keyword: :north, :south, :east, or :west.\n\nEXAMPLES\n  (player-facing)              ; => :east\n  (do-attack (player-facing))  ; attack in current facing direction",
         builtin_player_facing
     );
-    reg!("heal", "restore HP: (heal N) or (heal :all)", builtin_heal);
+    reg!("heal", "restore player HP (cheat)\n\nSYNOPSIS\n  (heal amount)\n  (heal :all)\n\nARGUMENTS\n  amount  A positive integer. Heals that many HP. Can exceed max HP\n          (the overflow acts as a shield).\n  :all    Fully restores HP to the player's max.\n\nDESCRIPTION\n  Cheat command — requires the Konami code to be entered first.\n  Restores the player's HP by the given amount, or fully if :all\n  is passed. Healing above max HP is allowed and persists.\n\nRETURN VALUE\n  nil\n\nERRORS\n  \"cheats not activated\" if the Konami code has not been entered.\n\nEXAMPLES\n  (heal 10)    ; heal 10 HP\n  (heal :all)  ; fully restore HP", builtin_heal);
     reg!(
         "log",
-        "push a message to the event log: (log \"message\")",
+        "push a message to the event log\n\nSYNOPSIS\n  (log message)\n\nARGUMENTS\n  message  A string to display in the event log at the bottom of\n           the screen.\n\nDESCRIPTION\n  Appends a message to the game's event log. The event log is a\n  ring buffer (max 100 entries) — oldest entries are dropped when\n  full. Messages appear in the default text color.\n\nRETURN VALUE\n  nil\n\nERRORS\n  TypeError if the argument is not a string.\n\nEXAMPLES\n  (log \"Hello, dungeon!\")",
         builtin_log
     );
     reg!(
         "damage!",
-        "deal damage to an entity: (damage! entity-id amount)",
+        "deal damage to an entity\n\nSYNOPSIS\n  (damage! entity-id amount)\n\nARGUMENTS\n  entity-id  Integer entity ID of the target.\n  amount     Integer damage to inflict.\n\nDESCRIPTION\n  Reduces the target entity's HP by the given amount. If the\n  target is the player and HP drops to 0 or below, the game\n  switches to Dead mode.\n\nRETURN VALUE\n  The target's remaining HP as an integer.\n\nERRORS\n  Wrong arg count (expects exactly 2).\n  TypeError if entity-id is not an integer or amount is not an integer.\n\nEXAMPLES\n  (damage! 3 5)   ; deal 5 damage to entity 3",
         builtin_damage
     );
     reg!(
         "fire?",
-        "check if a tile is in the fire cache: (fire? (list x y))",
+        "check if a tile is on fire\n\nSYNOPSIS\n  (fire? position)\n\nARGUMENTS\n  position  A list of two integers: (list x y).\n\nDESCRIPTION\n  Returns true if the tile at the given coordinates is currently\n  in the fire cache (i.e., on fire this tick). The fire cache is\n  recalculated each turn.\n\nRETURN VALUE\n  true or false.\n\nEXAMPLES\n  (fire? (list 10 15))   ; is tile (10,15) on fire?\n\nSEE ALSO\n  use-vapor-canteen!",
         builtin_fire_p
     );
     reg!(
         "use-vapor-canteen!",
-        "douse a fire tile with the Vapor Canteen, removing it from the fire cache for this tick: (use-vapor-canteen! (list x y))",
+        "douse a fire tile with the Vapor Canteen\n\nSYNOPSIS\n  (use-vapor-canteen! position)\n\nARGUMENTS\n  position  A list of two integers: (list x y).\n\nDESCRIPTION\n  Removes the fire at the given tile from the fire cache for the\n  current tick. The player must have the Vapor Canteen item (found\n  in the Archive, Level 13). The tile may still glow until the\n  cache updates on the next tick.\n\nRETURN VALUE\n  nil\n\nERRORS\n  \"You don't have the Vapor Canteen\" if the item is not held.\n  TypeError if position is not a (list x y).\n\nEXAMPLES\n  (use-vapor-canteen! (list 10 15))\n\nSEE ALSO\n  fire?",
         builtin_use_vapor_canteen
     );
     reg!(
         "set-level",
-        "warp to a dungeon level: (set-level N)",
+        "warp to a dungeon level (cheat)\n\nSYNOPSIS\n  (set-level depth)\n\nARGUMENTS\n  depth  A positive integer (>= 1) specifying the target level.\n\nDESCRIPTION\n  Cheat command — requires the Konami code to be entered first.\n  Immediately teleports the player to the given dungeon depth.\n  Clears all enemies and rebuilds the level from scratch.\n\nRETURN VALUE\n  nil\n\nERRORS\n  \"cheats not activated\" if the Konami code has not been entered.\n  Wrong arg count if no depth is given.\n\nEXAMPLES\n  (set-level 5)   ; warp to depth 5\n  (set-level 13)  ; warp to the Archive",
         builtin_set_level
     );
-    reg!("save!", "save the game: (save! slot-number)", builtin_save);
+    reg!("save!", "save the game to a slot\n\nSYNOPSIS\n  (save!)\n  (save! slot)\n\nARGUMENTS\n  slot  Optional non-negative integer. Defaults to 1. Slot 0 is\n        used for auto-saves (by quit! and F5).\n\nDESCRIPTION\n  Serializes the current game state to disk at the given slot.\n  Overwrites any existing save in that slot.\n\nRETURN VALUE\n  The slot number as an integer.\n\nERRORS\n  TypeError if slot is not a non-negative integer.\n  I/O error if the save fails.\n\nEXAMPLES\n  (save!)     ; save to slot 1\n  (save! 2)   ; save to slot 2\n\nSEE ALSO\n  load!, wipe!", builtin_save);
     reg!(
         "load!",
-        "load a saved game: (load! slot-number)",
+        "load a saved game from a slot\n\nSYNOPSIS\n  (load!)\n  (load! slot)\n\nARGUMENTS\n  slot  Optional non-negative integer. Defaults to 1.\n\nDESCRIPTION\n  Deserializes a saved game state from disk and replaces the\n  current world entirely. All state — position, HP, depth,\n  inventory, bindings — is restored from the save file.\n\nRETURN VALUE\n  The slot number as an integer.\n\nERRORS\n  TypeError if slot is not a non-negative integer.\n  I/O error if no save exists at that slot.\n\nEXAMPLES\n  (load!)     ; load from slot 1\n  (load! 2)   ; load from slot 2\n\nSEE ALSO\n  save!, wipe!",
         builtin_load
     );
-    reg!("wipe!", "delete a save: (wipe! slot-number)", builtin_wipe);
+    reg!("wipe!", "delete a save file\n\nSYNOPSIS\n  (wipe!)\n  (wipe! slot)\n\nARGUMENTS\n  slot  Optional non-negative integer. Defaults to 0.\n\nDESCRIPTION\n  Schedules deletion of the save at the given slot. Requires\n  confirmation: the player must type the exact phrase\n  'i am aware of what i am doing.' in the console to confirm.\n  The save is not deleted until confirmation is received.\n\nRETURN VALUE\n  nil\n\nERRORS\n  TypeError if slot is not a non-negative integer.\n\nEXAMPLES\n  (wipe! 1)   ; request deletion of slot 1, then confirm\n\nSEE ALSO\n  save!, load!", builtin_wipe);
     reg!(
         "query-registry",
-        "query fragment registry: (query-registry :suppressed-fragments) or :all",
+        "query the fragment registry\n\nSYNOPSIS\n  (query-registry :all)\n  (query-registry :suppressed-fragments)\n\nARGUMENTS\n  mode  A keyword selecting which fragments to return.\n        :all                 — all fragments with id, weight, collected, suppressed.\n        :suppressed-fragments — only suppressed fragments with id and weight.\n        Defaults to :all if omitted.\n\nDESCRIPTION\n  Returns a list of maps describing memory fragments in the\n  registry. Each map contains at minimum \"id\" and \"weight\" keys.\n  The :all mode also includes \"collected\" and \"suppressed\" booleans.\n\nRETURN VALUE\n  A list of maps.\n\nERRORS\n  Unknown mode keyword.\n\nEXAMPLES\n  (query-registry :all)\n  (query-registry :suppressed-fragments)\n\nSEE ALSO\n  inspect-fragment, open-registry",
         builtin_query_registry
     );
     reg!(
         "inspect-fragment",
-        "read a memory fragment: (inspect-fragment :frag-001)",
+        "read a memory fragment's contents\n\nSYNOPSIS\n  (inspect-fragment fragment-id)\n\nARGUMENTS\n  fragment-id  A keyword or string identifying the fragment.\n               Keywords can be :frag-001 or just :1 (auto-prefixed).\n               Strings should be the full id, e.g. \"frag-001\".\n\nDESCRIPTION\n  Looks up a memory fragment by ID and returns a map with its\n  full details: id, text, weight, and status (\"suppressed\",\n  \"hidden\", or \"collected\").\n\nRETURN VALUE\n  A map: {\"id\" \"frag-001\" \"text\" \"...\" \"weight\" N \"status\" \"...\"}\n\nERRORS\n  \"no fragment with id\" if the ID does not exist.\n\nEXAMPLES\n  (inspect-fragment :frag-001)\n  (inspect-fragment :3)         ; shorthand for :frag-003\n  (inspect-fragment \"frag-010\")\n\nSEE ALSO\n  query-registry",
         builtin_inspect_fragment
     );
     reg!(
         "open-registry",
-        "open a hidden registry handle",
+        "open a registry handle for advanced access\n\nSYNOPSIS\n  (open-registry registry-name)\n\nARGUMENTS\n  registry-name  A keyword or string naming the registry:\n    :suppressed-fragments — read-only handle for suppressed fragments.\n    :spawn-log            — write-only handle for the spawn log.\n    :rule-registry        — read/write/unregister handle for rules.\n                            Requires registry write-protect to be disabled.\n\nDESCRIPTION\n  Returns a handle (a builtin function) that can be called with\n  :read, :write, or :unregister methods depending on the registry.\n  The rule-registry handle is locked behind the write-protect flag,\n  which must be disabled through gameplay before access is granted.\n\nRETURN VALUE\n  A handle function. Call it with (handle :read ...) etc.\n\nERRORS\n  \"Registry access denied\" if rule-registry write-protect is set.\n  \"unknown registry\" for unrecognized names.\n\nEXAMPLES\n  (let h (open-registry :suppressed-fragments) (h :read))\n  (let h (open-registry :rule-registry) (h :read :enemy-ai/chase))\n\nSEE ALSO\n  query-registry, inspect-fragment",
         builtin_open_registry
     );
     reg!(
         "player",
-        "query player state: (player :pos), (player :hp), (player :facing), (player :console-buffer)",
+        "query player state\n\nSYNOPSIS\n  (player attribute)\n\nARGUMENTS\n  attribute  A keyword selecting which player property to query:\n    :pos             — player position as (list x y).\n    :hp              — current HP as an integer.\n    :max-hp          — maximum HP as an integer.\n    :facing          — facing direction as a keyword.\n    :console-buffer  — current console input as a string.\n    :depth           — current dungeon depth as an integer.\n    :turn            — current turn number as an integer.\n\nDESCRIPTION\n  Returns information about the player's current state. This is\n  a read-only query — it does not modify the world.\n\nRETURN VALUE\n  Varies by attribute (see above).\n\nERRORS\n  \"unknown player attribute\" with a list of valid keys.\n\nEXAMPLES\n  (player :pos)     ; => (10 15)\n  (player :hp)      ; => 12\n  (player :depth)   ; => 3",
         builtin_player
     );
     reg!(
         "last-impact-force",
-        "get the force of the last attack: (last-impact-force)",
+        "get the force of the most recent attack\n\nSYNOPSIS\n  (last-impact-force)\n\nDESCRIPTION\n  Returns the force value from the most recent do-attack call.\n  Force defaults to 1 unless a higher value was specified.\n  Persists until the next attack overwrites it.\n\nRETURN VALUE\n  An integer (the force value).\n\nSEE ALSO\n  impact-payload, do-attack",
         builtin_last_impact_force
     );
     reg!(
         "impact-payload",
-        "get the payload bytes from the last impact (size = force × target mass)",
+        "get the payload bytes from the last impact\n\nSYNOPSIS\n  (impact-payload)\n\nDESCRIPTION\n  Returns a list of zero-valued bytes whose length equals\n  force * target_mass, where force is from the last attack and\n  target_mass depends on the enemy type (Rage enemies have mass 8,\n  others have mass 4). Returns an empty list if no impact has\n  occurred.\n\nRETURN VALUE\n  A list of integers (all zeros), length = force * mass.\n\nNOTES\n  Used with copy-bytes! for the buffer overflow exploit mechanic.\n\nSEE ALSO\n  last-impact-force, bytes, copy-bytes!",
         builtin_impact_payload
     );
     reg!(
         "bytes",
-        "allocate a byte buffer: (bytes 64) returns a list of zeros",
+        "allocate a zero-filled byte buffer\n\nSYNOPSIS\n  (bytes size)\n\nARGUMENTS\n  size  A non-negative integer specifying the buffer length.\n\nDESCRIPTION\n  Creates a list of the given size, filled with zeros. Used to\n  allocate destination buffers for copy-bytes!.\n\nRETURN VALUE\n  A list of integers (all zeros).\n\nERRORS\n  TypeError if size is not a positive integer.\n  Wrong arg count if no size is given.\n\nEXAMPLES\n  (bytes 64)    ; => (0 0 0 ... 0)  — 64 zeros\n  (bytes 4)     ; => (0 0 0 0)\n\nSEE ALSO\n  copy-bytes!, impact-payload",
         builtin_bytes
     );
     reg!(
         "copy-bytes!",
-        "copy src bytes into dest buffer: (copy-bytes! dest src)",
+        "copy source bytes into a destination buffer\n\nSYNOPSIS\n  (copy-bytes! dest src)\n\nARGUMENTS\n  dest  A list (byte buffer) to copy into.\n  src   A list (byte buffer) to copy from.\n\nDESCRIPTION\n  Copies the contents of src into dest. If src is larger than\n  dest, a buffer overflow occurs. When the overflow target is a\n  Rage enemy, this disables the registry write-protect flag,\n  granting write access to the rule-registry via open-registry.\n\nRETURN VALUE\n  nil\n\nERRORS\n  Wrong arg count (expects exactly 2).\n  TypeError if either argument is not a list.\n\nEXAMPLES\n  (let buf (bytes 4)\n    (copy-bytes! buf (impact-payload)))\n\nSEE ALSO\n  bytes, impact-payload, open-registry",
         builtin_copy_bytes
     );
 
@@ -450,7 +450,7 @@ pub(crate) fn bind_do_attack(env: &glyph::Env) {
         "do-attack",
         Value::Builtin(glyph::BuiltinFn {
             name: "do-attack",
-            doc: "attack in a direction: (do-attack), (do-attack :east), (do-attack :north 5)",
+            doc: "attack in a direction\n\nSYNOPSIS\n  (do-attack)\n  (do-attack direction)\n  (do-attack direction force)\n\nARGUMENTS\n  direction  Optional keyword: :north, :south, :east, or :west.\n             Defaults to the player's current facing direction.\n  force      Optional positive integer. Attack strength, default 1.\n             Higher force increases impact-payload size.\n\nDESCRIPTION\n  Strikes in the given direction. Updates the player's facing,\n  deals damage to an adjacent enemy in that direction, and\n  consumes a turn. Requires the wizard to have taught the player\n  to attack first — errors if player_can_attack is false.\n  Typically used via bind-key rather than typed directly.\n\nRETURN VALUE\n  nil\n\nERRORS\n  \"You don't know how to attack yet\" if not unlocked.\n  TypeError for invalid direction or force.\n  Wrong arg count if more than 2 arguments.\n\nEXAMPLES\n  (do-attack)              ; attack in facing direction, force 1\n  (do-attack :east)        ; attack east, force 1\n  (do-attack :north 5)     ; attack north, force 5\n  (bind-key :z (do-attack)) ; bind z key to attack\n\nSEE ALSO\n  bind-key, move!, block!, last-impact-force",
             func: builtin_do_attack,
         }),
     );

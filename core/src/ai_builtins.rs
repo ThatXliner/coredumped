@@ -380,7 +380,7 @@ pub(crate) fn register_all(env: &Env) {
         "adjacent?",
         Value::Builtin(glyph::BuiltinFn {
             name: "adjacent?",
-            doc: "check if two entities are adjacent",
+            doc: "check if two entities are adjacent\n\nSYNOPSIS\n  (adjacent? entity-a entity-b)\n\nARGUMENTS\n  entity-a  Integer entity ID.\n  entity-b  Integer entity ID.\n\nDESCRIPTION\n  Returns true if the two entities are exactly 1 tile apart\n  (Manhattan distance == 1). Returns false if either entity\n  has no position or they are further apart.\n\nRETURN VALUE\n  true or false.\n\nEXAMPLES\n  (if (adjacent? self player-id) (attack! self player-id 1))",
             func: builtin_adjacentq,
         }),
     );
@@ -388,7 +388,7 @@ pub(crate) fn register_all(env: &Env) {
         "attack!",
         Value::Builtin(glyph::BuiltinFn {
             name: "attack!",
-            doc: "attack a target entity: (attack! target-id)",
+            doc: "attack a target entity (AI)\n\nSYNOPSIS\n  (attack! attacker-id target-id damage)\n\nARGUMENTS\n  attacker-id  Integer entity ID of the attacker.\n  target-id    Integer entity ID of the target.\n  damage       Integer damage to deal.\n\nDESCRIPTION\n  An AI combat action. The attacker deals the specified damage\n  to the target. If the target is the player and blocking is\n  active, the attack is negated with an \"You block\" message.\n  If either entity is dead, the attack is silently skipped.\n  Logs the attack to the event log in red.\n\nRETURN VALUE\n  nil\n\nERRORS\n  Wrong arg count (expects exactly 3).\n\nSEE ALSO\n  adjacent?, step-toward!, do-attack",
             func: builtin_ai_attack,
         }),
     );
@@ -396,7 +396,7 @@ pub(crate) fn register_all(env: &Env) {
         "step-toward!",
         Value::Builtin(glyph::BuiltinFn {
             name: "step-toward!",
-            doc: "move one step toward a target entity",
+            doc: "move one step toward a target entity\n\nSYNOPSIS\n  (step-toward! entity-id target-id)\n\nARGUMENTS\n  entity-id  Integer entity ID of the mover.\n  target-id  Integer entity ID of the destination entity.\n\nDESCRIPTION\n  Moves the entity one tile closer to the target using Dijkstra\n  pathfinding. Will not step onto the target's tile, through\n  walls, or onto occupied tiles. Returns false if no valid step\n  exists.\n\nRETURN VALUE\n  true if the entity moved, false otherwise.\n\nERRORS\n  Wrong arg count (expects exactly 2).\n\nSEE ALSO\n  flee-step!, random-step!, adjacent?",
             func: builtin_step_toward,
         }),
     );
@@ -404,7 +404,7 @@ pub(crate) fn register_all(env: &Env) {
         "random-step!",
         Value::Builtin(glyph::BuiltinFn {
             name: "random-step!",
-            doc: "take a random step to an adjacent walkable tile",
+            doc: "take a random step to an adjacent walkable tile\n\nSYNOPSIS\n  (random-step! entity-id)\n\nARGUMENTS\n  entity-id  Integer entity ID of the mover.\n\nDESCRIPTION\n  Moves the entity to a random adjacent walkable tile that is\n  not occupied by another entity or the player. The \"random\"\n  direction is deterministic — derived from position and turn\n  number — so replays are reproducible. Tries all 4 cardinal\n  directions before giving up.\n\nRETURN VALUE\n  true if the entity moved, false if all adjacent tiles are\n  blocked.\n\nERRORS\n  Wrong arg count (expects exactly 1).\n\nSEE ALSO\n  step-toward!, flee-step!",
             func: builtin_random_step,
         }),
     );
@@ -412,7 +412,7 @@ pub(crate) fn register_all(env: &Env) {
         "flee-step!",
         Value::Builtin(glyph::BuiltinFn {
             name: "flee-step!",
-            doc: "move one step away from a target entity",
+            doc: "move one step away from a target entity\n\nSYNOPSIS\n  (flee-step! entity-id threat-id)\n\nARGUMENTS\n  entity-id  Integer entity ID of the fleeing entity.\n  threat-id  Integer entity ID of the entity to flee from.\n\nDESCRIPTION\n  Moves the entity one tile in the cardinal direction that\n  maximizes Manhattan distance from the threat. Only considers\n  walkable, unoccupied tiles that are not the player's position.\n  Returns false if no retreat path exists.\n\nRETURN VALUE\n  true if the entity moved, false otherwise.\n\nERRORS\n  Wrong arg count (expects exactly 2).\n\nSEE ALSO\n  step-toward!, random-step!",
             func: builtin_flee_step,
         }),
     );
@@ -420,7 +420,7 @@ pub(crate) fn register_all(env: &Env) {
         "roll-odds?",
         Value::Builtin(glyph::BuiltinFn {
             name: "roll-odds?",
-            doc: "roll a chance: (roll-odds? numerator denominator)",
+            doc: "roll a deterministic chance check\n\nSYNOPSIS\n  (roll-odds? entity-id probability)\n\nARGUMENTS\n  entity-id    Integer entity ID (used for positional hash seed).\n  probability  A float between 0.0 and 1.0 (e.g., 0.5 for 50%).\n\nDESCRIPTION\n  Returns true with approximately the given probability. The\n  result is deterministic — derived from the entity's position\n  and the current turn number — so identical game states always\n  produce the same outcome. Not truly random; designed for\n  reproducible AI behavior.\n\nRETURN VALUE\n  true or false.\n\nERRORS\n  Wrong arg count (expects exactly 2).\n\nEXAMPLES\n  (if (roll-odds? self 0.3) (random-step! self))  ; 30% chance to wander",
             func: builtin_roll_oddsq,
         }),
     );
@@ -428,7 +428,7 @@ pub(crate) fn register_all(env: &Env) {
         "manhattan",
         Value::Builtin(glyph::BuiltinFn {
             name: "manhattan",
-            doc: "Manhattan distance between two entities",
+            doc: "Manhattan distance between two entities\n\nSYNOPSIS\n  (manhattan entity-a entity-b)\n\nARGUMENTS\n  entity-a  Integer entity ID.\n  entity-b  Integer entity ID.\n\nDESCRIPTION\n  Returns the Manhattan distance (|x1-x2| + |y1-y2|) between\n  two entities. Returns 999 if either entity has no position.\n\nRETURN VALUE\n  An integer distance.\n\nERRORS\n  Wrong arg count (expects exactly 2).\n\nEXAMPLES\n  (if (< (manhattan self player-id) 5) (step-toward! self player-id))",
             func: builtin_manhattan,
         }),
     );
@@ -436,7 +436,7 @@ pub(crate) fn register_all(env: &Env) {
         "hp",
         Value::Builtin(glyph::BuiltinFn {
             name: "hp",
-            doc: "get the HP of an entity: (hp entity-id)",
+            doc: "get the current HP of an entity\n\nSYNOPSIS\n  (hp entity-id)\n\nARGUMENTS\n  entity-id  Integer entity ID.\n\nDESCRIPTION\n  Returns the current hit points of the given entity. Returns 0\n  if the entity has no HP component (e.g., a decoration).\n\nRETURN VALUE\n  An integer (current HP).\n\nERRORS\n  Wrong arg count (expects exactly 1).\n\nEXAMPLES\n  (if (< (hp self) 3) (flee-step! self player-id))",
             func: builtin_ai_hp,
         }),
     );

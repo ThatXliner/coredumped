@@ -90,6 +90,11 @@ impl Env {
         self.lookup(name).is_some()
     }
 
+    /// Collect the names bound directly in this scope (not parents).
+    pub fn local_names(&self) -> Vec<String> {
+        self.0.borrow().bindings.keys().cloned().collect()
+    }
+
     /// Remove a binding from the current scope only (not parents).
     pub fn unbind(&self, name: &str) {
         let lower = name.to_lowercase();

@@ -15,10 +15,17 @@ use crate::glyph::{self, Env, Value};
 use crate::world::World;
 
 pub(crate) fn setup_glyph_env() -> Env {
-    let env = Env::extend(&glyph::default_env());
+    let base = glyph::default_env();
+    let env = Env::extend(&base);
+
+    // Names registered here are the game commands (move!, attack!, save!, ...);
+    // collected so the syntax highlighter can color them without a duplicated,
+    // hand-maintained list. See `glyph::highlight::set_vocab`.
+    let mut command_names: Vec<String> = Vec::new();
 
     macro_rules! reg {
         ($name:expr, $doc:expr, $func:ident) => {
+            command_names.push($name.to_string());
             env.bind(
                 $name,
                 Value::Builtin(glyph::BuiltinFn {
@@ -155,6 +162,8 @@ pub(crate) fn setup_glyph_env() -> Env {
     );
 
     ai_builtins::register_all(&env);
+    // AI builtins (attack!, step-toward!, adjacent?, ...) are game commands too.
+    command_names.extend(env.local_names());
 
     #[cfg(feature = "prelude")]
     {
@@ -165,6 +174,20 @@ pub(crate) fn setup_glyph_env() -> Env {
             let _ = glyph::eval(form, &env, &mut dummy);
         }
     }
+
+    // Teach the highlighter which names are game commands vs core builtins.
+    // Commands = everything registered into this layer (reg! verbs + AI builtins).
+    // Builtins = the `default_env` core (+, list, map, ...) plus any prelude
+    // helpers — i.e. env names not already claimed as commands. Operators and
+    // special forms are classified separately in the highlighter itself.
+    let commands: std::collections::HashSet<String> = command_names.iter().cloned().collect();
+    let builtins: Vec<String> = base
+        .local_names()
+        .into_iter()
+        .chain(env.local_names())
+        .filter(|n| !commands.contains(n))
+        .collect();
+    glyph::highlight::set_vocab(&command_names, &builtins);
 
     env
 }

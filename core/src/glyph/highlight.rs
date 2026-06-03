@@ -5,6 +5,9 @@
 //! console calls it while source is incomplete or invalid, so highlighting must
 //! never require a parsed AST.
 
+use std::collections::HashSet;
+use std::sync::OnceLock;
+
 use bracket_color::prelude::RGB;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -305,7 +308,35 @@ fn annotate_context(spans: &mut [Span]) {
     }
 }
 
+/// The set of function names the highlighter recognizes, split into game
+/// commands (the `setup_glyph_env` layer) and core builtins (`default_env`).
+///
+/// Populated once at startup from the live Glyph environment via [`set_vocab`],
+/// so adding a `reg!` entry colors it automatically — no hand-maintained list.
+/// Until populated, `classify_symbol` falls back to plain symbols for anything
+/// that is not a special form or operator (both of which live in code, not the
+/// env, and so stay as authoritative lists below).
+#[derive(Default)]
+struct Vocab {
+    commands: HashSet<String>,
+    builtins: HashSet<String>,
+}
+
+static VOCAB: OnceLock<Vocab> = OnceLock::new();
+
+/// Register the function vocabulary used for highlighting. Idempotent: the first
+/// caller wins, later calls are ignored (the vocabulary is fixed at startup).
+/// Names are stored lowercased to match the case-insensitive Glyph environment.
+pub fn set_vocab(commands: &[String], builtins: &[String]) {
+    let _ = VOCAB.set(Vocab {
+        commands: commands.iter().map(|n| n.to_lowercase()).collect(),
+        builtins: builtins.iter().map(|n| n.to_lowercase()).collect(),
+    });
+}
+
 fn classify_symbol(text: &str) -> Tok {
+    // The Glyph env is case-insensitive (Env::lookup lowercases), so the
+    // highlighter mirrors that and classifies on the lowercased name.
     let lower = text.to_lowercase();
 
     if matches!(lower.as_str(), "nil" | "true" | "false" | "_") {
@@ -324,12 +355,13 @@ fn classify_symbol(text: &str) -> Tok {
         return Tok::Operator;
     }
 
-    if is_game_command(&lower) {
-        return Tok::Command;
-    }
-
-    if is_builtin(&lower) {
-        return Tok::Builtin;
+    if let Some(vocab) = VOCAB.get() {
+        if vocab.commands.contains(&lower) {
+            return Tok::Command;
+        }
+        if vocab.builtins.contains(&lower) {
+            return Tok::Builtin;
+        }
     }
 
     Tok::Symbol
@@ -361,105 +393,6 @@ fn is_operator(text: &str) -> bool {
     matches!(
         text,
         "+" | "-" | "*" | "/" | "%" | "=" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "."
-    )
-}
-
-fn is_builtin(text: &str) -> bool {
-    matches!(
-        text,
-        "apply"
-            | "assoc"
-            | "bool?"
-            | "concat"
-            | "conj"
-            | "cons"
-            | "contains?"
-            | "dissoc"
-            | "drop"
-            | "empty?"
-            | "eval"
-            | "every"
-            | "filter"
-            | "first"
-            | "float?"
-            | "fn?"
-            | "get"
-            | "int?"
-            | "keyword?"
-            | "keys"
-            | "lambda"
-            | "len"
-            | "list"
-            | "list?"
-            | "map"
-            | "map?"
-            | "nil?"
-            | "not"
-            | "nth"
-            | "print"
-            | "print!"
-            | "println"
-            | "println!"
-            | "range"
-            | "range-internal"
-            | "reduce"
-            | "rest"
-            | "reverse"
-            | "reverse-acc"
-            | "second"
-            | "set"
-            | "set?"
-            | "slurp"
-            | "some"
-            | "str"
-            | "string?"
-            | "symbol?"
-            | "take"
-            | "type"
-            | "vals"
-            | "vec"
-            | "vec?"
-    )
-}
-
-fn is_game_command(text: &str) -> bool {
-    matches!(
-        text,
-        "adjacent?"
-            | "ascend!"
-            | "attack!"
-            | "block!"
-            | "damage!"
-            | "descend!"
-            | "do-attack"
-            | "fire?"
-            | "flee-step!"
-            | "heal"
-            | "help"
-            | "hp"
-            | "inspect-fragment"
-            | "load!"
-            | "log"
-            | "manhattan"
-            | "move!"
-            | "open-registry"
-            | "player-facing"
-            | "query-registry"
-            | "quit!"
-            | "quit-terminal"
-            | "random-step!"
-            | "raycast-cone"
-            | "roll-odds?"
-            | "save!"
-            | "set-level"
-            | "shove!"
-            | "step-toward!"
-            | "toggle-console!"
-            | "toggle-inspector!"
-            | "toggle-keybindings!"
-            | "use-vapor-canteen!"
-            | "wait!"
-            | "wipe!"
     )
 }
 
@@ -590,6 +523,11 @@ mod tests {
 
     #[test]
     fn test_builtin_command_operator_and_call() {
+        // Commands and builtins are classified from the vocabulary registered at
+        // startup. Seed it here so the unit test does not depend on env setup.
+        // `set_vocab` is set-once; ignore the result if another test set it first
+        // (the real env contains these same names).
+        set_vocab(&["move!".to_string()], &["list".to_string()]);
         let spans = highlight("(move! :north) (list (+ a 1)) (custom-call)");
         assert_token(&spans, "move!", Tok::Command);
         assert_token(&spans, "list", Tok::Builtin);

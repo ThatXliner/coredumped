@@ -37,7 +37,7 @@ pub(crate) fn setup_glyph_env() -> Env {
         builtin_quit_terminal
     );
     reg!("quit!", "exit the game\n\nSYNOPSIS\n  (quit!)\n\nDESCRIPTION\n  Exits the game. Requires confirmation: the first call prompts\n  \"Press q again to quit\"; calling quit! a second time auto-saves\n  to slot 0 and terminates. Any other action cancels the quit.\n\nSIDE EFFECTS\n  Auto-saves to slot 0 on confirmation.\n\nRETURN VALUE\n  nil", builtin_quit_bang);
-    reg!("move!", "move the player one tile\n\nSYNOPSIS\n  (move! direction)\n\nARGUMENTS\n  direction  A keyword: :north, :south, :east, or :west.\n\nDESCRIPTION\n  Moves the player one tile in the given direction and updates the\n  player's facing. If the destination is walkable and unoccupied, the\n  player moves there. If an enemy occupies the tile, movement is\n  blocked (no damage dealt — use do-attack for combat). Bumping a wall\n  has no effect. Consumes a turn on successful move.\n\nRETURN VALUE\n  nil\n\nERRORS\n  Wrong arg count or non-keyword direction.\n\nEXAMPLES\n  (move! :north)\n  (move! :east)", builtin_move);
+    reg!("move!", "move the player one tile\n\nSYNOPSIS\n  (move!)\n  (move! direction)\n\nARGUMENTS\n  direction  Optional keyword: :north, :south, :east, or :west.\n             Defaults to the player's current facing direction.\n\nDESCRIPTION\n  Moves the player one tile in the given direction and updates the\n  player's facing. If the destination is walkable and unoccupied, the\n  player moves there. If an enemy occupies the tile, movement is\n  blocked (no damage dealt — use do-attack for combat). Bumping a wall\n  has no effect. Consumes a turn on successful move.\n\nRETURN VALUE\n  nil\n\nERRORS\n  More than 1 argument, or non-keyword direction.\n\nEXAMPLES\n  (move! :north)\n  (move! :east)\n  (move!)           ; move in current facing direction", builtin_move);
     reg!("wait!", "skip a turn\n\nSYNOPSIS\n  (wait!)\n\nDESCRIPTION\n  The player does nothing. Advances the turn counter by one and\n  allows all enemies to take their actions. Useful for waiting out\n  enemy patterns or letting cooldowns expire.\n\nRETURN VALUE\n  nil", builtin_wait);
     reg!(
         "block!",
@@ -207,14 +207,19 @@ fn builtin_move(
     _opts: &glyph::SandboxOptions,
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    let dir = parse_attack_direction(args.first().ok_or(glyph::EvalError::WrongArgCount {
-        expected: 1,
-        got: 0,
-    })?)
-    .ok_or_else(|| glyph::EvalError::TypeError {
-        expected: "direction keyword (:north/:south/:east/:west)",
-        got: args.first().map(|v| v.to_string()).unwrap_or_default(),
-    })?;
+    let dir = match args {
+        [] => world.player_facing,
+        [arg] => parse_attack_direction(arg).ok_or_else(|| glyph::EvalError::TypeError {
+            expected: "direction keyword (:north/:south/:east/:west)",
+            got: arg.to_string(),
+        })?,
+        _ => {
+            return Err(glyph::EvalError::WrongArgCount {
+                expected: 1,
+                got: args.len(),
+            });
+        }
+    };
     world.player_facing = dir;
     let cost = world.apply_player_move(dir);
     if cost == ActionCost::Tick {

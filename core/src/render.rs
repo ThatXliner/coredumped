@@ -768,12 +768,13 @@ fn render_console(ctx: &mut Frame, world: &World) {
     .enumerate()
     {
         let trimmed: String = line.chars().take(inner_width as usize).collect();
-        ctx.print_color(
+        ctx.print_color_styled(
             x + 2,
             y + 2 + i as i32,
-            RGB::named(WHITE),
+            RGB::from_u8(120, 120, 120),
             RGB::named(BLACK),
             &trimmed,
+            true,
         );
     }
 

@@ -330,6 +330,33 @@ impl Map {
             map.tiles = next;
         }
 
+        // 2b. Widen 1-tile pinch passages so packs can't fully surround the
+        //     player in a corridor. A wall flips to floor when it sits between
+        //     two opposing floor tiles (N/S or E/W) — this opens chokepoints
+        //     without dissolving the cave walls. Computed against a snapshot so
+        //     the pass doesn't cascade within a single iteration.
+        let snapshot = map.tiles.clone();
+        let is_floor = |x: i32, y: i32| {
+            x >= 0
+                && x < width
+                && y >= 0
+                && y < height
+                && snapshot[(y * width + x) as usize] != TileType::Wall
+        };
+        for y in 1..height - 1 {
+            for x in 1..width - 1 {
+                let pos = Position::new(x, y);
+                if snapshot[(y * width + x) as usize] != TileType::Wall {
+                    continue;
+                }
+                let vertical_pinch = is_floor(x, y - 1) && is_floor(x, y + 1);
+                let horizontal_pinch = is_floor(x - 1, y) && is_floor(x + 1, y);
+                if vertical_pinch || horizontal_pinch {
+                    map.set_tile(pos, TileType::Floor);
+                }
+            }
+        }
+
         // 3. Flood-fill: keep only the largest connected floor region
         let connected = map.largest_floor_region();
         for y in 1..height - 1 {

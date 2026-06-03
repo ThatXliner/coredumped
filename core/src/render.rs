@@ -822,12 +822,20 @@ fn render_console(ctx: &mut Frame, world: &World) {
         let visible_output = output_available as usize;
         let max_start = lines.len().saturating_sub(visible_output);
         let start = max_start.saturating_sub(world.console_output_scroll);
-        let highlight_output = console_output_uses_syntax_highlighting(&world.console_output);
+        let output_kind = console_output_highlight_kind(&world.console_output);
         for (i, line) in lines[start..].iter().enumerate().take(visible_output) {
             let y = output_y + i as i32;
+            // Help pages mix prose with code examples: highlight only the lines
+            // that are Glyph code, leaving prose plain so words aren't colored
+            // at random. Echoed console input/output is all code, so highlight
+            // every line.
+            let highlight_line = match output_kind {
+                OutputHighlight::None => false,
+                OutputHighlight::CodeLinesOnly => help_line_is_code(line),
+            };
             if let Some(color) = world.console_output_color {
                 print_clipped_color(ctx, x + 2, y, inner_width, line, color);
-            } else if highlight_output {
+            } else if highlight_line {
                 let spans = highlight::highlight(line);
                 print_highlighted(ctx, x + 2, y, inner_width, &spans);
             } else {
@@ -910,8 +918,37 @@ fn is_diagnostic_output(text: &str) -> bool {
     text.contains("Error: syntax error") && text.contains("[glyph:")
 }
 
-fn console_output_uses_syntax_highlighting(text: &str) -> bool {
-    text.starts_with("=> Glyph help ")
+/// How a block of console output should be syntax-highlighted.
+enum OutputHighlight {
+    /// Plain text, no highlighting.
+    None,
+    /// Mixed prose and code (help pages) — highlight only code lines.
+    CodeLinesOnly,
+}
+
+fn console_output_highlight_kind(text: &str) -> OutputHighlight {
+    if text.starts_with("=> Glyph help ") {
+        OutputHighlight::CodeLinesOnly
+    } else {
+        OutputHighlight::None
+    }
+}
+
+/// Heuristic: does a help-page line read as Glyph code rather than prose?
+///
+/// Help text is indented code examples interleaved with left-aligned prose and
+/// section headers. Treat a line as code when, after trimming, it begins with a
+/// token that only appears in Glyph source: an open paren / bracket / brace, a
+/// quote, a reader macro, or a `:keyword`. Everything else stays prose.
+fn help_line_is_code(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    let mut chars = trimmed.chars();
+    match chars.next() {
+        Some('(') | Some('\'') | Some(':') => true,
+        Some('[') | Some('{') => true,
+        Some('#') => matches!(chars.next(), Some('[') | Some('{')),
+        _ => false,
+    }
 }
 
 fn clipped_lines(text: &str, max_width: usize) -> Vec<String> {
@@ -1281,6 +1318,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn help_lines_highlight_code_but_not_prose() {
+        // Code examples (indented or not) are highlighted...
+        assert!(help_line_is_code("  (let x 2 (+ x 3))"));
+        assert!(help_line_is_code("(if test then else)"));
+        assert!(help_line_is_code("  'form"));
+        assert!(help_line_is_code("  :north        — keywords"));
+        assert!(help_line_is_code("  #[1 2 3]      — vectors"));
+        // ...prose and section headers stay plain.
+        assert!(!help_line_is_code("Glyph help (page 2/6): special forms"));
+        assert!(!help_line_is_code("Examples:"));
+        assert!(!help_line_is_code("  arithmetic (variadic)"));
+        assert!(!help_line_is_code(""));
+        // A bare `#` that is not a reader macro is prose, not code.
+        assert!(!help_line_is_code("# not a macro"));
+    }
+
+    #[test]
+    fn only_help_output_requests_code_line_highlighting() {
+        assert!(matches!(
+            console_output_highlight_kind("=> Glyph help (page 1/6)\n..."),
+            OutputHighlight::CodeLinesOnly
+        ));
+        assert!(matches!(
+            console_output_highlight_kind("=> 42"),
+            OutputHighlight::None
+        ));
+    }
+
+    #[test]
     fn console_header_wraps_to_two_lines_at_eighty() {
         let text = "Glyph REPL — press Ctrl+E to open an external editor for multi-line input. Try (help). ESC or ` to close.";
         let lines = wrap_text(text, 80);
@@ -1397,9 +1463,15 @@ mod tests {
 
     #[test]
     fn help_output_uses_syntax_highlighting() {
-        assert!(console_output_uses_syntax_highlighting(
-            "=> Glyph help (page 5/6): language reference\n  (if test then else)"
+        assert!(matches!(
+            console_output_highlight_kind(
+                "=> Glyph help (page 5/6): language reference\n  (if test then else)"
+            ),
+            OutputHighlight::CodeLinesOnly
         ));
-        assert!(!console_output_uses_syntax_highlighting("=> (1 2 3)"));
+        assert!(matches!(
+            console_output_highlight_kind("=> (1 2 3)"),
+            OutputHighlight::None
+        ));
     }
 }

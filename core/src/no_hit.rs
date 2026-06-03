@@ -213,6 +213,7 @@ mod tests {
             player_facing: Direction::East,
             depth: 0,
             turn: 0,
+            turn_at_depth_start: 0,
             mode: crate::game::Mode::Normal,
             event_log: EventLog::new(),
             console_buffer: String::new(),

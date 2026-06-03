@@ -245,7 +245,7 @@ fn render_side_panel(ctx: &mut Frame, world: &World) {
     let c2 = panel_x + 13;
     let w = panel_width - 4;
 
-    print_clipped(ctx, c1, y, w, &format!("turn  {}", world.turn));
+    print_clipped(ctx, c1, y, w, &format!("turn  {}", world.turn_in_level()));
     print_clipped(ctx, c2, y, 10, &format!("depth {}", world.depth));
     y += 1;
     print_clipped(
@@ -1160,7 +1160,7 @@ fn render_death_screen(ctx: &mut Frame, world: &World) {
         inner_x,
         line_y,
         inner_w,
-        &format!("Depth: {}  |  Turn: {}", world.depth, world.turn),
+        &format!("Depth: {}  |  Turn: {}", world.depth, world.turn_in_level()),
     );
     line_y += 2;
 

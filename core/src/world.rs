@@ -33,6 +33,11 @@ pub struct World {
     pub player_facing: Direction,
     pub depth: u32,
     pub turn: u64,
+    /// Absolute turn at which the current depth was entered. The turn shown to
+    /// the player is `turn - turn_at_depth_start` so it counts up from 0 on each
+    /// new level and survives respawns (which rebuild the level without changing
+    /// either value). Updated only on descend/ascend.
+    pub turn_at_depth_start: u64,
     pub mode: Mode,
     pub event_log: EventLog,
     pub console_buffer: String,
@@ -178,6 +183,7 @@ impl World {
             player_facing: Direction::East,
             depth: 0,
             turn: 0,
+            turn_at_depth_start: 0,
             mode: Mode::Normal,
             event_log: EventLog::new(),
             console_buffer: String::new(),

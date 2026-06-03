@@ -57,6 +57,8 @@ pub struct SaveData {
     pub version: u32,
     pub depth: u32,
     pub turn: u64,
+    #[serde(default)]
+    pub turn_at_depth_start: u64,
     pub player_id_raw: usize,
     pub player_facing: String,
     pub player_can_attack: bool,
@@ -269,6 +271,7 @@ impl World {
             version: 1,
             depth: self.depth,
             turn: self.turn,
+            turn_at_depth_start: self.turn_at_depth_start,
             player_id_raw: self.player_id.raw(),
             player_facing: direction_to_string(self.player_facing),
             player_can_attack: self.player_can_attack,
@@ -398,6 +401,7 @@ impl World {
         world.player_facing = direction_from_string(&data.player_facing);
         world.depth = data.depth;
         world.turn = data.turn;
+        world.turn_at_depth_start = data.turn_at_depth_start;
         world.player_can_attack = data.player_can_attack;
         world.wizard_taught = data.wizard_taught;
         world.wizard_id = data.wizard_id_raw.map(EntityId::new);

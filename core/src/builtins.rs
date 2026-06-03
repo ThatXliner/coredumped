@@ -137,7 +137,7 @@ pub(crate) fn setup_glyph_env() -> Env {
     );
     reg!(
         "player",
-        "query player state\n\nSYNOPSIS\n  (player attribute)\n\nARGUMENTS\n  attribute  A keyword selecting which player property to query:\n    :pos             — player position as (list x y).\n    :hp              — current HP as an integer.\n    :max-hp          — maximum HP as an integer.\n    :facing          — facing direction as a keyword.\n    :console-buffer  — current console input as a string.\n    :depth           — current dungeon depth as an integer.\n    :turn            — current turn number as an integer.\n\nDESCRIPTION\n  Returns information about the player's current state. This is\n  a read-only query — it does not modify the world.\n\nRETURN VALUE\n  Varies by attribute (see above).\n\nERRORS\n  \"unknown player attribute\" with a list of valid keys.\n\nEXAMPLES\n  (player :pos)     ; => (10 15)\n  (player :hp)      ; => 12\n  (player :depth)   ; => 3",
+        "query player state\n\nSYNOPSIS\n  (player attribute)\n\nARGUMENTS\n  attribute  A keyword selecting which player property to query:\n    :pos             — player position as (list x y).\n    :hp              — current HP as an integer.\n    :max-hp          — maximum HP as an integer.\n    :facing          — facing direction as a keyword.\n    :console-buffer  — current console input as a string.\n    :depth           — current dungeon depth as an integer.\n    :turn            — turns elapsed on the current depth as an integer.\n\nDESCRIPTION\n  Returns information about the player's current state. This is\n  a read-only query — it does not modify the world.\n\nRETURN VALUE\n  Varies by attribute (see above).\n\nERRORS\n  \"unknown player attribute\" with a list of valid keys.\n\nEXAMPLES\n  (player :pos)     ; => (10 15)\n  (player :hp)      ; => 12\n  (player :depth)   ; => 3",
         builtin_player
     );
     reg!(
@@ -1502,7 +1502,7 @@ fn builtin_player(
         }
         "console-buffer" => Ok(Value::String(world.console_buffer.clone())),
         "depth" => Ok(Value::I64(world.depth as i64)),
-        "turn" => Ok(Value::I64(world.turn as i64)),
+        "turn" => Ok(Value::I64(world.turn_in_level() as i64)),
         _ => Err(glyph::EvalError::Custom(format!(
             "unknown player attribute: {}. Try :pos, :hp, :facing, :console-buffer, :depth, :turn",
             key

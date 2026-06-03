@@ -23,8 +23,9 @@ impl World {
         );
         self.event_log
             .push(format!("You descend to depth {}.", self.depth));
-        let _ = self.save_to_disk(0);
         self.turn += 1;
+        self.turn_at_depth_start = self.turn;
+        let _ = self.save_to_disk(0);
     }
 
     pub(crate) fn ascend(&mut self) {
@@ -58,8 +59,9 @@ impl World {
         );
         self.event_log
             .push(format!("You ascend to depth {}.", self.depth));
-        let _ = self.save_to_disk(0);
         self.turn += 1;
+        self.turn_at_depth_start = self.turn;
+        let _ = self.save_to_disk(0);
     }
 
     pub(crate) fn clear_all_enemies(&mut self) {

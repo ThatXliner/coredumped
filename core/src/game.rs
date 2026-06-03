@@ -103,6 +103,7 @@ impl World {
             player_facing: Direction::East,
             depth: 0,
             turn: 0,
+            turn_at_depth_start: 0,
             mode: Mode::Normal,
             event_log,
             console_buffer: String::new(),
@@ -191,6 +192,7 @@ impl World {
             player_facing: Direction::East,
             depth,
             turn: 0,
+            turn_at_depth_start: 0,
             mode: Mode::Normal,
             event_log,
             console_buffer: String::new(),
@@ -488,6 +490,12 @@ impl World {
         self.ecs
             .hp(self.player_id)
             .expect("player should always have an Hp component")
+    }
+
+    /// Turn count shown to the player: turns elapsed on the current depth.
+    /// Counts up from 0 when a level is entered and is unaffected by respawns.
+    pub fn turn_in_level(&self) -> u64 {
+        self.turn.saturating_sub(self.turn_at_depth_start)
     }
 
     pub fn entity_at(&self, pos: Position) -> Option<EntityView> {

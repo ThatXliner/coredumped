@@ -468,6 +468,7 @@ fn binding_label(command: &str) -> String {
         "(toggle-inspector!)" => "inspector".into(),
         "(toggle-console!)" => "console".into(),
         "(toggle-keybindings!)" => "bindings".into(),
+        "(toggle-memories!)" => "memories".into(),
         "(quit!)" => "quit".into(),
         command if command.contains("do-attack") => "attack".into(),
         command => command.to_string(),
@@ -488,8 +489,9 @@ fn binding_command_priority(command: &str) -> usize {
         "(toggle-inspector!)" => 9,
         "(toggle-console!)" => 10,
         "(toggle-keybindings!)" => 11,
-        "(quit!)" => 12,
-        command if command.contains("do-attack") => 13,
+        "(toggle-memories!)" => 12,
+        "(quit!)" => 13,
+        command if command.contains("do-attack") => 14,
         _ => 100,
     }
 }

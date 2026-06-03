@@ -1460,21 +1460,20 @@ fn builtin_player(
     _opts: &glyph::SandboxOptions,
     world: &mut World,
 ) -> glyph::EvalResult<Value> {
-    let key = match args.first() {
-        Some(Value::Keyword(kw)) => kw.name.as_str(),
-        Some(other) => {
-            return Err(glyph::EvalError::TypeError {
-                expected: "keyword",
-                got: other.to_string(),
-            })
-        }
-        None => {
-            return Err(glyph::EvalError::Custom(
+    let key =
+        match args.first() {
+            Some(Value::Keyword(kw)) => kw.name.as_str(),
+            Some(other) => {
+                return Err(glyph::EvalError::TypeError {
+                    expected: "keyword",
+                    got: other.to_string(),
+                })
+            }
+            None => return Err(glyph::EvalError::Custom(
                 "usage: (player :pos), (player :hp), (player :facing), (player :console-buffer)"
                     .into(),
-            ))
-        }
-    };
+            )),
+        };
 
     match key {
         "pos" => {
@@ -1607,4 +1606,3 @@ fn builtin_copy_bytes(
 
     Ok(Value::Nil)
 }
-

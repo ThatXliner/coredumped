@@ -815,8 +815,7 @@ fn charged_rage_attack_unlocks_registry_write() {
 
     // Step 2: Trigger overflow via copy-bytes!
     // Payload size = 13 * 8 (rage mass) = 104 bytes > 64 byte buffer
-    let overflow =
-        crate::glyph::read_string("(copy-bytes! (bytes 64) (impact-payload))").unwrap();
+    let overflow = crate::glyph::read_string("(copy-bytes! (bytes 64) (impact-payload))").unwrap();
     crate::glyph::eval_with_opts(
         &overflow[0],
         &env,

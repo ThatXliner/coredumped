@@ -90,7 +90,13 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
             let pos = Position::new(map_x, map_y);
 
             if !world.map.contains(pos) {
-                ctx.set(MAP_X + vx, MAP_Y + vy, RGB::named(BLACK), RGB::named(BLACK), ' ');
+                ctx.set(
+                    MAP_X + vx,
+                    MAP_Y + vy,
+                    RGB::named(BLACK),
+                    RGB::named(BLACK),
+                    ' ',
+                );
                 continue;
             }
 
@@ -99,7 +105,13 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
 
             // Fog of war: unexplored tiles are hidden
             if !lit && !explored {
-                ctx.set(MAP_X + vx, MAP_Y + vy, RGB::named(BLACK), RGB::named(BLACK), ' ');
+                ctx.set(
+                    MAP_X + vx,
+                    MAP_Y + vy,
+                    RGB::named(BLACK),
+                    RGB::named(BLACK),
+                    ' ',
+                );
                 continue;
             }
 
@@ -302,7 +314,14 @@ fn render_side_panel(ctx: &mut Frame, world: &World) {
         let hint_y = panel_y + panel_height - 1;
         let hint_x = panel_x + panel_width - 1 - hint.len() as i32;
         if hint_x > panel_x {
-            print_clipped_color(ctx, hint_x, hint_y, hint.len() as i32, &hint, RGB::named(CYAN));
+            print_clipped_color(
+                ctx,
+                hint_x,
+                hint_y,
+                hint.len() as i32,
+                &hint,
+                RGB::named(CYAN),
+            );
         }
     }
 }
@@ -391,14 +410,20 @@ fn render_binding_summary(
         summary.label.clone()
     };
 
-    let should_rainbow = (summary.command == "(descend!)"
-        && player_tile == TileType::StairsDown)
+    let should_rainbow = (summary.command == "(descend!)" && player_tile == TileType::StairsDown)
         || (summary.command == "(ascend!)" && player_tile == TileType::StairsUp);
 
     if should_rainbow {
         print_rainbow(ctx, x, y, label_width, &label, frame);
         if key_width > 0 && label_width + 1 < width {
-            print_rainbow(ctx, x + label_width + 1, y, width - label_width - 1, &key_text, frame);
+            print_rainbow(
+                ctx,
+                x + label_width + 1,
+                y,
+                width - label_width - 1,
+                &key_text,
+                frame,
+            );
         }
     } else {
         let label_color = if summary.is_new {

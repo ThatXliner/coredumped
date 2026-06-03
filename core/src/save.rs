@@ -302,7 +302,11 @@ impl World {
                 .collect(),
             known_rule_ids: self.known_rule_ids.iter().cloned().collect(),
             console_history: self.console_history.clone(),
-            maze_shifting_walls: self.maze_shifting_walls.iter().map(|p| (p.x, p.y)).collect(),
+            maze_shifting_walls: self
+                .maze_shifting_walls
+                .iter()
+                .map(|p| (p.x, p.y))
+                .collect(),
             maze_shift_frozen: self.maze_shift_frozen,
         }
     }

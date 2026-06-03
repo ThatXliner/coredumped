@@ -45,8 +45,10 @@ impl WebState {
         self.world.mark_visible_entities();
         self.world.mark_visible_tiles();
         self.world.refresh_rule_discovery();
-        self.world
-            .update_camera(coredumped_core::render::VIEWPORT_WIDTH, coredumped_core::render::VIEWPORT_HEIGHT);
+        self.world.update_camera(
+            coredumped_core::render::VIEWPORT_WIDTH,
+            coredumped_core::render::VIEWPORT_HEIGHT,
+        );
 
         self.frame.clear();
         self.world.render_frame = self.world.render_frame.wrapping_add(1);
@@ -103,13 +105,19 @@ impl WebState {
             Intent::WipeSave(slot) => {
                 if storage::has_save(*slot) {
                     if let Err(e) = storage::delete_save(*slot) {
-                        self.world.event_log.push(format!("Cannot delete save: {}", e));
+                        self.world
+                            .event_log
+                            .push(format!("Cannot delete save: {}", e));
                     } else {
-                        self.world.event_log.push(format!("Save slot {} deleted.", slot));
+                        self.world
+                            .event_log
+                            .push(format!("Save slot {} deleted.", slot));
                         self.world.quit_countdown = 3;
                     }
                 } else {
-                    self.world.event_log.push(format!("Save slot {} does not exist.", slot));
+                    self.world
+                        .event_log
+                        .push(format!("Save slot {} does not exist.", slot));
                 }
             }
             _ => {}
@@ -303,7 +311,10 @@ pub fn main() -> Result<(), JsValue> {
         state_resize.borrow_mut().handle_resize(cols, rows);
     }) as Box<dyn FnMut(u32, u32)>);
 
-    state.borrow().terminal.set_resize_callback(&resize_callback);
+    state
+        .borrow()
+        .terminal
+        .set_resize_callback(&resize_callback);
     resize_callback.forget();
 
     Ok(())

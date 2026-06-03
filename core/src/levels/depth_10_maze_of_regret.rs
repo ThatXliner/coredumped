@@ -1,4 +1,4 @@
-use bracket_color::prelude::{CYAN, YELLOW, RGB};
+use bracket_color::prelude::{CYAN, RGB, YELLOW};
 use bracket_random::prelude::RandomNumberGenerator;
 
 use super::helpers::{apply_map, find_stairs_down, spawn_fragment_near_open_floor};
@@ -49,7 +49,10 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
             }
 
             // Skip tiles near enemy spawn positions
-            let near_spawn = gen.combat_spawns.iter().any(|sp| pos.manhattan_distance(*sp) < 3);
+            let near_spawn = gen
+                .combat_spawns
+                .iter()
+                .any(|sp| pos.manhattan_distance(*sp) < 3);
             if near_spawn {
                 continue;
             }
@@ -74,8 +77,16 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
         Position::new(player_pos.x + 5, player_pos.y + 2),
         "frag-007",
     );
-    spawn_fragment_near_open_floor(world, Position::new(stairs_pos.x - 4, stairs_pos.y - 2), "frag-008");
-    spawn_fragment_near_open_floor(world, Position::new(stairs_pos.x + 2, stairs_pos.y + 4), "frag-009");
+    spawn_fragment_near_open_floor(
+        world,
+        Position::new(stairs_pos.x - 4, stairs_pos.y - 2),
+        "frag-008",
+    );
+    spawn_fragment_near_open_floor(
+        world,
+        Position::new(stairs_pos.x + 2, stairs_pos.y + 4),
+        "frag-009",
+    );
 
     // Wizard at entrance — hints at the shifting but also at the exploit
     let wizard_pos = Position::new(player_pos.x + 2, player_pos.y - 2);

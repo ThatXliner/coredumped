@@ -82,8 +82,10 @@ impl State {
         self.world.mark_visible_entities();
         self.world.mark_visible_tiles();
         self.world.refresh_rule_discovery();
-        self.world
-            .update_camera(coredumped_core::render::VIEWPORT_WIDTH, coredumped_core::render::VIEWPORT_HEIGHT);
+        self.world.update_camera(
+            coredumped_core::render::VIEWPORT_WIDTH,
+            coredumped_core::render::VIEWPORT_HEIGHT,
+        );
 
         self.frame.clear();
         self.world.render_frame = self.world.render_frame.wrapping_add(1);

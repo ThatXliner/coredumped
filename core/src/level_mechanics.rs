@@ -17,8 +17,8 @@ impl World {
 
     /// Activate pressure plate effects at given position.
     pub(crate) fn activate_pressure_plate(&mut self, pos: Position) {
-        // Barrel room pressure plate at (38, 29) - toggles door from room 7
-        if self.depth == 2 && pos == Position::new(38, 29) {
+        // Barrel room pressure plate at (38, 28) - toggles door from room 7
+        if self.depth == 2 && pos == Position::new(38, 28) {
             let door_pos = Position::new(35, 28);
             let door_closed = self.map.tile(door_pos) == TileType::Wall;
             if door_closed {

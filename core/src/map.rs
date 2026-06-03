@@ -247,6 +247,8 @@ impl Map {
 
         let mut combat_spawns: Vec<Position> = Vec::new();
         let mut boss_spawns: Vec<Position> = Vec::new();
+        let mut barrel_gates: Vec<Position> = Vec::new();
+        let reserved = [player_start, stairs_up, stairs_down];
         for room in &rooms {
             match room.kind {
                 RoomType::Combat | RoomType::Treasure => {
@@ -257,6 +259,20 @@ impl Map {
                 }
                 _ => {}
             }
+
+            // Gate combat encounters: drop a barrel at one corridor mouth so the
+            // player chews through instead of running into the whole pack at
+            // once. One per room keeps loop routes open.
+            if matches!(room.kind, RoomType::Combat | RoomType::Boss) {
+                if let Some(mouth) = room.ring_tiles().into_iter().find(|&p| {
+                    map.contains(p)
+                        && map.tile(p) == TileType::Floor
+                        && !reserved.contains(&p)
+                        && !barrel_gates.contains(&p)
+                }) {
+                    barrel_gates.push(mouth);
+                }
+            }
         }
 
         MapGenOutput {
@@ -266,6 +282,7 @@ impl Map {
             stairs_down,
             combat_spawns,
             boss_spawns,
+            barrel_gates,
         }
     }
 
@@ -366,6 +383,7 @@ impl Map {
             stairs_down,
             combat_spawns,
             boss_spawns: Vec::new(),
+            barrel_gates: Vec::new(),
         }
     }
 
@@ -730,6 +748,8 @@ pub struct MapGenOutput {
     pub stairs_down: Position,
     pub combat_spawns: Vec<Position>,
     pub boss_spawns: Vec<Position>,
+    /// Corridor-mouth tiles where a destructible barrel can gate a room.
+    pub barrel_gates: Vec<Position>,
 }
 
 struct Room {
@@ -743,6 +763,26 @@ struct Room {
 impl Room {
     fn center(&self) -> Position {
         Position::new(self.x + self.w / 2, self.y + self.h / 2)
+    }
+
+    /// Tiles on the room's outer ring (rect inflated by 1). A corridor enters
+    /// the room through one of these, so any ring tile that the map carved as
+    /// floor is a chokepoint we can gate with a barrel.
+    fn ring_tiles(&self) -> Vec<Position> {
+        let mut tiles = Vec::new();
+        let x0 = self.x - 1;
+        let x1 = self.x + self.w;
+        let y0 = self.y - 1;
+        let y1 = self.y + self.h;
+        for x in x0..=x1 {
+            tiles.push(Position::new(x, y0));
+            tiles.push(Position::new(x, y1));
+        }
+        for y in (y0 + 1)..y1 {
+            tiles.push(Position::new(x0, y));
+            tiles.push(Position::new(x1, y));
+        }
+        tiles
     }
 
     fn overlaps(&self, other: &Room) -> bool {

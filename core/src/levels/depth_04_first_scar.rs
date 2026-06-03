@@ -18,6 +18,14 @@ pub(crate) fn build_first_scar(world: &mut World) {
     }
     apply_map(world, &gen);
 
+    // Gate the combat rooms with destructible barrels so the player meets the
+    // Anger packs one chokepoint at a time instead of all at once.
+    for pos in &gen.barrel_gates {
+        if world.ecs.entity_at(*pos).is_none() {
+            world.ecs.spawn_barrel(*pos);
+        }
+    }
+
     // Wizard at midpoint — player alone at start for first time
     let wizard_pos = Position::new(MAP_WIDTH / 2, MAP_HEIGHT / 2);
 

@@ -50,5 +50,6 @@ pub fn generate_wizard_box() -> MapGenOutput {
         stairs_down,
         combat_spawns: vec![],
         boss_spawns: vec![],
+        barrel_gates: vec![],
     }
 }

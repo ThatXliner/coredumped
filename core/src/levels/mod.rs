@@ -179,4 +179,41 @@ mod tests {
             "quiet halls gate barrels spawned on blocked tiles: {blocked:?}"
         );
     }
+
+    #[test]
+    fn first_scar_gates_combat_rooms_with_walkable_barrels() {
+        use crate::map::TileType;
+
+        // Procedural layout varies per build; check several so we exercise the
+        // gate logic rather than one lucky seed.
+        let mut saw_barrels = false;
+        for _ in 0..16 {
+            let mut world = World::new_game();
+            build_level(&mut world, 4);
+
+            let player = world.player_pos();
+            for id in world.ecs.entity_ids() {
+                if world.ecs.kind(id) != Some(crate::EntityKind::Barrel) {
+                    continue;
+                }
+                saw_barrels = true;
+                let pos = world.ecs.position(id).expect("barrel has a position");
+                assert!(
+                    world.map.is_walkable(pos),
+                    "depth 4 gate barrel on a blocked tile: {pos:?}"
+                );
+                assert_ne!(pos, player, "barrel sealed the player at spawn");
+                let tile = world.map.tile(pos);
+                assert!(
+                    !matches!(tile, TileType::StairsDown | TileType::StairsUp),
+                    "barrel covered stairs at {pos:?}"
+                );
+            }
+        }
+
+        assert!(
+            saw_barrels,
+            "depth 4 produced no gate barrels across 16 builds"
+        );
+    }
 }

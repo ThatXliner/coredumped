@@ -960,6 +960,35 @@ fn respawn_restores_hp_and_regenerates_level() {
 }
 
 #[test]
+fn respawn_preserves_progression() {
+    let mut world = world_with_single_enemy(Position::new(6, 5));
+    world.player_can_attack = true;
+    world.wizard_taught = true;
+    let bindings_before = world.bindings.clone();
+    world.held_keys.push("Brass Key".to_string());
+    world.held_items.push("Vapor Canteen".to_string());
+
+    world.ecs.set_hp(
+        world.player_id,
+        Hp {
+            current: 1,
+            max: 12,
+        },
+    );
+    world.apply_intent(Intent::Wait);
+    assert_eq!(world.mode, Mode::Dead);
+
+    world.apply_intent(Intent::Respawn);
+
+    // Death is recoverable — progression survives, only HP/level reset.
+    assert!(world.player_can_attack);
+    assert!(world.wizard_taught);
+    assert_eq!(world.bindings, bindings_before);
+    assert!(world.held_keys.contains(&"Brass Key".to_string()));
+    assert!(world.held_items.contains(&"Vapor Canteen".to_string()));
+}
+
+#[test]
 fn restart_creates_fresh_game() {
     let mut world = world_with_single_enemy(Position::new(6, 5));
     world.depth = 5;

@@ -561,7 +561,6 @@ impl World {
     }
 
     fn respawn(&mut self) {
-        self.wipe_player_state();
         self.clear_all_enemies();
         self.ecs
             .set_hp(self.player_id, Hp::new(self.player_hp().max));

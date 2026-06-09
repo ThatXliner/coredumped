@@ -30,6 +30,10 @@ pub(crate) fn build_gauntlet(world: &mut World) {
     map.set_tile(player_start, TileType::StairsUp);
     map.set_tile(stairs_down, TileType::StairsDown);
 
+    // Alcove for the wizard — off the one-tile corridor so he doesn't block it
+    let wizard_pos = Position::new(5, corridor_y - 1);
+    map.set_tile(wizard_pos, TileType::Floor);
+
     world.map = map;
     world.ecs.set_position(world.player_id, player_start);
 
@@ -47,7 +51,6 @@ pub(crate) fn build_gauntlet(world: &mut World) {
         .spawn_fragment(Position::new(16, corridor_y), "frag-001");
 
     // Wizard at start
-    let wizard_pos = Position::new(5, corridor_y - 1);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
     world.on_wizard_interact = Some(wizard_interact);
 }

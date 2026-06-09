@@ -37,12 +37,24 @@ pub(crate) fn build_the_offer(world: &mut World) {
         }
     }
 
-    // Corridors from hub to chambers
-    for t in 0..6 {
-        map.set_tile(Position::new(cx - 3 - t, cy), TileType::Floor); // W
-        map.set_tile(Position::new(cx + 3 + t, cy), TileType::Floor); // E
-        map.set_tile(Position::new(cx - 3 - t, cy + 6), TileType::Floor); // SW
-        map.set_tile(Position::new(cx + 3 + t, cy + 6), TileType::Floor); // SE
+    // Corridors from hub to chambers. The W/E chambers sit above the hub row
+    // and the SW/SE chambers below it, so each route is an L-shape: along the
+    // hub row (or down the hub edge), then turning into the chamber.
+    for t in 0..=12 {
+        map.set_tile(Position::new(cx - 3 - t, cy), TileType::Floor); // W arm
+        map.set_tile(Position::new(cx + 3 + t, cy), TileType::Floor); // E arm
+    }
+    for y in cy - 2..cy {
+        map.set_tile(Position::new(cx - 15, y), TileType::Floor); // up into W
+        map.set_tile(Position::new(cx + 15, y), TileType::Floor); // up into E
+    }
+    for y in cy + 3..=cy + 6 {
+        map.set_tile(Position::new(cx - 3, y), TileType::Floor); // down toward SW
+        map.set_tile(Position::new(cx + 3, y), TileType::Floor); // down toward SE
+    }
+    for t in 0..=8 {
+        map.set_tile(Position::new(cx - 3 - t, cy + 6), TileType::Floor); // into SW
+        map.set_tile(Position::new(cx + 3 + t, cy + 6), TileType::Floor); // into SE
     }
 
     let player_start = Position::new(cx, cy + 2);

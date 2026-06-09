@@ -71,8 +71,8 @@ pub(crate) fn build_the_scale(world: &mut World) {
         .ecs
         .spawn_fragment(Position::new(cx - 14, cy + 2), "frag-006");
 
-    // Wizard in center
-    let wizard_pos = Position::new(cx, cy + 4);
+    // Wizard at the hub's south edge (the hub only extends to cy + 3)
+    let wizard_pos = Position::new(cx, cy + 3);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
     world.on_wizard_interact = Some(wizard_interact);
 }

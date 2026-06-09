@@ -92,6 +92,16 @@ mod tests {
 
     /// Flood-fill of walkable tiles from `start`, ignoring entities.
     fn reachable_tiles(world: &World, start: Position) -> HashSet<Position> {
+        reachable_tiles_with(world, start, |_| false)
+    }
+
+    /// Flood-fill that additionally passes through tiles the player can open
+    /// or wait out (locked doors, shifting walls).
+    fn reachable_tiles_with(
+        world: &World,
+        start: Position,
+        extra_passable: impl Fn(Position) -> bool,
+    ) -> HashSet<Position> {
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
         visited.insert(start);
@@ -99,7 +109,10 @@ mod tests {
         while let Some(pos) = queue.pop_front() {
             for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
                 let next = pos.offset(dx, dy);
-                if world.map.contains(next) && world.map.is_walkable(next) && visited.insert(next) {
+                if world.map.contains(next)
+                    && (world.map.is_walkable(next) || extra_passable(next))
+                    && visited.insert(next)
+                {
                     queue.push_back(next);
                 }
             }
@@ -339,5 +352,56 @@ mod tests {
             }
         }
         tiles
+    }
+
+    #[test]
+    fn all_depths_pass_level_lint() {
+        for depth in 0..=17u32 {
+            for seed in 1..=4u64 {
+                let mut world = World::new_game();
+                world.run_seed = seed;
+                world.depth = depth;
+                build_level(&mut world, depth);
+
+                let start = world.player_pos();
+                assert!(
+                    world.map.is_walkable(start),
+                    "depth {depth} seed {seed}: player start blocked at {start:?}"
+                );
+
+                // Locked doors are key-openable and shifting walls toggle
+                // open, so both count as passable for reachability.
+                let reachable = reachable_tiles_with(&world, start, |pos| {
+                    world.maze_shifting_walls.contains(&pos)
+                        || (depth == 8 && World::counting_room_locked_door(pos))
+                });
+
+                for y in 0..world.map.height {
+                    for x in 0..world.map.width {
+                        let pos = Position::new(x, y);
+                        if world.map.tile(pos) == crate::map::TileType::StairsDown {
+                            assert!(
+                                reachable.contains(&pos),
+                                "depth {depth} seed {seed}: stairs down unreachable at {pos:?}"
+                            );
+                        }
+                    }
+                }
+
+                for id in world.ecs.entity_ids() {
+                    if id == world.player_id {
+                        continue;
+                    }
+                    let Some(pos) = world.ecs.position(id) else {
+                        continue;
+                    };
+                    let kind = world.ecs.kind(id);
+                    assert!(
+                        reachable.contains(&pos),
+                        "depth {depth} seed {seed}: {kind:?} unreachable at {pos:?}"
+                    );
+                }
+            }
+        }
     }
 }

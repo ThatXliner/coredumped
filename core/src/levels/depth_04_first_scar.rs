@@ -1,6 +1,6 @@
 use bracket_color::prelude::{CYAN, RGB};
 
-use super::helpers::apply_map;
+use super::helpers::{apply_map, nearest_open_floor};
 use crate::{
     entity::Position,
     map::{Map, MAP_HEIGHT, MAP_WIDTH},
@@ -26,16 +26,21 @@ pub(crate) fn build_first_scar(world: &mut World) {
         }
     }
 
-    // Wizard at midpoint — player alone at start for first time
-    let wizard_pos = Position::new(MAP_WIDTH / 2, MAP_HEIGHT / 2);
-
-    // Sign hinting at the tone shift — placed near wizard in wider area
-    world.ecs.spawn_sign(
-        Position::new(wizard_pos.x + 2, wizard_pos.y),
-        "The air down here is different.\nEverything feels... sharper.",
-    );
+    // Wizard near the midpoint — player alone at start for first time. The
+    // raw midpoint sits on a region boundary of the generated layout, which
+    // is almost always wall, so snap to the nearest open floor.
+    let midpoint = Position::new(MAP_WIDTH / 2, MAP_HEIGHT / 2);
+    let wizard_pos = nearest_open_floor(world, midpoint).unwrap_or(midpoint);
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
     world.on_wizard_interact = Some(wizard_interact);
+
+    // Sign hinting at the tone shift — near the wizard, also snapped to floor
+    let sign_target = Position::new(wizard_pos.x + 2, wizard_pos.y);
+    let sign_pos = nearest_open_floor(world, sign_target).unwrap_or(sign_target);
+    world.ecs.spawn_sign(
+        sign_pos,
+        "The air down here is different.\nEverything feels... sharper.",
+    );
 }
 
 fn wizard_interact(world: &mut World) -> bool {

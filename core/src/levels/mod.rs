@@ -84,11 +84,28 @@ pub fn build_level(world: &mut World, depth: u32) {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeSet, HashSet, VecDeque};
 
-    use crate::{EntityKind, World};
+    use crate::{entity::Position, EntityKind, World};
 
     use super::build_level;
+
+    /// Flood-fill of walkable tiles from `start`, ignoring entities.
+    fn reachable_tiles(world: &World, start: Position) -> HashSet<Position> {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        visited.insert(start);
+        queue.push_back(start);
+        while let Some(pos) = queue.pop_front() {
+            for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
+                let next = pos.offset(dx, dy);
+                if world.map.contains(next) && world.map.is_walkable(next) && visited.insert(next) {
+                    queue.push_back(next);
+                }
+            }
+        }
+        visited
+    }
 
     #[test]
     fn campaign_fragment_spawns_are_walkable_and_cover_findable_memories() {
@@ -216,4 +233,45 @@ mod tests {
             "depth 4 produced no gate barrels across 16 builds"
         );
     }
+
+    #[test]
+    fn first_scar_wizard_and_sign_are_reachable() {
+        // Procedural layout varies per build; the old midpoint placement put
+        // the wizard inside a wall on almost every generation.
+        for _ in 0..32 {
+            let mut world = World::new_game();
+            build_level(&mut world, 4);
+
+            let wizard_pos = world
+                .wizard_id
+                .and_then(|id| world.ecs.position(id))
+                .expect("depth 4 spawns a wizard");
+            let sign_pos = world
+                .ecs
+                .entity_ids()
+                .find(|id| world.ecs.kind(*id) == Some(EntityKind::Sign))
+                .and_then(|id| world.ecs.position(id))
+                .expect("depth 4 spawns a sign");
+
+            assert!(
+                world.map.is_walkable(wizard_pos),
+                "depth 4 wizard in a wall: {wizard_pos:?}"
+            );
+            assert!(
+                world.map.is_walkable(sign_pos),
+                "depth 4 sign in a wall: {sign_pos:?}"
+            );
+
+            let reachable = reachable_tiles(&world, world.player_pos());
+            assert!(
+                reachable.contains(&wizard_pos),
+                "depth 4 wizard unreachable from start: {wizard_pos:?}"
+            );
+            assert!(
+                reachable.contains(&sign_pos),
+                "depth 4 sign unreachable from start: {sign_pos:?}"
+            );
+        }
+    }
+
 }

@@ -20,7 +20,7 @@ use crate::{
 // The player doesn't need to submit — just typing it is enough.
 
 pub(crate) fn build_maze_of_regret(world: &mut World) {
-    let gen = Map::generate(MAP_WIDTH, MAP_HEIGHT, 10);
+    let gen = Map::generate(MAP_WIDTH, MAP_HEIGHT, 10, world.level_seed(10));
     for pos in &gen.combat_spawns {
         world.spawn_enemy_at(*pos, 10);
     }
@@ -31,8 +31,9 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
     world.maze_shift_frozen = false;
 
     // Mark certain floor tiles as "shifting walls"
-    // These will toggle between Wall and Floor each tick
-    let mut rng = RandomNumberGenerator::new();
+    // These will toggle between Wall and Floor each tick. Salted so the wall
+    // pattern doesn't replay the map generator's random stream.
+    let mut rng = RandomNumberGenerator::seeded(world.level_seed(10) ^ 0x4D41_5A45);
     let player_pos = gen.player_start;
     let stairs_pos = find_stairs_down(&world.map);
 

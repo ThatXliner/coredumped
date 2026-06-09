@@ -8,7 +8,7 @@ use crate::{entity::Position, map::Map, world::World};
 // ---------------------------------------------------------------------------
 
 pub(crate) fn build_jagged_passages(world: &mut World) {
-    let gen = Map::generate_cave(5);
+    let gen = Map::generate_cave(5, world.level_seed(5));
     for pos in &gen.combat_spawns {
         world.spawn_enemy_at(*pos, 5);
     }

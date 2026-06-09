@@ -32,6 +32,10 @@ pub struct World {
     pub player_id: EntityId,
     pub player_facing: Direction,
     pub depth: u32,
+    /// Seed for the whole run. Each depth derives its generation seed from
+    /// this via [`World::level_seed`], so procedural levels are reproducible:
+    /// the same run seed always produces the same layouts.
+    pub run_seed: u64,
     pub turn: u64,
     /// Absolute turn at which the current depth was entered. The turn shown to
     /// the player is `turn - turn_at_depth_start` so it counts up from 0 on each
@@ -182,6 +186,7 @@ impl World {
             player_id: EntityId::new(0),
             player_facing: Direction::East,
             depth: 0,
+            run_seed: 0,
             turn: 0,
             turn_at_depth_start: 0,
             mode: Mode::Normal,
@@ -241,6 +246,17 @@ impl World {
             explored_tiles: HashSet::new(),
             render_frame: 0,
         }
+    }
+
+    /// Generation seed for a depth, derived from the run seed via a
+    /// splitmix64 finalizer so adjacent depths get uncorrelated streams.
+    pub fn level_seed(&self, depth: u32) -> u64 {
+        let mut z = self
+            .run_seed
+            .wrapping_add(u64::from(depth).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
     }
 
     pub(crate) fn clear_dijkstra_cache(&mut self) {

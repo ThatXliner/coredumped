@@ -8,6 +8,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 use bracket_color::prelude::{CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW};
+use bracket_random::prelude::RandomNumberGenerator;
 use serde::{Deserialize, Serialize};
 
 const KONAMI_CODE: [&str; 8] = ["up", "up", "down", "down", "left", "right", "left", "right"];
@@ -102,6 +103,7 @@ impl World {
             player_id,
             player_facing: Direction::East,
             depth: 0,
+            run_seed: RandomNumberGenerator::new().next_u64(),
             turn: 0,
             turn_at_depth_start: 0,
             mode: Mode::Normal,
@@ -191,6 +193,7 @@ impl World {
             player_id,
             player_facing: Direction::East,
             depth,
+            run_seed: RandomNumberGenerator::new().next_u64(),
             turn: 0,
             turn_at_depth_start: 0,
             mode: Mode::Normal,

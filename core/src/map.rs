@@ -88,14 +88,14 @@ impl Map {
 
     /// Generate a random room-based dungeon with depth-scaled difficulty.
     /// Uses region-based placement, Kruskal MST corridors, and room typing.
-    pub fn generate(width: i32, height: i32, depth: u32) -> MapGenOutput {
+    pub fn generate(width: i32, height: i32, depth: u32, seed: u64) -> MapGenOutput {
         let mut map = Self {
             width,
             height,
             tiles: vec![TileType::Wall; (width * height) as usize],
         };
 
-        let mut rng = RandomNumberGenerator::new();
+        let mut rng = RandomNumberGenerator::seeded(seed);
         let mut rooms: Vec<Room> = Vec::new();
 
         // --- Region-based room placement ---
@@ -287,19 +287,19 @@ impl Map {
     }
 
     /// Generate a cellular automata cave with depth-scaled enemies (default size).
-    pub fn generate_cave(depth: u32) -> MapGenOutput {
-        Self::generate_cave_sized(MAP_WIDTH, MAP_HEIGHT, depth)
+    pub fn generate_cave(depth: u32, seed: u64) -> MapGenOutput {
+        Self::generate_cave_sized(MAP_WIDTH, MAP_HEIGHT, depth, seed)
     }
 
     /// Generate a cellular automata cave with custom dimensions.
-    pub fn generate_cave_sized(width: i32, height: i32, depth: u32) -> MapGenOutput {
+    pub fn generate_cave_sized(width: i32, height: i32, depth: u32, seed: u64) -> MapGenOutput {
         let mut map = Self {
             width,
             height,
             tiles: vec![TileType::Wall; (width * height) as usize],
         };
 
-        let mut rng = RandomNumberGenerator::new();
+        let mut rng = RandomNumberGenerator::seeded(seed);
 
         // 1. Random noise: 45% floor, borders always wall
         for y in 1..height - 1 {

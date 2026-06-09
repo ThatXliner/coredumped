@@ -56,6 +56,8 @@ pub fn wipe() {
 pub struct SaveData {
     pub version: u32,
     pub depth: u32,
+    #[serde(default)]
+    pub run_seed: u64,
     pub turn: u64,
     #[serde(default)]
     pub turn_at_depth_start: u64,
@@ -270,6 +272,7 @@ impl World {
         SaveData {
             version: 1,
             depth: self.depth,
+            run_seed: self.run_seed,
             turn: self.turn,
             turn_at_depth_start: self.turn_at_depth_start,
             player_id_raw: self.player_id.raw(),
@@ -400,6 +403,7 @@ impl World {
         world.player_id = EntityId::new(data.player_id_raw);
         world.player_facing = direction_from_string(&data.player_facing);
         world.depth = data.depth;
+        world.run_seed = data.run_seed;
         world.turn = data.turn;
         world.turn_at_depth_start = data.turn_at_depth_start;
         world.player_can_attack = data.player_can_attack;

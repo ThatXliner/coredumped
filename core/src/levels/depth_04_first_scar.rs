@@ -12,7 +12,7 @@ use crate::{
 // ---------------------------------------------------------------------------
 
 pub(crate) fn build_first_scar(world: &mut World) {
-    let gen = Map::generate(MAP_WIDTH, MAP_HEIGHT, 4);
+    let gen = Map::generate(MAP_WIDTH, MAP_HEIGHT, 4, world.level_seed(4));
     for pos in &gen.combat_spawns {
         world.spawn_enemy_at(*pos, 4);
     }

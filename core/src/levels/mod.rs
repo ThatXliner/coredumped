@@ -297,4 +297,47 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn same_run_seed_reproduces_generated_levels() {
+        // 4 = room gen, 5 = cave gen, 10 = room gen + shifting walls,
+        // 18 = procedural fallback.
+        for depth in [4u32, 5, 10, 18] {
+            let build = |seed: u64| {
+                let mut world = World::new_game();
+                world.run_seed = seed;
+                world.depth = depth;
+                build_level(&mut world, depth);
+                world
+            };
+            let a = build(0xDECAF);
+            let b = build(0xDECAF);
+            let c = build(0xC0FFEE);
+
+            assert_eq!(
+                tile_fingerprint(&a),
+                tile_fingerprint(&b),
+                "depth {depth}: same seed produced different maps"
+            );
+            assert_eq!(
+                a.maze_shifting_walls, b.maze_shifting_walls,
+                "depth {depth}: same seed produced different shifting walls"
+            );
+            assert_ne!(
+                tile_fingerprint(&a),
+                tile_fingerprint(&c),
+                "depth {depth}: map generation ignores the seed"
+            );
+        }
+    }
+
+    fn tile_fingerprint(world: &World) -> Vec<crate::map::TileType> {
+        let mut tiles = Vec::new();
+        for y in 0..world.map.height {
+            for x in 0..world.map.width {
+                tiles.push(world.map.tile(Position::new(x, y)));
+            }
+        }
+        tiles
+    }
 }

@@ -212,6 +212,7 @@ mod tests {
             player_id,
             player_facing: Direction::East,
             depth: 0,
+            run_seed: 0,
             turn: 0,
             turn_at_depth_start: 0,
             mode: crate::game::Mode::Normal,

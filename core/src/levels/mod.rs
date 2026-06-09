@@ -274,4 +274,27 @@ mod tests {
         }
     }
 
+    #[test]
+    fn counting_room_key_goblins_are_reachable_without_keys() {
+        let mut world = World::new_game();
+        build_level(&mut world, 8);
+
+        // Locked doors are wall tiles until a key is spent, so the flood fill
+        // covers exactly the hub area the player can reach key-less.
+        let reachable = reachable_tiles(&world, world.player_pos());
+        let goblins: Vec<Position> = world
+            .ecs
+            .entity_ids()
+            .filter(|id| world.ecs.kind(*id) == Some(EntityKind::Goblin))
+            .filter_map(|id| world.ecs.position(id))
+            .collect();
+
+        assert_eq!(goblins.len(), 3, "counting room should have 3 key-goblins");
+        for pos in goblins {
+            assert!(
+                reachable.contains(&pos),
+                "key-goblin sealed behind a locked door at {pos:?}"
+            );
+        }
+    }
 }

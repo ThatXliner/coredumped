@@ -64,9 +64,11 @@ pub(crate) fn build_counting_room(world: &mut World) {
     world.ecs.set_position(world.player_id, player_start);
 
     // Three goblins hold keys. Four doors exist, so one room must stay locked.
-    world.ecs.spawn_goblin(Position::new(hub_x - 12, hub_y - 6)); // key-goblin-1
-    world.ecs.spawn_goblin(Position::new(hub_x + 10, hub_y - 8)); // key-goblin-2
-    world.ecs.spawn_goblin(Position::new(hub_x - 12, hub_y + 8)); // key-goblin-3
+    // They guard the corridor stubs on the hub side of the doors — keys must
+    // be winnable before any door opens.
+    world.ecs.spawn_goblin(Position::new(hub_x - 6, hub_y - 2)); // key-goblin-1, NW door
+    world.ecs.spawn_goblin(Position::new(hub_x + 6, hub_y - 2)); // key-goblin-2, NE door
+    world.ecs.spawn_goblin(Position::new(hub_x + 6, hub_y + 2)); // key-goblin-3, SE door
     world.ecs.spawn_bat(Position::new(hub_x + 8, hub_y + 4));
     world.ecs.spawn_bat(Position::new(hub_x - 8, hub_y - 6));
 

@@ -125,7 +125,11 @@ pub(crate) fn build_boiling_heart(world: &mut World) {
 
 fn wizard_interact(world: &mut World) -> bool {
     world.event_log.push_colored(
-        "\"There's something down there — remains of something I couldn't protect you from.\"",
+        "\"You're angry. Good. Anger is honest — it remembers what hurt.\"",
+        RGB::named(CYAN),
+    );
+    world.event_log.push_colored(
+        "\"There's something down there. Remains of what I couldn't protect you from. Hit hard enough and you'll see what I sealed away.\"",
         RGB::named(CYAN),
     );
     true

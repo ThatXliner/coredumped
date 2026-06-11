@@ -28,7 +28,7 @@ impl World {
             self.event_log
                 .push_colored("The wizard raises a glowing hand...", RGB::named(CYAN));
             self.event_log.push_colored(
-                "\"You've wandered far enough. It's time you learned to strike back.\"",
+                "\"I can't keep everything off you forever. It's time you learned to strike back.\"",
                 RGB::named(CYAN),
             );
             self.event_log.push_colored(
@@ -48,7 +48,7 @@ impl World {
                 RGB::named(GREEN),
             );
             self.event_log.push_colored(
-                "\"Strike with purpose, traveler — once you bind it, the way down will open.\"",
+                "\"Bind it, and the way down will open. I'll be just ahead of you. I always am.\"",
                 RGB::named(CYAN),
             );
             return;

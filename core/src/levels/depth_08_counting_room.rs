@@ -93,7 +93,11 @@ pub(crate) fn build_counting_room(world: &mut World) {
 
 fn wizard_interact(world: &mut World) -> bool {
     world.event_log.push_colored(
-        "\"This place runs on trade. Choose what matters.\"",
+        "\"Everything down here is a bargain. Give up one thing, keep another. I've been making that trade for you for years.\"",
+        RGB::named(CYAN),
+    );
+    world.event_log.push_colored(
+        "\"Three keys, four doors. You can't save all of it. Choose what matters — and notice how much that costs.\"",
         RGB::named(CYAN),
     );
     true

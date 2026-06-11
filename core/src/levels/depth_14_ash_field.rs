@@ -66,8 +66,13 @@ pub(crate) fn build_ash_field(world: &mut World) {
 }
 
 fn wizard_interact(world: &mut World) -> bool {
-    world
-        .event_log
-        .push_colored("\"...You crossed the ash. Not many do.\"", RGB::named(CYAN));
+    world.event_log.push_colored(
+        "\"You crossed the ash. I used to think reaching this place meant I'd failed you. Now I'm not sure failing you and freeing you were ever different things.\"",
+        RGB::named(CYAN),
+    );
+    world.event_log.push_colored(
+        "\"You know you can rewrite the fire by now. You don't need me to tell you that anymore.\"",
+        RGB::named(CYAN),
+    );
     true
 }

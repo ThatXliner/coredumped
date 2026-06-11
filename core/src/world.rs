@@ -121,6 +121,9 @@ pub struct World {
     pub sign_text: String,
     /// Scrollback offset for the sign overlay. 0 = top.
     pub sign_scroll: usize,
+    /// Signs already echoed into the event log this level. Prevents re-bumping
+    /// the same sign from spamming the log. Cleared on level build.
+    pub(crate) read_signs: HashSet<EntityId>,
 
     /// Memory fragment registry — tracks all 42 fragments and collected status.
     pub fragment_registry: FragmentRegistry,
@@ -235,6 +238,7 @@ impl World {
             known_rule_ids: HashSet::new(),
             sign_text: String::new(),
             sign_scroll: 0,
+            read_signs: HashSet::new(),
             fragment_registry: FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),

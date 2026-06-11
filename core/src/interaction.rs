@@ -75,6 +75,24 @@ impl World {
 
     pub(crate) fn interact_with_sign(&mut self, sign_id: EntityId) {
         let message = self.ecs.sign_message(sign_id).unwrap_or("").to_string();
+
+        // Echo the sign into the event log the first time it's read this level,
+        // so the player can scroll back and re-read it after closing the
+        // overlay. Re-bumping the same sign just reopens the overlay without
+        // spamming the log.
+        if self.read_signs.insert(sign_id) {
+            self.event_log
+                .push_colored("-- sign --", RGB::named(DARK_GRAY));
+            for line in message.lines() {
+                if line.trim().is_empty() {
+                    self.event_log.push("");
+                } else {
+                    self.event_log
+                        .push_colored(line.to_string(), RGB::named(CYAN));
+                }
+            }
+        }
+
         self.sign_text = message;
         self.sign_scroll = 0;
         self.mode = crate::game::Mode::ReadingSign;

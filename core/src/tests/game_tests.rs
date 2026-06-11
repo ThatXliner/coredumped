@@ -1520,3 +1520,37 @@ fn prelude_functions_work_in_console() {
     world.apply_intent(Intent::ConsoleSubmit);
     assert_eq!(world.console_output, "=> true");
 }
+
+#[test]
+fn reading_sign_opens_overlay_and_echoes_to_log_once() {
+    let mut world = world_with_single_enemy(Position::new(20, 5));
+    world
+        .ecs
+        .spawn_sign(Position::new(6, 5), "Hello.\n\nWorld.");
+
+    // First bump: opens the overlay and echoes the text into the log.
+    let cost = world.apply_intent(Intent::Move(Direction::East));
+    assert_eq!(cost, ActionCost::Tick);
+    assert_eq!(world.mode, Mode::ReadingSign);
+    assert_eq!(world.sign_text, "Hello.\n\nWorld.");
+    assert!(world.event_log.contains("Hello."));
+    assert!(world.event_log.contains("World."));
+
+    fn header_count(world: &World) -> usize {
+        world
+            .event_log
+            .entries()
+            .iter()
+            .filter(|e| e.text == "-- sign --")
+            .count()
+    }
+    assert_eq!(header_count(&world), 1);
+
+    // Close the overlay and bump the same sign again: overlay reopens, but the
+    // log is not spammed with a duplicate transcript.
+    world.apply_intent(Intent::CloseOverlay);
+    assert_eq!(world.mode, Mode::Normal);
+    world.apply_intent(Intent::Move(Direction::East));
+    assert_eq!(world.mode, Mode::ReadingSign);
+    assert_eq!(header_count(&world), 1);
+}

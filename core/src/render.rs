@@ -1129,7 +1129,11 @@ fn render_sign(ctx: &mut Frame, world: &World) {
     let footer = if at_end {
         "esc/space close".to_string()
     } else {
-        format!("j/k scroll  esc/space close  ({}/{})", scroll + 1, max_scroll + 1)
+        format!(
+            "j/k scroll  esc/space close  ({}/{})",
+            scroll + 1,
+            max_scroll + 1
+        )
     };
     print_clipped(ctx, inner_x, y + height - 2, inner_w as i32, &footer);
 }

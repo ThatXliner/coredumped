@@ -252,6 +252,7 @@ mod tests {
             known_rule_ids: std::collections::HashSet::new(),
             sign_text: String::new(),
             sign_scroll: 0,
+            read_signs: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: std::collections::HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),

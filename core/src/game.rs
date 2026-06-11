@@ -144,6 +144,7 @@ impl World {
             known_rule_ids: HashSet::new(),
             sign_text: String::new(),
             sign_scroll: 0,
+            read_signs: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
@@ -237,6 +238,7 @@ impl World {
             known_rule_ids: HashSet::new(),
             sign_text: String::new(),
             sign_scroll: 0,
+            read_signs: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
@@ -930,7 +932,9 @@ impl World {
 
     fn scroll_sign(&mut self, delta: i32) {
         if delta < 0 {
-            self.sign_scroll = self.sign_scroll.saturating_sub(delta.unsigned_abs() as usize);
+            self.sign_scroll = self
+                .sign_scroll
+                .saturating_sub(delta.unsigned_abs() as usize);
         } else {
             self.sign_scroll = self.sign_scroll.saturating_add(delta as usize);
         }

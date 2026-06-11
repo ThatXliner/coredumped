@@ -93,5 +93,6 @@ impl World {
         self.maze_shifting_walls.clear();
         self.maze_shift_frozen = false;
         self.explored_tiles.clear();
+        self.read_signs.clear();
     }
 }

@@ -65,7 +65,10 @@ Platform-agnostic game engine. Both TUI and web frontends depend on this crate.
 - `Frame` is a cell buffer with `set()`, `print_color()`, and `to_ansi_string()`. Platform frontends consume `Frame` for rendering.
 
 **Rules** — `rules.rs`
-- `RuleRegistry` stores `Rule` structs with id, name, phase (EnemyAi / Render), cost (Tick / Free), and static source lines. Displayed in the inspector panel.
+- `RuleRegistry` stores `Rule` structs with id, name, phase (EnemyAi / TileEffect / Render), cost (Tick / Free), default source lines, and a parsed `body_form` that actually executes (enemy AI, tile effects).
+- Rules are **live-patchable**: a `RulePatch` overlay supports `patch` (replace body with player Glyph), `unregister` (rule stops executing), and `restore` (back to default). `active_body(id)` is what the simulation runs. Patches persist in saves and display in the inspector with `[PATCHED]`/`[UNREGISTERED]` tags.
+- Players reach this through `(open-registry :rule-registry)` after disabling write-protect via the Rage buffer-overflow exploit (depth 7). Balance: an active patch costs 2 max HP, an unregister 3, `:restore` refunds — see `rule_mod_cost` in `builtins.rs`. `flashlight` is pinned (engine-executed); `maze-shift` can only be unregistered.
+- Patching or unregistering `vessel/suppress` releases the 9 suppressed memory fragments and switches the depth-17 ending from MAINTAIN SUPPRESSION to RELEASE.
 
 **Event log** — `event_log.rs`
 - Append-only ring buffer capped at 100 lines. Game systems push human-readable strings; the renderer shows the most recent entries.

@@ -122,6 +122,12 @@ impl World {
             return;
         }
 
+        // The clean solution: the player unregistered maze/shift via the
+        // rule registry. The walls stop for good.
+        if self.registry.is_disabled("maze-shift") {
+            return;
+        }
+
         // Check for exploit: if console buffer contains (quote :still), freeze maze
         // This is the "eval injection" — the maze/shift rule reads the buffer
         // without checking if it was submitted.

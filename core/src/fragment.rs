@@ -55,6 +55,20 @@ impl FragmentRegistry {
         self.fragments.iter().find(|f| f.id == id)
     }
 
+    /// Release every suppressed fragment into the collected set. Happens when
+    /// the player patches or unregisters vessel/suppress. Returns how many
+    /// memories surfaced.
+    pub fn release_suppressed(&mut self) -> usize {
+        let mut released = 0;
+        for f in &mut self.fragments {
+            if f.status == FragmentStatus::Suppressed {
+                f.status = FragmentStatus::Collected;
+                released += 1;
+            }
+        }
+        released
+    }
+
     /// List suppressed fragment IDs with weights (for query-registry).
     pub fn suppressed(&self) -> Vec<&Fragment> {
         self.fragments

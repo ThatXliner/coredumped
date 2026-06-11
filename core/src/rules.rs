@@ -22,12 +22,15 @@
 //!
 //! ## Current Status
 //!
-//! Right now, rules are static (can't be changed at runtime). The long-term plan
-//! is to let players patch and modify rules during gameplay.
+//! Rules ship with static defaults, but once the player disables the registry
+//! write-protect (the Rage buffer-overflow exploit), they can patch or
+//! unregister rules at runtime through `(open-registry :rule-registry)`.
+//! Patches live in an overlay (`RulePatch`) so the original rule is always
+//! recoverable via `:restore`.
 
 // HashSet is a collection that stores unique items (no duplicates allowed).
 // We use it to track which rules the player has discovered.
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 // Import types from other parts of our codebase:
 // - EntityKind: The different types of creatures (slime, goblin, bat, etc.)
@@ -124,6 +127,21 @@ pub struct Rule {
 // RULE REGISTRY - Collection of all rules
 // =============================================================================
 
+/// A player-authored modification to a rule.
+///
+/// Patches are stored as an overlay on top of the static defaults, keyed by
+/// rule id. This keeps the original rule intact so `:restore` can undo any
+/// change, and makes patches easy to serialize into save files.
+#[derive(Clone, Debug)]
+pub struct RulePatch {
+    /// The raw source the player wrote, if any. `None` for a pure unregister.
+    pub source: Option<String>,
+    /// The parsed replacement body. Ignored while `disabled` is true.
+    pub body: Option<Value>,
+    /// True when the rule has been unregistered (it no longer executes).
+    pub disabled: bool,
+}
+
 /// The RuleRegistry holds all the rules in the game.
 ///
 /// It's like a dictionary where you can look up rules by their ID.
@@ -132,6 +150,9 @@ pub struct Rule {
 pub struct RuleRegistry {
     /// Internal storage for all rules. This is a Vec (growable array).
     rules: Vec<Rule>,
+    /// Player modifications, keyed by rule id. Empty until the player
+    /// breaks the write-protect and starts rewriting the dungeon.
+    patches: BTreeMap<String, RulePatch>,
 }
 
 // =============================================================================
@@ -621,6 +642,7 @@ impl RuleRegistry {
                     body_form: Value::Nil,
                 },
             ],
+            patches: BTreeMap::new(),
         }
     }
 
@@ -656,6 +678,112 @@ impl RuleRegistry {
     pub fn get(&self, id: &str) -> Option<&Rule> {
         // .find() searches through the iterator and returns the first match
         self.rules.iter().find(|r| r.id == id)
+    }
+
+    // =========================================================================
+    // RUNTIME PATCHING (the player rewriting the dungeon)
+    // =========================================================================
+
+    /// Replace a rule's body with player-written Glyph source.
+    ///
+    /// Accepts either a full `(defrule name meta body)` form or a bare body
+    /// form. The patch is stored as an overlay; the original rule is kept so
+    /// `restore` can undo the change. Re-enables a previously unregistered rule.
+    pub fn patch(&mut self, id: &str, source: &str) -> Result<(), String> {
+        if self.get(id).is_none() {
+            return Err(format!("unknown rule: {}", id));
+        }
+        let forms = glyph::read_string(source)
+            .map_err(|e| format!("patch does not parse: {}", e.report(source)))?;
+        let body = match forms.as_slice() {
+            [] => return Err("patch is empty".into()),
+            [Value::List(items)]
+                if items.len() >= 4
+                    && matches!(&items[0], Value::Symbol(s) if s.name == "defrule") =>
+            {
+                items[3].clone()
+            }
+            [form] => form.clone(),
+            many => Value::List(
+                std::iter::once(glyph::sym("do"))
+                    .chain(many.iter().cloned())
+                    .collect(),
+            ),
+        };
+        self.patches.insert(
+            id.to_string(),
+            RulePatch {
+                source: Some(source.to_string()),
+                body: Some(body),
+                disabled: false,
+            },
+        );
+        Ok(())
+    }
+
+    /// Unregister a rule: it stops executing entirely. Enemies governed by it
+    /// stand inert; tile effects governed by it stop firing.
+    pub fn unregister(&mut self, id: &str) -> Result<(), String> {
+        if self.get(id).is_none() {
+            return Err(format!("unknown rule: {}", id));
+        }
+        let patch = self.patches.entry(id.to_string()).or_insert(RulePatch {
+            source: None,
+            body: None,
+            disabled: true,
+        });
+        patch.disabled = true;
+        Ok(())
+    }
+
+    /// Drop any patch on a rule, restoring the compiled-in default.
+    pub fn restore(&mut self, id: &str) -> Result<(), String> {
+        if self.get(id).is_none() {
+            return Err(format!("unknown rule: {}", id));
+        }
+        self.patches.remove(id);
+        Ok(())
+    }
+
+    /// The body that should actually execute for a rule right now:
+    /// `None` if the rule is unknown or unregistered, the patched body if
+    /// one is installed, otherwise the compiled-in default.
+    pub fn active_body(&self, id: &str) -> Option<Value> {
+        let rule = self.get(id)?;
+        match self.patches.get(id) {
+            Some(patch) if patch.disabled => None,
+            Some(patch) => Some(patch.body.clone().unwrap_or_else(|| rule.body_form.clone())),
+            None => Some(rule.body_form.clone()),
+        }
+    }
+
+    /// True when the rule exists but has been unregistered.
+    pub fn is_disabled(&self, id: &str) -> bool {
+        self.patches.get(id).is_some_and(|p| p.disabled)
+    }
+
+    /// True when the rule has a live (non-disabled) player patch.
+    pub fn is_patched(&self, id: &str) -> bool {
+        self.patches
+            .get(id)
+            .is_some_and(|p| !p.disabled && p.body.is_some())
+    }
+
+    /// The source lines to display for a rule: the player's patch if one is
+    /// installed, otherwise the original source.
+    pub fn display_lines(&self, rule: &Rule) -> Vec<String> {
+        match self.patches.get(rule.id) {
+            Some(patch) if !patch.disabled => match &patch.source {
+                Some(src) => src.lines().map(str::to_string).collect(),
+                None => rule.source_lines.iter().map(|s| s.to_string()).collect(),
+            },
+            _ => rule.source_lines.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    /// All current patches, for save serialization.
+    pub fn patches(&self) -> impl Iterator<Item = (&String, &RulePatch)> {
+        self.patches.iter()
     }
 
     /// Returns the rule that applies to a specific tile type.
@@ -825,6 +953,85 @@ mod tests {
         let registry = RuleRegistry::core();
         // .is_none() returns true if the Option is None
         assert!(registry.get("does-not-exist").is_none());
+    }
+
+    /// Patching swaps the active body but keeps the original recoverable.
+    #[test]
+    fn patch_replaces_active_body_and_restore_undoes_it() {
+        let mut registry = RuleRegistry::core();
+        let default_body = registry.active_body("slime-hunt").unwrap();
+
+        registry
+            .patch("slime-hunt", "(flee-step! *self* *player*)")
+            .unwrap();
+        assert!(registry.is_patched("slime-hunt"));
+        let patched = registry.active_body("slime-hunt").unwrap();
+        assert!(patched.to_string().contains("flee-step!"));
+
+        registry.restore("slime-hunt").unwrap();
+        assert!(!registry.is_patched("slime-hunt"));
+        assert_eq!(
+            registry.active_body("slime-hunt").unwrap().to_string(),
+            default_body.to_string()
+        );
+    }
+
+    /// A patch may be a full (defrule ...) form; the body is extracted.
+    #[test]
+    fn patch_accepts_full_defrule_form() {
+        let mut registry = RuleRegistry::core();
+        registry
+            .patch(
+                "ogre-charge",
+                "(defrule ogre-charge {:phase :enemy-ai :cost :tick} (random-step! *self*))",
+            )
+            .unwrap();
+        let body = registry.active_body("ogre-charge").unwrap();
+        assert_eq!(body.to_string(), "(random-step! *self*)");
+    }
+
+    /// Multiple top-level forms get wrapped in a (do ...).
+    #[test]
+    fn patch_wraps_multiple_forms_in_do() {
+        let mut registry = RuleRegistry::core();
+        registry
+            .patch("bat-flutter", "(log \"hi\") (random-step! *self*)")
+            .unwrap();
+        let body = registry.active_body("bat-flutter").unwrap();
+        assert!(body.to_string().starts_with("(do "));
+    }
+
+    /// Unregistered rules have no active body; restore brings them back.
+    #[test]
+    fn unregister_removes_active_body() {
+        let mut registry = RuleRegistry::core();
+        registry.unregister("goblin-patrol").unwrap();
+        assert!(registry.is_disabled("goblin-patrol"));
+        assert!(registry.active_body("goblin-patrol").is_none());
+
+        registry.restore("goblin-patrol").unwrap();
+        assert!(registry.active_body("goblin-patrol").is_some());
+    }
+
+    /// Bad patches are rejected without changing the rule.
+    #[test]
+    fn patch_rejects_unknown_rules_and_bad_source() {
+        let mut registry = RuleRegistry::core();
+        assert!(registry.patch("no-such-rule", "nil").is_err());
+        assert!(registry.patch("slime-hunt", "(unbalanced").is_err());
+        assert!(!registry.is_patched("slime-hunt"));
+    }
+
+    /// Display lines reflect the patch while it is live.
+    #[test]
+    fn display_lines_show_patched_source() {
+        let mut registry = RuleRegistry::core();
+        registry.patch("slime-hunt", "(wait-here)").unwrap();
+        let rule = registry.get("slime-hunt").unwrap();
+        assert_eq!(
+            registry.display_lines(rule),
+            vec!["(wait-here)".to_string()]
+        );
     }
 
     /// Test that iterating visits all rules.

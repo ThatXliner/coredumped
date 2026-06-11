@@ -34,10 +34,13 @@ impl World {
             return;
         }
         if self.depth == 17 {
-            self.ending = Some(
+            self.ending = Some(if self.suppression_lifted {
+                "RELEASE\n\nThe rule is gone. Nothing redirects the weight anymore.\nAll of it is yours again — the bench, the dog in the sweater,\nthe Sundays, the silence, the name.\n\nAdrian.\n\nIt hurts the whole way up.\nIt is supposed to.\nThat's what carrying something feels like.\n\nConsciousness destabilized.\nConsciousness rebuilding.\n\nYou are not safe.\nYou are awake.\n\nPress q to quit."
+                    .into()
+            } else {
                 "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit."
-                    .into(),
-            );
+                    .into()
+            });
             return;
         }
         let from_depth = self.depth;

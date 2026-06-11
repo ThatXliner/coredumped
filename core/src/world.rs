@@ -131,6 +131,10 @@ pub struct World {
     /// Set when the Rage impact overflow has disabled registry write-protect.
     pub registry_write_unlocked: bool,
 
+    /// Set when the player patches or unregisters vessel/suppress. Releases
+    /// the suppressed fragments and changes the ending at the Core.
+    pub suppression_lifted: bool,
+
     /// Force of the last attack. Used by the rage-impact exploit.
     pub last_impact_force: i32,
 
@@ -230,6 +234,7 @@ impl World {
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            suppression_lifted: false,
             last_impact_force: 0,
             last_impact_target: None,
             held_keys: Vec::new(),

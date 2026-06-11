@@ -772,6 +772,20 @@ Glyph help (page 4/6): game console commands
         );
     }
 
+    if world.registry_write_unlocked {
+        help.push_str(
+            "\n\nRule registry (write-protect disabled):\n\
+             \n  (let r (open-registry :rule-registry)\n\
+             \n    (r :list)                  — all rules + patch status\n\
+             \n    (r :read :slime-hunt)      — read a rule's source\n\
+             \n    (r :write :slime-hunt '(flee-step! *self* *player*))\n\
+             \n                               — replace a rule's body (max HP -2)\n\
+             \n    (r :unregister :slime-hunt) — stop a rule (max HP -3)\n\
+             \n    (r :restore :slime-hunt))  — undo your changes (full refund)\n\
+             \nEvery active modification weighs on you. Restore refunds it all.",
+        );
+    }
+
     if world.cheat_unlocked {
         help.push_str(
             "\n\nCheat commands:\n\
@@ -1267,7 +1281,7 @@ fn builtin_open_registry(
             if world.registry_write_unlocked {
                 Ok(Value::Builtin(glyph::BuiltinFn {
                     name: "rule-registry",
-                    doc: "registry handle: (handle :read rule), (handle :write rule form), or (handle :unregister rule)",
+                    doc: "registry handle: (handle :list), (handle :read rule), (handle :write rule form), (handle :unregister rule), (handle :restore rule)",
                     func: builtin_rule_registry_handle,
                 }))
             } else {
@@ -1314,6 +1328,93 @@ fn builtin_spawn_log_handle(
     }
 }
 
+/// Rules the registry refuses to touch: they're executed by the engine
+/// itself, not interpreted from their Glyph body, so patches would lie.
+const ENGINE_PINNED_RULES: &[&str] = &["flashlight"];
+
+/// Max-HP price of keeping a rule modified. The dungeon is the player's own
+/// mind; rewriting a rule strains it, carving one out costs more. `:restore`
+/// refunds everything, so experimenting is cheap but every *active*
+/// modification weighs on you. This keeps "patch/unregister everything"
+/// from being a free win button.
+const PATCH_MAX_HP_COST: i32 = 2;
+const UNREGISTER_MAX_HP_COST: i32 = 3;
+
+/// What the rule's current modification state costs in max HP.
+fn rule_mod_cost(world: &World, id: &str) -> i32 {
+    if id == "vessel-suppress" {
+        return 0; // the narrative rule: its price is the memories themselves
+    }
+    if world.registry.is_disabled(id) {
+        UNREGISTER_MAX_HP_COST
+    } else if world.registry.is_patched(id) {
+        PATCH_MAX_HP_COST
+    } else {
+        0
+    }
+}
+
+/// Adjust max HP for a modification-state transition. Charges when the new
+/// state costs more than the old, refunds when it costs less. Errors (before
+/// any mutation) if the player can't afford the difference.
+fn charge_rule_mod(world: &mut World, old_cost: i32, new_cost: i32) -> glyph::EvalResult<()> {
+    let delta = new_cost - old_cost;
+    if delta == 0 {
+        return Ok(());
+    }
+    let hp = world.player_hp();
+    let new_max = hp.max - delta;
+    if new_max < 1 {
+        return Err(glyph::EvalError::Custom(
+            "There isn't enough of you left to cut this out of.".into(),
+        ));
+    }
+    world.ecs.set_hp(
+        world.player_id,
+        crate::entity::Hp {
+            current: hp.current.min(new_max),
+            max: new_max,
+        },
+    );
+    Ok(())
+}
+
+fn resolve_rule(world: &World, requested: &str) -> glyph::EvalResult<(String, String)> {
+    world
+        .registry
+        .iter()
+        .find(|rule| rule_matches(rule, requested))
+        .map(|rule| (rule.id.to_string(), rule.name.to_string()))
+        .ok_or_else(|| glyph::EvalError::Custom(format!("unknown rule: {}", requested)))
+}
+
+fn lift_suppression(world: &mut World) -> Value {
+    if world.suppression_lifted {
+        return Value::String("vessel/suppress is already silent.".into());
+    }
+    world.suppression_lifted = true;
+    let released = world.fragment_registry.release_suppressed();
+    world.event_log.push_colored(
+        "The write lands. vessel/suppress halts mid-execution.",
+        RGB::named(CYAN),
+    );
+    world.event_log.push_colored(
+        format!(
+            "{} suppressed memories surface at once. They were never gone.",
+            released
+        ),
+        RGB::named(YELLOW),
+    );
+    world.event_log.push_colored(
+        "Press m to read what you buried. The stairs up are still there.",
+        RGB::named(YELLOW),
+    );
+    Value::String(format!(
+        "vessel/suppress patched. {} fragments released. (m) to read them.",
+        released
+    ))
+}
+
 fn builtin_rule_registry_handle(
     args: &[Value],
     _env: &Env,
@@ -1337,6 +1438,23 @@ fn builtin_rule_registry_handle(
     };
 
     match method {
+        "list" => {
+            let ids: Vec<Value> = world
+                .registry
+                .iter()
+                .map(|rule| {
+                    let status = if world.registry.is_disabled(rule.id) {
+                        " [unregistered]"
+                    } else if world.registry.is_patched(rule.id) {
+                        " [patched]"
+                    } else {
+                        ""
+                    };
+                    Value::String(format!("{}{}", rule.name, status))
+                })
+                .collect();
+            Ok(Value::List(ids))
+        }
         "read" => {
             if args.len() != 2 {
                 return Err(glyph::EvalError::WrongArgCount {
@@ -1345,12 +1463,15 @@ fn builtin_rule_registry_handle(
                 });
             }
             let requested = registry_name_from_value(&args[1])?;
-            let rule = world
-                .registry
-                .iter()
-                .find(|rule| rule_matches(rule, requested))
-                .ok_or_else(|| glyph::EvalError::Custom(format!("unknown rule: {}", requested)))?;
-            Ok(Value::String(rule.source_lines.join("\n")))
+            let (id, _) = resolve_rule(world, requested)?;
+            let rule = world.registry.get(&id).unwrap();
+            let mut text = world.registry.display_lines(rule).join("\n");
+            if world.registry.is_disabled(&id) {
+                text.push_str("\n;; STATUS: unregistered — this rule no longer executes.");
+            } else if world.registry.is_patched(&id) {
+                text.push_str("\n;; STATUS: patched by you.");
+            }
+            Ok(Value::String(text))
         }
         "write" => {
             if args.len() != 3 {
@@ -1360,17 +1481,67 @@ fn builtin_rule_registry_handle(
                 });
             }
             let requested = registry_name_from_value(&args[1])?;
-            let rule = world
-                .registry
-                .iter()
-                .find(|rule| rule_matches(rule, requested))
-                .ok_or_else(|| glyph::EvalError::Custom(format!("unknown rule: {}", requested)))?;
-            let rule_name = rule.name;
-            world.event_log.push_colored(
-                format!("Registry write accepted for {}.", rule_name),
-                RGB::named(CYAN),
-            );
-            Ok(Value::String(format!("{} patched", rule_name)))
+            let (id, name) = resolve_rule(world, requested)?;
+
+            if ENGINE_PINNED_RULES.contains(&id.as_str()) {
+                return Err(glyph::EvalError::Custom(format!(
+                    "{} is pinned: the renderer holds an open handle to it. Patch rejected.",
+                    name
+                )));
+            }
+            if id == "maze-shift" {
+                return Err(glyph::EvalError::Custom(
+                    "maze/shift is jitted into the substrate — the registry can only :unregister it."
+                        .into(),
+                ));
+            }
+            if id == "vessel-suppress" {
+                // Any write to the suppression rule breaks it. There is no
+                // version of this rule that holds once you've touched it.
+                world.event_log.push_colored(
+                    "vessel/suppress accepts the write. Its threshold collapses.",
+                    RGB::named(CYAN),
+                );
+                return Ok(lift_suppression(world));
+            }
+
+            let source = match &args[2] {
+                Value::String(s) => s.clone(),
+                form => form.to_string(),
+            };
+            let old_cost = rule_mod_cost(world, &id);
+            charge_rule_mod(world, old_cost, PATCH_MAX_HP_COST)?;
+            if let Err(e) = world.registry.patch(&id, &source) {
+                // Patch didn't parse — give the max HP back.
+                let _ = charge_rule_mod(world, PATCH_MAX_HP_COST, old_cost);
+                return Err(glyph::EvalError::Custom(e));
+            }
+            world.known_rule_ids.insert(id.clone());
+            world.new_rule_ids.insert(id);
+            match PATCH_MAX_HP_COST - old_cost {
+                d if d > 0 => world.event_log.push_colored(
+                    format!(
+                        "Registry write accepted. {} now runs your code. It takes something with it. (max HP -{})",
+                        name, d
+                    ),
+                    RGB::named(CYAN),
+                ),
+                d if d < 0 => world.event_log.push_colored(
+                    format!(
+                        "Registry write accepted. {} re-registers under your code. (max HP +{})",
+                        name, -d
+                    ),
+                    RGB::named(CYAN),
+                ),
+                _ => world.event_log.push_colored(
+                    format!("Registry write accepted. {} now runs your code.", name),
+                    RGB::named(CYAN),
+                ),
+            }
+            Ok(Value::String(format!(
+                "{} patched (:restore to undo and refund)",
+                name
+            )))
         }
         "unregister" => {
             if args.len() != 2 {
@@ -1380,20 +1551,84 @@ fn builtin_rule_registry_handle(
                 });
             }
             let requested = registry_name_from_value(&args[1])?;
-            let rule = world
+            let (id, name) = resolve_rule(world, requested)?;
+
+            if ENGINE_PINNED_RULES.contains(&id.as_str()) {
+                return Err(glyph::EvalError::Custom(format!(
+                    "{} is pinned: the renderer holds an open handle to it. Unregister rejected.",
+                    name
+                )));
+            }
+            if id == "vessel-suppress" {
+                world
+                    .registry
+                    .unregister(&id)
+                    .map_err(glyph::EvalError::Custom)?;
+                return Ok(lift_suppression(world));
+            }
+            if world.registry.is_disabled(&id) {
+                return Ok(Value::String(format!("{} is already unregistered", name)));
+            }
+
+            // Unregistering costs a piece of you until restored.
+            let old_cost = rule_mod_cost(world, &id);
+            charge_rule_mod(world, old_cost, UNREGISTER_MAX_HP_COST)?;
+            world
                 .registry
-                .iter()
-                .find(|rule| rule_matches(rule, requested))
-                .ok_or_else(|| glyph::EvalError::Custom(format!("unknown rule: {}", requested)))?;
-            let rule_name = rule.name;
+                .unregister(&id)
+                .map_err(glyph::EvalError::Custom)?;
+            world.known_rule_ids.insert(id.clone());
+            world.new_rule_ids.insert(id);
+            let paid = UNREGISTER_MAX_HP_COST - old_cost;
             world.event_log.push_colored(
-                format!("Registry unregistered {}.", rule_name),
+                format!(
+                    "{} unregistered. Something in you goes quiet. (max HP -{})",
+                    name, paid
+                ),
                 RGB::named(RED),
             );
-            Ok(Value::String(format!("{} unregistered", rule_name)))
+            Ok(Value::String(format!(
+                "{} unregistered (max HP -{}; :restore to undo)",
+                name, paid
+            )))
+        }
+        "restore" => {
+            if args.len() != 2 {
+                return Err(glyph::EvalError::WrongArgCount {
+                    expected: 2,
+                    got: args.len(),
+                });
+            }
+            let requested = registry_name_from_value(&args[1])?;
+            let (id, name) = resolve_rule(world, requested)?;
+            if id == "vessel-suppress" && world.suppression_lifted {
+                return Err(glyph::EvalError::Custom(
+                    "Some things, once surfaced, cannot be re-suppressed.".into(),
+                ));
+            }
+            let old_cost = rule_mod_cost(world, &id);
+            world
+                .registry
+                .restore(&id)
+                .map_err(glyph::EvalError::Custom)?;
+            charge_rule_mod(world, old_cost, 0)?; // refund never fails
+            if old_cost > 0 {
+                world.event_log.push_colored(
+                    format!(
+                        "{} restored to default. You feel more solid. (max HP +{})",
+                        name, old_cost
+                    ),
+                    RGB::named(GREEN),
+                );
+            } else {
+                world
+                    .event_log
+                    .push_colored(format!("{} restored to default.", name), RGB::named(GREEN));
+            }
+            Ok(Value::String(format!("{} restored", name)))
         }
         _ => Err(glyph::EvalError::Custom(
-            "usage: (handle :read rule), (handle :write rule form), or (handle :unregister rule)"
+            "usage: (handle :list), (handle :read rule), (handle :write rule form), (handle :unregister rule), or (handle :restore rule)"
                 .into(),
         )),
     }
@@ -1599,6 +1834,14 @@ fn builtin_copy_bytes(
             world.registry_write_unlocked = true;
             world.event_log.push_colored(
                 "Buffer overflow! The impact payload overruns its buffer. Registry write-protect disabled.",
+                RGB::named(CYAN),
+            );
+            world.event_log.push_colored(
+                "The rules of this place are writable now. Try (open-registry :rule-registry).",
+                RGB::named(CYAN),
+            );
+            world.event_log.push_colored(
+                "A handle answers to :list, :read, :write, :unregister, :restore.",
                 RGB::named(CYAN),
             );
         }

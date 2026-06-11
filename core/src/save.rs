@@ -96,6 +96,11 @@ pub struct SaveData {
     pub maze_shifting_walls: Vec<(i32, i32)>,
     #[serde(default)]
     pub maze_shift_frozen: bool,
+    /// Player rule patches: (rule id, patch source if any, disabled).
+    #[serde(default)]
+    pub rule_patches: Vec<(String, Option<String>, bool)>,
+    #[serde(default)]
+    pub suppression_lifted: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -314,6 +319,12 @@ impl World {
                 .map(|p| (p.x, p.y))
                 .collect(),
             maze_shift_frozen: self.maze_shift_frozen,
+            rule_patches: self
+                .registry
+                .patches()
+                .map(|(id, p)| (id.clone(), p.source.clone(), p.disabled))
+                .collect(),
+            suppression_lifted: self.suppression_lifted,
         }
     }
 }
@@ -487,6 +498,20 @@ impl World {
             .map(|(x, y)| Position { x: *x, y: *y })
             .collect();
         world.maze_shift_frozen = data.maze_shift_frozen;
+
+        // --- Rule patches ---
+        // Reapply player modifications to the freshly built registry. Save
+        // data is trusted as far as parseability; unparseable patches are
+        // silently dropped (the default rule takes over again).
+        for (id, source, disabled) in &data.rule_patches {
+            if let Some(src) = source {
+                let _ = world.registry.patch(id, src);
+            }
+            if *disabled {
+                let _ = world.registry.unregister(id);
+            }
+        }
+        world.suppression_lifted = data.suppression_lifted;
 
         // --- Rebuild Glyph envs on top of minimal env ---
         world.glyph_env = crate::game::setup_glyph_env();

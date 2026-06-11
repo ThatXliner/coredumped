@@ -596,11 +596,16 @@ fn render_inspector(ctx: &mut Frame, world: &World) {
             RGB::named(GRAY)
         };
 
-        let header = if is_new {
-            format!("{prefix} {} [NEW]", rule.name)
+        let status = if world.registry.is_disabled(rule.id) {
+            " [UNREGISTERED]"
+        } else if world.registry.is_patched(rule.id) {
+            " [PATCHED]"
+        } else if is_new {
+            " [NEW]"
         } else {
-            format!("{prefix} {}", rule.name)
+            ""
         };
+        let header = format!("{prefix} {}{status}", rule.name);
         ctx.print_color(x + 2, line_y, hl, RGB::named(BLACK), &header);
         line_y += 1;
 
@@ -615,7 +620,7 @@ fn render_inspector(ctx: &mut Frame, world: &World) {
         line_y += 1;
 
         if expanded {
-            for src in rule.source_lines {
+            for src in world.registry.display_lines(rule) {
                 let src_line = format!("   {src}");
                 let spans = highlight::highlight(&src_line);
                 print_highlighted(ctx, x + 2, line_y, inner_w, &spans);

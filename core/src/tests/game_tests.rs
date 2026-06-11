@@ -845,25 +845,225 @@ fn rule_registry_denies_access_before_unlock() {
     assert!(err.to_string().contains("write-protect flag is set"));
 }
 
+/// Evaluate one Glyph form against a fresh game env, panicking on read errors.
+fn eval_glyph(world: &mut World, env: &Env, source: &str) -> crate::glyph::EvalResult<Value> {
+    let forms = crate::glyph::read_string(source).unwrap();
+    let mut last = Ok(Value::Nil);
+    for form in &forms {
+        last =
+            crate::glyph::eval_with_opts(form, env, crate::glyph::SandboxOptions::default(), world);
+        if last.is_err() {
+            return last;
+        }
+    }
+    last
+}
+
 #[test]
-fn unlocked_rule_registry_handle_accepts_vessel_write() {
+fn vessel_write_releases_suppressed_fragments_and_lifts_suppression() {
     let mut world = World::new();
     world.registry_write_unlocked = true;
     let env = setup_glyph_env();
-    let forms = crate::glyph::read_string(
+    let suppressed_before = world.fragment_registry.suppressed().len();
+    assert!(suppressed_before > 0);
+
+    let result = eval_glyph(
+        &mut world,
+        &env,
         "(let r (open-registry :rule-registry) (r :write :vessel/suppress '(set! *threshold* 0)))",
     )
     .unwrap();
 
-    let result = crate::glyph::eval_with_opts(
-        &forms[0],
-        &env,
-        crate::glyph::SandboxOptions::default(),
+    assert!(matches!(result, Value::String(s) if s.contains("released")));
+    assert!(world.suppression_lifted);
+    assert!(world.fragment_registry.suppressed().is_empty());
+    assert_eq!(world.fragment_registry.collected_count(), suppressed_before);
+}
+
+#[test]
+fn vessel_unregister_also_lifts_suppression() {
+    let mut world = World::new();
+    world.registry_write_unlocked = true;
+    let env = setup_glyph_env();
+
+    eval_glyph(
         &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :unregister :vessel/suppress))",
     )
     .unwrap();
 
-    assert_eq!(result, Value::String("vessel/suppress patched".into()));
+    assert!(world.suppression_lifted);
+    assert!(world.fragment_registry.suppressed().is_empty());
+    // The narrative choice can't be taken back.
+    let err = eval_glyph(
+        &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :restore :vessel/suppress))",
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("cannot be re-suppressed"));
+}
+
+#[test]
+fn patched_enemy_rule_changes_behavior() {
+    let mut world = world_with_single_enemy(Position::new(6, 5));
+    world.registry_write_unlocked = true;
+    let env = setup_glyph_env();
+
+    // Default slime-hunt would attack the adjacent player. Patch it to a no-op.
+    eval_glyph(
+        &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :write :slime-hunt 'nil))",
+    )
+    .unwrap();
+
+    // A live patch weighs on you (so 'nil-patching is not a free unregister)...
+    assert_eq!(world.player_hp().max, 10);
+    let hp_before = world.player_hp().current;
+    world.finish_tick();
+    assert_eq!(world.player_hp().current, hp_before);
+    assert_eq!(single_enemy(&world).pos, Position::new(6, 5));
+
+    // ...but re-writing the same rule doesn't charge twice...
+    eval_glyph(
+        &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :write :slime-hunt '(random-step! *self*)))",
+    )
+    .unwrap();
+    assert_eq!(world.player_hp().max, 10);
+
+    // ...and restore refunds it.
+    eval_glyph(
+        &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :restore :slime-hunt))",
+    )
+    .unwrap();
+    assert_eq!(world.player_hp().max, 12);
+}
+
+#[test]
+fn unregistered_enemy_rule_makes_enemy_inert_and_costs_max_hp() {
+    let mut world = world_with_single_enemy(Position::new(6, 5));
+    world.registry_write_unlocked = true;
+    let env = setup_glyph_env();
+
+    eval_glyph(
+        &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :unregister :slime-hunt))",
+    )
+    .unwrap();
+
+    assert_eq!(world.player_hp().max, 9);
+    let hp_before = world.player_hp().current;
+    world.finish_tick();
+    assert_eq!(world.player_hp().current, hp_before.min(9));
+    assert_eq!(single_enemy(&world).pos, Position::new(6, 5));
+
+    // Restore refunds the max-HP cost and re-arms the rule.
+    eval_glyph(
+        &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :restore :slime-hunt))",
+    )
+    .unwrap();
+    assert_eq!(world.player_hp().max, 12);
+    assert!(!world.registry.is_disabled("slime-hunt"));
+}
+
+#[test]
+fn unregister_refused_when_too_little_max_hp_remains() {
+    let mut world = world_with_single_enemy(Position::new(20, 5));
+    world.registry_write_unlocked = true;
+    world.ecs.set_hp(world.player_id, Hp { current: 3, max: 3 });
+    let env = setup_glyph_env();
+
+    let err = eval_glyph(
+        &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :unregister :slime-hunt))",
+    )
+    .unwrap_err();
+
+    assert!(err.to_string().contains("isn't enough of you left"));
+    assert!(!world.registry.is_disabled("slime-hunt"));
+}
+
+#[test]
+fn pinned_rules_refuse_modification() {
+    let mut world = World::new();
+    world.registry_write_unlocked = true;
+    let env = setup_glyph_env();
+
+    let err = eval_glyph(
+        &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :unregister :flashlight))",
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("pinned"));
+
+    let err = eval_glyph(
+        &mut world,
+        &env,
+        "(let r (open-registry :rule-registry) (r :write :maze/shift 'nil))",
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("unregister"));
+}
+
+#[test]
+fn unregistering_maze_shift_stops_the_walls() {
+    let mut world = World::minimal();
+    world.depth = 10;
+    world.ecs.set_hp(world.player_id, Hp::new(12));
+    let wall_pos = Position::new(8, 8);
+    world.map.set_tile(wall_pos, TileType::Floor);
+    world.maze_shifting_walls.insert(wall_pos);
+    world.turn = 0; // even turn → wall phase would normally re-wall it
+
+    world.registry.unregister("maze-shift").unwrap();
+    world.shift_maze_walls();
+
+    assert_eq!(world.map.tile(wall_pos), TileType::Floor);
+}
+
+#[test]
+fn release_ending_replaces_maintain_ending() {
+    let mut world = World::minimal();
+    world.depth = 17;
+    world.ascend();
+    assert!(world.ending.as_deref().unwrap().contains("MAINTAIN"));
+
+    let mut world = World::minimal();
+    world.depth = 17;
+    world.suppression_lifted = true;
+    world.ascend();
+    assert!(world.ending.as_deref().unwrap().contains("RELEASE"));
+}
+
+#[test]
+fn rule_patches_survive_save_roundtrip() {
+    let mut world = World::new();
+    world
+        .registry
+        .patch("slime-hunt", "(flee-step! *self* *player*)")
+        .unwrap();
+    world.registry.unregister("shade-follow").unwrap();
+    world.suppression_lifted = true;
+
+    let data = world.to_save_data();
+    let loaded = World::from_save_data(&data);
+
+    assert!(loaded.registry.is_patched("slime-hunt"));
+    assert!(loaded.registry.is_disabled("shade-follow"));
+    assert!(loaded.suppression_lifted);
+    let body = loaded.registry.active_body("slime-hunt").unwrap();
+    assert!(body.to_string().contains("flee-step!"));
 }
 
 #[test]

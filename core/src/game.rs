@@ -147,6 +147,7 @@ impl World {
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            suppression_lifted: false,
             last_impact_force: 0,
             last_impact_target: None,
             held_keys: Vec::new(),
@@ -237,6 +238,7 @@ impl World {
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            suppression_lifted: false,
             last_impact_force: 0,
             last_impact_target: None,
             held_keys: Vec::new(),
@@ -565,6 +567,8 @@ impl World {
         self.known_rule_ids.clear();
         self.ending = None;
         self.registry_write_unlocked = false;
+        self.suppression_lifted = false;
+        self.registry = RuleRegistry::core();
         self.held_keys.clear();
         self.held_items.clear();
         self.gauntlet_barrier_locked.clear();
@@ -680,11 +684,12 @@ impl World {
         }
 
         self.ecs.set_position(self.player_id, target);
-        // Evaluate tile-effect rules (e.g. fire/burn)
+        // Evaluate tile-effect rules (e.g. fire/burn). Patched bodies run
+        // instead of the default; unregistered rules don't fire at all.
         let body_form = self
             .registry
             .tile_rule(self.map.tile(target))
-            .map(|r| r.body_form.clone());
+            .and_then(|r| self.registry.active_body(r.id));
         if let Some(body_form) = body_form {
             let tile_env = Env::extend(&self.glyph_env);
             tile_env.bind("*player*", Value::I64(self.player_id.raw() as i64));
@@ -864,8 +869,9 @@ impl World {
                 continue;
             }
 
-            let body_form = match self.registry.get(rule_name) {
-                Some(rule) => rule.body_form.clone(),
+            // Unregistered rules return no body: the enemy stands inert.
+            let body_form = match self.registry.active_body(rule_name) {
+                Some(body) => body,
                 None => continue,
             };
 

@@ -256,6 +256,7 @@ mod tests {
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            suppression_lifted: false,
             last_impact_force: 0,
             last_impact_target: None,
             held_keys: Vec::new(),

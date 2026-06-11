@@ -74,20 +74,10 @@ impl World {
     }
 
     pub(crate) fn interact_with_sign(&mut self, sign_id: EntityId) {
-        self.event_log.push("===================================");
-        self.event_log
-            .push_colored("              SIGN", RGB::named(CYAN));
-        self.event_log.push("===================================");
-
-        let message = self.ecs.sign_message(sign_id).unwrap_or("");
-        for line in message.lines() {
-            if line.is_empty() {
-                self.event_log.push("");
-            } else {
-                self.event_log
-                    .push_colored(line.to_string(), RGB::named(CYAN));
-            }
-        }
+        let message = self.ecs.sign_message(sign_id).unwrap_or("").to_string();
+        self.sign_text = message;
+        self.sign_scroll = 0;
+        self.mode = crate::game::Mode::ReadingSign;
     }
 
     pub(crate) fn interact_with_fragment(&mut self, fragment_id: EntityId) {

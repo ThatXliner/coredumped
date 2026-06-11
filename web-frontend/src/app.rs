@@ -138,6 +138,7 @@ fn parse_xterm_key(key: &str, world: &World) -> Intent {
         Mode::Memories => parse_memories_key(key),
         Mode::Console => parse_console_key(key),
         Mode::Dead => parse_dead_key(key),
+        Mode::ReadingSign => parse_sign_key(key),
     }
 }
 
@@ -230,6 +231,17 @@ fn parse_keybindings_key(key: &str) -> Intent {
     match key {
         "Escape" | "Tab" => Intent::CloseOverlay,
         "`" => Intent::ToggleConsole,
+        "ArrowUp" | "k" | "K" => Intent::InspectorScroll(-1),
+        "ArrowDown" | "j" | "J" => Intent::InspectorScroll(1),
+        "PageUp" => Intent::InspectorScroll(-8),
+        "PageDown" => Intent::InspectorScroll(8),
+        _ => Intent::Noop,
+    }
+}
+
+fn parse_sign_key(key: &str) -> Intent {
+    match key {
+        "Escape" | " " | "Enter" => Intent::CloseOverlay,
         "ArrowUp" | "k" | "K" => Intent::InspectorScroll(-1),
         "ArrowDown" | "j" | "J" => Intent::InspectorScroll(1),
         "PageUp" => Intent::InspectorScroll(-8),

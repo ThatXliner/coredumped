@@ -250,6 +250,8 @@ mod tests {
             seen_tile_types: std::collections::HashSet::new(),
             new_rule_ids: std::collections::HashSet::new(),
             known_rule_ids: std::collections::HashSet::new(),
+            sign_text: String::new(),
+            sign_scroll: 0,
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: std::collections::HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),

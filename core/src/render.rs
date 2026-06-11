@@ -60,7 +60,7 @@ pub fn render(ctx: &mut Frame, world: &World) {
 
     let needs_overlay = matches!(
         world.mode,
-        Mode::Inspector | Mode::Keybindings | Mode::Memories
+        Mode::Inspector | Mode::Keybindings | Mode::Memories | Mode::ReadingSign
     );
     if needs_overlay {
         render_overlay_backdrop(ctx);
@@ -71,6 +71,7 @@ pub fn render(ctx: &mut Frame, world: &World) {
         Mode::Keybindings => render_keybindings(ctx, world),
         Mode::Memories => render_memories(ctx, world),
         Mode::Console => render_console(ctx, world),
+        Mode::ReadingSign => render_sign(ctx, world),
         _ => {}
     }
 }
@@ -1082,6 +1083,55 @@ fn render_keybindings(ctx: &mut Frame, world: &World) {
 
     line_y = (y + height - 2).min(line_y + 1);
     print_clipped(ctx, inner_x, line_y, inner_w, "tab/esc close");
+}
+
+fn render_sign(ctx: &mut Frame, world: &World) {
+    let width = (ctx.width() - 4).clamp(1, 72);
+    let height = (ctx.height() - 4).clamp(1, 30);
+    let x = ((ctx.width() - width) / 2).max(0);
+    let y = ((ctx.height() - height) / 2).max(0);
+
+    fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
+    draw_box(ctx, x, y, width, height, " sign ");
+
+    let inner_x = x + 2;
+    let inner_w = (width - 4).max(1) as usize;
+    let content_rows = (height - 4).max(0) as usize;
+
+    let mut lines: Vec<(String, RGB)> = Vec::new();
+    for para in world.sign_text.split("\n\n") {
+        let para = para.trim();
+        if para.is_empty() {
+            lines.push((String::new(), RGB::named(WHITE)));
+            continue;
+        }
+        // Rejoin soft-wrapped source lines within a paragraph, then re-wrap to display width
+        let joined = para.lines().collect::<Vec<_>>().join(" ");
+        for wrapped in wrap_text(&joined, inner_w) {
+            lines.push((wrapped, RGB::named(CYAN)));
+        }
+        lines.push((String::new(), RGB::named(WHITE)));
+    }
+    // Drop trailing blank
+    while lines.last().map(|(s, _)| s.is_empty()).unwrap_or(false) {
+        lines.pop();
+    }
+
+    let max_scroll = lines.len().saturating_sub(content_rows);
+    let scroll = world.sign_scroll.min(max_scroll);
+    let mut line_y = y + 2;
+    for (text, color) in lines.iter().skip(scroll).take(content_rows) {
+        print_clipped_color(ctx, inner_x, line_y, inner_w as i32, text, *color);
+        line_y += 1;
+    }
+
+    let at_end = scroll >= max_scroll;
+    let footer = if at_end {
+        "esc/space close".to_string()
+    } else {
+        format!("j/k scroll  esc/space close  ({}/{})", scroll + 1, max_scroll + 1)
+    };
+    print_clipped(ctx, inner_x, y + height - 2, inner_w as i32, &footer);
 }
 
 fn render_memories(ctx: &mut Frame, world: &World) {

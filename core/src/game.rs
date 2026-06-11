@@ -75,6 +75,7 @@ pub enum Mode {
     Dead,
     Keybindings,
     Memories,
+    ReadingSign,
 }
 
 impl World {
@@ -141,6 +142,8 @@ impl World {
             seen_tile_types: HashSet::new(),
             new_rule_ids: HashSet::new(),
             known_rule_ids: HashSet::new(),
+            sign_text: String::new(),
+            sign_scroll: 0,
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
@@ -232,6 +235,8 @@ impl World {
             seen_tile_types: HashSet::new(),
             new_rule_ids: HashSet::new(),
             known_rule_ids: HashSet::new(),
+            sign_text: String::new(),
+            sign_scroll: 0,
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
@@ -300,6 +305,8 @@ impl World {
             Intent::InspectorScroll(delta) => {
                 if self.mode == Mode::Memories {
                     self.scroll_memories(delta);
+                } else if self.mode == Mode::ReadingSign {
+                    self.scroll_sign(delta);
                 } else if self.mode == Mode::Inspector || self.mode == Mode::Keybindings {
                     self.scroll_inspector(delta);
                 }
@@ -918,6 +925,14 @@ impl World {
                 .inspector_selection
                 .saturating_add(delta as usize)
                 .min(self.registry.len().saturating_sub(1));
+        }
+    }
+
+    fn scroll_sign(&mut self, delta: i32) {
+        if delta < 0 {
+            self.sign_scroll = self.sign_scroll.saturating_sub(delta.unsigned_abs() as usize);
+        } else {
+            self.sign_scroll = self.sign_scroll.saturating_add(delta as usize);
         }
     }
 

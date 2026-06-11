@@ -117,6 +117,11 @@ pub struct World {
     /// All rule ids that have ever been discovered by the player.
     pub known_rule_ids: HashSet<String>,
 
+    /// Text currently being read in the sign overlay. Cleared when leaving ReadingSign mode.
+    pub sign_text: String,
+    /// Scrollback offset for the sign overlay. 0 = top.
+    pub sign_scroll: usize,
+
     /// Memory fragment registry — tracks all 42 fragments and collected status.
     pub fragment_registry: FragmentRegistry,
 
@@ -228,6 +233,8 @@ impl World {
             seen_tile_types: HashSet::new(),
             new_rule_ids: HashSet::new(),
             known_rule_ids: HashSet::new(),
+            sign_text: String::new(),
+            sign_scroll: 0,
             fragment_registry: FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),

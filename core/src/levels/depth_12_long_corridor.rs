@@ -40,5 +40,13 @@ pub(crate) fn build_long_corridor(world: &mut World) {
     world.ecs.spawn_fragment(Position::new(35, cy), "frag-014");
     world.ecs.spawn_fragment(Position::new(45, cy), "frag-015");
 
+    // Sign tucked in the middle alcove — off the 1-wide path so it can't
+    // block passage. Teaches that the Shade is just a rule, and that
+    // silencing rules has a price.
+    world.ecs.spawn_sign(
+        Position::new(35, cy + 1),
+        "It follows because shade-follow\nsays: step-toward, always.\nIt never attacks. Read the rule.\n\nYou could silence it.\nIt would cost you.\nIt always costs you.",
+    );
+
     // No wizard — deliberately alone
 }

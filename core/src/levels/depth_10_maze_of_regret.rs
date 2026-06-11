@@ -1,7 +1,9 @@
 use bracket_color::prelude::{CYAN, RGB, YELLOW};
 use bracket_random::prelude::RandomNumberGenerator;
 
-use super::helpers::{apply_map, find_stairs_down, spawn_fragment_near_open_floor};
+use super::helpers::{
+    apply_map, find_stairs_down, spawn_fragment_near_open_floor, spawn_sign_near_open_floor,
+};
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -97,6 +99,14 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
     // Make maze/shift rule visible
     world.known_rule_ids.insert("maze-shift".into());
     world.new_rule_ids.insert("maze-shift".into());
+
+    // For players who broke the write-protect at the Boiling Heart: the
+    // permanent solution. (The console-buffer trick still works without it.)
+    spawn_sign_near_open_floor(
+        world,
+        Position::new(player_pos.x - 2, player_pos.y + 2),
+        "The walls obey maze/shift.\nmaze/shift is registered.\n\nRegistered things\ncan be unregistered.\n\n(let r (open-registry :rule-registry)\n  (r :unregister :maze/shift))\n\n...if the registry will have you.",
+    );
 
     world.event_log.push_colored(
         "The walls here shift and breathe. The maze remembers differently each moment.",

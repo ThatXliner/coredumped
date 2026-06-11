@@ -65,17 +65,17 @@ pub(crate) fn build_the_archive(world: &mut World) {
     // Sign explaining the Vapor Canteen
     world.ecs.spawn_sign(
         Position::new(30, 26),
-        "Vapor Canteen — douses one fire\ntile per turn. Use in the console:\n\n  (use-vapor-canteen! (list x y))\n\nwhere x and y are the tile\ncoordinates. Check *pos* to\nfind your own position first.\nFire stays out for one tick.",
+        "Vapor Canteen — douses one fire tile per turn. Use it from the console:\n\n  (use-vapor-canteen! (list x y))\n\nPass the coordinates of the tile you want to douse. Check *pos* for your own position. The tile stays clear for one tick, then ignites again.",
     );
 
     // Archivist journal signs
     world.ecs.spawn_sign(
         Position::new(16, 4),
-        "Archivist's journal:\nSubject reports persistent sadness.\nNo interventions applied.",
+        "Archivist's journal — Day 1,847:\n\nSubject reports persistent sadness. Woke up disoriented, asking where they were. No interventions applied. Suppression holding.",
     );
     world.ecs.spawn_sign(
         Position::new(40, 28),
-        "Archivist's journal:\nMemory #032 partially recovered.\nSubject shows distress.\nRecommencing suppression.",
+        "Archivist's journal — Day 2,203:\n\nMemory fragment #032 partially recovered. Subject became distressed and began asking about the wizard. Recommencing suppression. We do not know what happens if suppression fails.",
     );
 
     // No wizard

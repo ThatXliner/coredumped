@@ -111,7 +111,7 @@ pub(crate) fn build_boiling_heart(world: &mut World) {
     // Sign near entrance warning about fire
     world.ecs.spawn_sign(
         Position::new(rx + 2, ry + rh / 2 - 2),
-        "The air shimmers with heat.\nFire pools on the floor ahead —\nit will burn you every step.\n\nSomething cold might quench it.",
+        "The air shimmers with heat. Fire pools on the floor ahead — it will burn you on every step you take through it.\n\nSomething cold might quench it.",
     );
 
     // Maintenance log — the breadcrumb that teaches the overflow exploit.
@@ -119,7 +119,7 @@ pub(crate) fn build_boiling_heart(world: &mut World) {
     // this sign gives the player the numbers to weaponize it.
     world.ecs.spawn_sign(
         Position::new(rx + 2, ry + rh / 2 + 4),
-        "MAINTENANCE LOG // rage-impact v12\n\nimpact telemetry buffer: 64 bytes.\npayload size = force x mass.\nrage mass: 8.\n\nQA: forces above 12 overflow the\ntelemetry buffer into the registry\nwrite-protect flag. WONTFIX.\n\nNobody hits that hard.\nNobody sane.",
+        "MAINTENANCE LOG // rage-impact v12\n\nImpact telemetry buffer: 64 bytes. Payload size = force x mass. Rage mass: 8.\n\nQA note: forces above 12 overflow the telemetry buffer into the registry write-protect flag. WONTFIX.\n\nNobody hits that hard. Nobody sane.",
     );
 }
 

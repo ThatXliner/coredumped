@@ -23,7 +23,7 @@ pub(crate) fn build_jagged_passages(world: &mut World) {
     let sign_pos = nearest_open_floor(world, sign_target).unwrap_or(sign_target);
     world.ecs.spawn_sign(
         sign_pos,
-        "The passages twist without reason.\nDead ends. Ambush corners.\nKeep moving.",
+        "The passages twist without reason. Dead ends. Ambush corners.\n\nKeep moving. The dungeon built this to slow you down, not stop you.",
     );
 }
 

@@ -82,7 +82,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     // Room 1: Inspector
     world.ecs.spawn_sign(
         Position::new(20, 6),
-        "Press i to open the inspector.\nHover over things to learn their names.\n\nKnowledge is power down here.",
+        "Press i to open the inspector.\n\nHover your cursor over anything to see what it is. The dungeon has a lot of moving parts. Most of them have names.",
     );
     world.ecs.spawn_slime(Position::new(31, 6));
     world.ecs.spawn_bat(Position::new(27, 8));
@@ -91,7 +91,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     let wizard_pos = Position::new(38, 6);
     world.ecs.spawn_sign(
         Position::new(44, 4),
-        "Green diamonds hold memory fragments.\nI wonder who left them here...",
+        "Green diamonds are memory fragments. Someone buried pieces of themselves down here.\n\nCollect enough and you might understand what this place is for.",
     );
     world.wizard_id = Some(world.ecs.spawn_wizard(wizard_pos));
     world.ecs.spawn_fragment(Position::new(50, 9), "frag-001");
@@ -99,7 +99,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     // Room 3: Wait mechanic
     world.ecs.spawn_sign(
         Position::new(3, 17),
-        "Press . to wait.\nTime only moves when you do.\n\nSometimes standing still is the right move.",
+        "Press . to wait a turn.\n\nTime only moves when you do. Enemies move when you move. Standing still gives you a moment to think without anything happening.",
     );
     world.ecs.spawn_slime(Position::new(12, 20));
 
@@ -111,7 +111,7 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     // Room 5: Console
     world.ecs.spawn_sign(
         Position::new(37, 17),
-        "Press ` for the console.\nThe dungeon runs on code.\n\nTry: (help)\n\nTime fades away as you peer into the console.\nDon't worry about the enemies. Everything is fine.",
+        "Press ` for the console. The dungeon runs on code.\n\nTry: (help)\n\nTime stops while the console is open. The enemies will wait. So will everything else.",
     );
     world.ecs.spawn_slime(Position::new(48, 20));
     world.ecs.spawn_slime(Position::new(42, 17));
@@ -152,14 +152,14 @@ pub(crate) fn build_tutorial_grid(world: &mut World) {
     // Barrel room: hint first, solution second
     world.ecs.spawn_sign(
         Position::new(37, 29),
-        "So many barrels...\nThe exit is under one of them.\n\nClearing these one by one would take forever.\nThere must be a faster way.",
+        "The exit is under one of these barrels.\n\nClearing them one by one would take a while. The console might have something faster.",
     );
     if let Some(barrel) = world.ecs.entity_at(Position::new(40, 31)) {
         world.ecs.remove(barrel);
     }
     world.ecs.spawn_sign(
         Position::new(40, 31),
-        "Chain commands with (do ...):\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs N times:\n  (repeat 4 (do-attack :east))\n\nBind it to a key and go wild.",
+        "Chain commands with (do ...):\n\n  (do (move! :south) (do-attack))\n\n(repeat N ...) runs a command N times:\n\n  (repeat 4 (do-attack :east))\n\nYou can bind any expression to a key: (bind-key :z (repeat 4 (do-attack :east)))",
     );
 
     // Pressure plate near barrel room entrance - closes door when stepped on

@@ -53,13 +53,13 @@ pub(crate) fn build_the_clearing(world: &mut World) {
     // Tree in center (sign)
     world.ecs.spawn_sign(
         Position::new(MAP_WIDTH / 2, MAP_HEIGHT / 2 - 2),
-        "        ,,,,\n       (o o)\n    ---ooO-(_)-Ooo---\n\nA single tree. Leaves catch\nthe light. You sit under it\nfor a long time.",
+        "        ,,,,\n\n       (o o)\n\n    ---ooO-(_)-Ooo---\n\nA single tree. Leaves catch the light. You sit under it for a long time.",
     );
 
     // Water pool sign
     world.ecs.spawn_sign(
         Position::new(pool_x, pool_y),
-        "~ A pool of clear water ~\nYou see your own reflection.\nYou look tired.\nYou look... like yourself.",
+        "~ A pool of clear water ~\n\nYou see your own reflection. You look tired. You look like yourself.",
     );
 
     // Fragments — the lowest-point memories, here in safety

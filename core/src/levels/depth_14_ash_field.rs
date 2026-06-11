@@ -48,7 +48,7 @@ pub(crate) fn build_ash_field(world: &mut World) {
     // Reminder about the Vapor Canteen
     world.ecs.spawn_sign(
         Position::new(5, 5),
-        "A sea of fire stretches before you.\nIf you found the Vapor Canteen\nin the Archive, now is the time.\n\n  (use-vapor-canteen! (list x y))\n\nDouse one tile by its coordinates,\nstep through, repeat. Fire returns\nafter each tick.\n\nOr remember: fire burns because\na rule named fire/burn says so.\nRules can be rewritten.\nEverything here can.",
+        "Fire burns because a rule named fire/burn says so.\n\nIf you found the Vapor Canteen in the Archive, it can douse one tile per turn: (use-vapor-canteen! (list x y)). Slow work.\n\nOr rewrite fire/burn itself. Open the inspector (i), read the rule, then open the console and patch it. Rules can be changed. Everything here can.",
     );
 
     // Fragments scattered across the field

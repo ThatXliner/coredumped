@@ -39,7 +39,7 @@ pub(crate) fn build_first_scar(world: &mut World) {
     let sign_pos = nearest_open_floor(world, sign_target).unwrap_or(sign_target);
     world.ecs.spawn_sign(
         sign_pos,
-        "The air down here is different.\nEverything feels... sharper.",
+        "The air down here is different. Everything feels sharper.\n\nThe dungeon is starting to notice you.",
     );
 }
 

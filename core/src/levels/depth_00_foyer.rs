@@ -34,7 +34,7 @@ pub(crate) fn build_foyer(world: &mut World) {
     // Single sign: boot, controls, wizard tease
     world.ecs.spawn_sign(
         Position::new(rx + rw / 2 - 6, ry + rh / 2 - 1),
-        "If you're reading this, you\nfinally woke up.\n\nMove with arrow keys or hjkl.\nDescend when ready.\n\nBeware the slime (the S).\nIt moves toward you (sometimes).",
+        "If you're reading this, you finally woke up.\n\nMove with arrow keys or hjkl. The stairs down are in the far corner.\n\nThat green thing is a slime. It wants what you want.",
     );
 
     // One pushable slime

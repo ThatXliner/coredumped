@@ -152,17 +152,17 @@ pub(crate) fn build_quiet_halls(world: &mut World) {
 
     world.ecs.spawn_sign(
         Position::new(9, 11),
-        "Three little gates.\nThree chances to turn back.\nDenial likes rituals.\n\n  — the wizard",
+        "Three little gates. Three chances to turn back. Denial likes rituals.\n\n  — the wizard",
     );
 
     world.ecs.spawn_sign(
         Position::new(25, 10),
-        "A gate is just a wall\nthat expects you to argue.",
+        "A gate is just a wall that expects you to argue.",
     );
 
     world.ecs.spawn_sign(
         Position::new(43, 18),
-        "The last gate is quieter.\nThat does not make it kinder.",
+        "The last gate is quieter. That does not make it kinder.",
     );
 }
 

@@ -52,7 +52,7 @@ pub(crate) fn build_the_scale(world: &mut World) {
     // Scale signs in center
     world.ecs.spawn_sign(
         Position::new(cx, cy - 2),
-        "Two scales sit in the center.\nOne pan is empty.\nThe other is you.\n\nYou can pass with nothing,\nor chase what waits in the side rooms.",
+        "Two scales sit in the center. One pan is empty. The other is you.\n\nYou can pass with nothing, or chase what waits in the side rooms. The dungeon is counting.",
     );
 
     // Enemies

@@ -87,7 +87,7 @@ pub(crate) fn build_counting_room(world: &mut World) {
 
     world.ecs.spawn_sign(
         Position::new(hub_x - 2, hub_y + 2),
-        "Four doors. Three keys.\nKey-goblins carry them.\nSpend a key by walking into\na locked doorway.\n\nChoose what matters.",
+        "Four doors. Three keys. Key-goblins carry them.\n\nSpend a key by walking into a locked doorway. One door will stay locked. Choose what matters.",
     );
 }
 

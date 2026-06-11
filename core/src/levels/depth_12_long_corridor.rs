@@ -45,7 +45,7 @@ pub(crate) fn build_long_corridor(world: &mut World) {
     // silencing rules has a price.
     world.ecs.spawn_sign(
         Position::new(35, cy + 1),
-        "It follows because shade-follow\nsays: step-toward, always.\nIt never attacks. Read the rule.\n\nYou could silence it.\nIt would cost you.\nIt always costs you.",
+        "It follows because shade-follow says: step-toward, always. It never attacks. Open the inspector (i) and read the rule yourself.\n\nYou could unregister it. That would cost 3 max HP — the rule takes something when it goes. Open the console and try:\n\n  (let r (open-registry :rule-registry)\n    (r :unregister :shade-follow))\n\nOr don't. It only follows.",
     );
 
     // No wizard — deliberately alone

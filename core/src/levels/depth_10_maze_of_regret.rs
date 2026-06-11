@@ -105,7 +105,7 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
     spawn_sign_near_open_floor(
         world,
         Position::new(player_pos.x - 2, player_pos.y + 2),
-        "The walls obey maze/shift.\nmaze/shift is registered.\n\nRegistered things\ncan be unregistered.\n\n(let r (open-registry :rule-registry)\n  (r :unregister :maze/shift))\n\n...if the registry will have you.",
+        "The walls obey maze/shift. maze/shift is registered.\n\nRegistered things can be unregistered — if you have write access to the registry.\n\n  (let r (open-registry :rule-registry)\n    (r :unregister :maze/shift))\n\nEach patch costs HP. Check the inspector (i) to see the rule before you change it.",
     );
 
     world.event_log.push_colored(

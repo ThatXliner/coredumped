@@ -10,10 +10,11 @@ const PROC_MAP_HEIGHT: i32 = 50;
 // ---------------------------------------------------------------------------
 
 pub(crate) fn build_procedural_level(world: &mut World, depth: u32) {
+    let seed = world.level_seed(depth);
     let gen = if depth % 2 == 0 {
-        Map::generate_cave_sized(PROC_MAP_WIDTH, PROC_MAP_HEIGHT, depth)
+        Map::generate_cave_sized(PROC_MAP_WIDTH, PROC_MAP_HEIGHT, depth, seed)
     } else {
-        Map::generate(PROC_MAP_WIDTH, PROC_MAP_HEIGHT, depth)
+        Map::generate(PROC_MAP_WIDTH, PROC_MAP_HEIGHT, depth, seed)
     };
 
     // Borrow spawn lists before moving `gen.map`

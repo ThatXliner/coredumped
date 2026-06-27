@@ -1,6 +1,6 @@
 use bracket_color::prelude::{CYAN, RGB};
 
-use super::helpers::{apply_map, spawn_wizard_near_player};
+use super::helpers::{apply_map, nearest_open_floor, spawn_wizard_near_player};
 use crate::{entity::Position, map::Map, world::World};
 
 // ---------------------------------------------------------------------------
@@ -8,7 +8,7 @@ use crate::{entity::Position, map::Map, world::World};
 // ---------------------------------------------------------------------------
 
 pub(crate) fn build_jagged_passages(world: &mut World) {
-    let gen = Map::generate_cave(5);
+    let gen = Map::generate_cave(5, world.level_seed(5));
     for pos in &gen.combat_spawns {
         world.spawn_enemy_at(*pos, 5);
     }
@@ -18,9 +18,12 @@ pub(crate) fn build_jagged_passages(world: &mut World) {
     spawn_wizard_near_player(world);
     world.on_wizard_interact = Some(wizard_interact);
 
+    // Cave layouts give no walkability guarantee near the start — snap to floor
+    let sign_target = Position::new(gen.player_start.x + 2, gen.player_start.y + 2);
+    let sign_pos = nearest_open_floor(world, sign_target).unwrap_or(sign_target);
     world.ecs.spawn_sign(
-        Position::new(gen.player_start.x + 2, gen.player_start.y + 2),
-        "The passages twist without reason.\nDead ends. Ambush corners.\nKeep moving.",
+        sign_pos,
+        "The passages twist without reason. Dead ends. Ambush corners.\n\nKeep moving. The dungeon built this to slow you down, not stop you.",
     );
 }
 

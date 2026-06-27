@@ -32,6 +32,7 @@ pub fn key_to_intent(event: KeyEvent, world: &World) -> Intent {
         Mode::Inspector => inspector_key_to_intent(event.code),
         Mode::Keybindings => keybindings_key_to_intent(event.code),
         Mode::Memories => memories_key_to_intent(event.code),
+        Mode::ReadingSign => sign_key_to_intent(event.code),
         Mode::Console => console_key_to_intent(event.code, shift, ctrl, alt),
         Mode::Dead => dead_key_to_intent(event.code, shift),
     }
@@ -49,6 +50,17 @@ fn key_to_binding_name(key: KeyCode) -> Option<String> {
         KeyCode::Backspace => Some("backspace".into()),
         KeyCode::Char(c) => Some(binding_char(c).to_string()),
         _ => None,
+    }
+}
+
+fn sign_key_to_intent(key: KeyCode) -> Intent {
+    match key {
+        KeyCode::Esc | KeyCode::Char(' ') | KeyCode::Enter => Intent::CloseOverlay,
+        KeyCode::PageUp => Intent::InspectorScroll(-8),
+        KeyCode::PageDown => Intent::InspectorScroll(8),
+        KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => Intent::InspectorScroll(-1),
+        KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => Intent::InspectorScroll(1),
+        _ => Intent::Noop,
     }
 }
 

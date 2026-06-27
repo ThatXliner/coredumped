@@ -17,8 +17,8 @@ impl World {
 
     /// Activate pressure plate effects at given position.
     pub(crate) fn activate_pressure_plate(&mut self, pos: Position) {
-        // Barrel room pressure plate at (38, 29) - toggles door from room 7
-        if self.depth == 2 && pos == Position::new(38, 29) {
+        // Barrel room pressure plate at (38, 28) - toggles door from room 7
+        if self.depth == 2 && pos == Position::new(38, 28) {
             let door_pos = Position::new(35, 28);
             let door_closed = self.map.tile(door_pos) == TileType::Wall;
             if door_closed {
@@ -119,6 +119,12 @@ impl World {
     /// Shift maze walls on each tick (depth 10).
     pub(crate) fn shift_maze_walls(&mut self) {
         if self.depth != 10 || self.maze_shifting_walls.is_empty() {
+            return;
+        }
+
+        // The clean solution: the player unregistered maze/shift via the
+        // rule registry. The walls stop for good.
+        if self.registry.is_disabled("maze-shift") {
             return;
         }
 

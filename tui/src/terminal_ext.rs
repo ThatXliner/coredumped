@@ -7,7 +7,9 @@ use coredumped_core::terminal::Frame;
 use crossterm::{
     cursor::MoveTo,
     queue,
-    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
+    style::{
+        Attribute, Color, Print, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
+    },
 };
 
 pub trait FrameExt {
@@ -16,9 +18,21 @@ pub trait FrameExt {
 
 impl FrameExt for Frame {
     fn flush(&self, out: &mut impl Write) -> crossterm::Result<()> {
-        for (x, y, glyph, fg, bg) in self.cells() {
+        let mut italic_on = false;
+        for (x, y, glyph, fg, bg, italic) in self.cells() {
             if x == 0 {
                 queue!(out, MoveTo(0, y as u16))?;
+            }
+            if italic != italic_on {
+                queue!(
+                    out,
+                    SetAttribute(if italic {
+                        Attribute::Italic
+                    } else {
+                        Attribute::NoItalic
+                    })
+                )?;
+                italic_on = italic;
             }
             queue!(
                 out,
@@ -26,6 +40,9 @@ impl FrameExt for Frame {
                 SetBackgroundColor(to_terminal_color(bg)),
                 Print(glyph)
             )?;
+        }
+        if italic_on {
+            queue!(out, SetAttribute(Attribute::NoItalic))?;
         }
         queue!(out, ResetColor)?;
         out.flush()?;

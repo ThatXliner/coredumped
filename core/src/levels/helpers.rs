@@ -41,7 +41,16 @@ pub(crate) fn spawn_fragment_near_open_floor(
     world.ecs.spawn_fragment(pos, fragment_id)
 }
 
-fn nearest_open_floor(world: &World, preferred: Position) -> Option<Position> {
+pub(crate) fn spawn_sign_near_open_floor(
+    world: &mut World,
+    preferred: Position,
+    message: &str,
+) -> EntityId {
+    let pos = nearest_open_floor(world, preferred).unwrap_or(preferred);
+    world.ecs.spawn_sign(pos, message)
+}
+
+pub(crate) fn nearest_open_floor(world: &World, preferred: Position) -> Option<Position> {
     if world.map.width <= 0 || world.map.height <= 0 {
         return None;
     }

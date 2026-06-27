@@ -96,5 +96,15 @@ fn wizard_interact(world: &mut World) -> bool {
         "\"Read it. Understand it. Then choose. I was trying to love you. That's all I ever did.\"",
         RGB::named(CYAN),
     );
+    if !world.registry_write_unlocked {
+        world.event_log.push_colored(
+            "\"One more thing. The registry below only answers if the write-protect is broken.\"",
+            RGB::named(CYAN),
+        );
+        world.event_log.push_colored(
+            "\"It still refuses you. The Boiling Heart remembers how to break it — go back if you must. There is no way back from the Core.\"",
+            RGB::named(CYAN),
+        );
+    }
     true
 }

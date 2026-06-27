@@ -17,7 +17,7 @@ pub(crate) fn build_wizard_chamber(world: &mut World) {
     // Hint sign about do-attack accepting an effort parameter
     world.ecs.spawn_sign(
         Position::new(20, 9),
-        "There's more parameters (do-attack) can take\nTry this in the console: (help do-attack)",
+        "do-attack takes more arguments than the wizard showed you.\n\nOpen the console with ` and run: (help do-attack)",
     );
 }
 
@@ -50,5 +50,6 @@ pub fn generate_wizard_box() -> MapGenOutput {
         stairs_down,
         combat_spawns: vec![],
         boss_spawns: vec![],
+        barrel_gates: vec![],
     }
 }

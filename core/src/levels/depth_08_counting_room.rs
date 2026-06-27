@@ -64,9 +64,11 @@ pub(crate) fn build_counting_room(world: &mut World) {
     world.ecs.set_position(world.player_id, player_start);
 
     // Three goblins hold keys. Four doors exist, so one room must stay locked.
-    world.ecs.spawn_goblin(Position::new(hub_x - 12, hub_y - 6)); // key-goblin-1
-    world.ecs.spawn_goblin(Position::new(hub_x + 10, hub_y - 8)); // key-goblin-2
-    world.ecs.spawn_goblin(Position::new(hub_x - 12, hub_y + 8)); // key-goblin-3
+    // They guard the corridor stubs on the hub side of the doors — keys must
+    // be winnable before any door opens.
+    world.ecs.spawn_goblin(Position::new(hub_x - 6, hub_y - 2)); // key-goblin-1, NW door
+    world.ecs.spawn_goblin(Position::new(hub_x + 6, hub_y - 2)); // key-goblin-2, NE door
+    world.ecs.spawn_goblin(Position::new(hub_x + 6, hub_y + 2)); // key-goblin-3, SE door
     world.ecs.spawn_bat(Position::new(hub_x + 8, hub_y + 4));
     world.ecs.spawn_bat(Position::new(hub_x - 8, hub_y - 6));
 
@@ -85,13 +87,17 @@ pub(crate) fn build_counting_room(world: &mut World) {
 
     world.ecs.spawn_sign(
         Position::new(hub_x - 2, hub_y + 2),
-        "Four doors. Three keys.\nKey-goblins carry them.\nSpend a key by walking into\na locked doorway.\n\nChoose what matters.",
+        "Four doors. Three keys. Key-goblins carry them.\n\nSpend a key by walking into a locked doorway. One door will stay locked. Choose what matters.",
     );
 }
 
 fn wizard_interact(world: &mut World) -> bool {
     world.event_log.push_colored(
-        "\"This place runs on trade. Choose what matters.\"",
+        "\"Everything down here is a bargain. Give up one thing, keep another. I've been making that trade for you for years.\"",
+        RGB::named(CYAN),
+    );
+    world.event_log.push_colored(
+        "\"Three keys, four doors. You can't save all of it. Choose what matters — and notice how much that costs.\"",
         RGB::named(CYAN),
     );
     true

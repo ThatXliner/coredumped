@@ -5,6 +5,7 @@ struct Cell {
     glyph: char,
     fg: RGB,
     bg: RGB,
+    italic: bool,
 }
 
 impl Default for Cell {
@@ -13,6 +14,7 @@ impl Default for Cell {
             glyph: ' ',
             fg: RGB::named(WHITE),
             bg: RGB::named(BLACK),
+            italic: false,
         }
     }
 }
@@ -67,16 +69,39 @@ impl Frame {
     }
 
     pub fn set(&mut self, x: i32, y: i32, fg: RGB, bg: RGB, glyph: char) {
+        self.set_styled(x, y, fg, bg, glyph, false);
+    }
+
+    pub fn set_styled(&mut self, x: i32, y: i32, fg: RGB, bg: RGB, glyph: char, italic: bool) {
         if x < 0 || x >= self.width || y < 0 || y >= self.height {
             return;
         }
         let index = (y * self.width + x) as usize;
-        self.cells[index] = Cell { glyph, fg, bg };
+        self.cells[index] = Cell {
+            glyph,
+            fg,
+            bg,
+            italic,
+        };
     }
 
     pub fn print_color(&mut self, x: i32, y: i32, fg: RGB, bg: RGB, text: &str) {
         for (offset, glyph) in text.chars().enumerate() {
             self.set(x + offset as i32, y, fg, bg, glyph);
+        }
+    }
+
+    pub fn print_color_styled(
+        &mut self,
+        x: i32,
+        y: i32,
+        fg: RGB,
+        bg: RGB,
+        text: &str,
+        italic: bool,
+    ) {
+        for (offset, glyph) in text.chars().enumerate() {
+            self.set_styled(x + offset as i32, y, fg, bg, glyph, italic);
         }
     }
 
@@ -93,9 +118,10 @@ impl Frame {
                 let br = color_byte(cell.bg.r);
                 let bg = color_byte(cell.bg.g);
                 let bb = color_byte(cell.bg.b);
+                let style = if cell.italic { ";3" } else { "" };
                 output.push_str(&format!(
-                    "\x1b[38;2;{};{};{};48;2;{};{};{}m{}",
-                    fr, fg, fb, br, bg, bb, cell.glyph
+                    "\x1b[0{};38;2;{};{};{};48;2;{};{};{}m{}",
+                    style, fr, fg, fb, br, bg, bb, cell.glyph
                 ));
             }
             if y < self.height - 1 {
@@ -106,11 +132,11 @@ impl Frame {
         output
     }
 
-    pub fn cells(&self) -> impl Iterator<Item = (i32, i32, char, RGB, RGB)> + '_ {
+    pub fn cells(&self) -> impl Iterator<Item = (i32, i32, char, RGB, RGB, bool)> + '_ {
         (0..self.height).flat_map(move |y| {
             (0..self.width).map(move |x| {
                 let cell = self.cells[(y * self.width + x) as usize];
-                (x, y, cell.glyph, cell.fg, cell.bg)
+                (x, y, cell.glyph, cell.fg, cell.bg, cell.italic)
             })
         })
     }

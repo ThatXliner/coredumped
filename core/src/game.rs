@@ -8,6 +8,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 use bracket_color::prelude::{CYAN, DARK_GRAY, GREEN, ORANGE, RED, RGB, YELLOW};
+use bracket_random::prelude::RandomNumberGenerator;
 use serde::{Deserialize, Serialize};
 
 const KONAMI_CODE: [&str; 8] = ["up", "up", "down", "down", "left", "right", "left", "right"];
@@ -74,6 +75,7 @@ pub enum Mode {
     Dead,
     Keybindings,
     Memories,
+    ReadingSign,
 }
 
 impl World {
@@ -102,7 +104,9 @@ impl World {
             player_id,
             player_facing: Direction::East,
             depth: 0,
+            run_seed: RandomNumberGenerator::new().next_u64(),
             turn: 0,
+            turn_at_depth_start: 0,
             mode: Mode::Normal,
             event_log,
             console_buffer: String::new(),
@@ -138,12 +142,16 @@ impl World {
             seen_tile_types: HashSet::new(),
             new_rule_ids: HashSet::new(),
             known_rule_ids: HashSet::new(),
+            sign_text: String::new(),
+            sign_scroll: 0,
+            read_signs: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            suppression_lifted: false,
             last_impact_force: 0,
             last_impact_target: None,
             held_keys: Vec::new(),
@@ -190,7 +198,9 @@ impl World {
             player_id,
             player_facing: Direction::East,
             depth,
+            run_seed: RandomNumberGenerator::new().next_u64(),
             turn: 0,
+            turn_at_depth_start: 0,
             mode: Mode::Normal,
             event_log,
             console_buffer: String::new(),
@@ -226,12 +236,16 @@ impl World {
             seen_tile_types: HashSet::new(),
             new_rule_ids: HashSet::new(),
             known_rule_ids: HashSet::new(),
+            sign_text: String::new(),
+            sign_scroll: 0,
+            read_signs: HashSet::new(),
             fragment_registry: crate::fragment::FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            suppression_lifted: false,
             last_impact_force: 0,
             last_impact_target: None,
             held_keys: Vec::new(),
@@ -293,6 +307,8 @@ impl World {
             Intent::InspectorScroll(delta) => {
                 if self.mode == Mode::Memories {
                     self.scroll_memories(delta);
+                } else if self.mode == Mode::ReadingSign {
+                    self.scroll_sign(delta);
                 } else if self.mode == Mode::Inspector || self.mode == Mode::Keybindings {
                     self.scroll_inspector(delta);
                 }
@@ -490,6 +506,12 @@ impl World {
             .expect("player should always have an Hp component")
     }
 
+    /// Turn count shown to the player: turns elapsed on the current depth.
+    /// Counts up from 0 when a level is entered and is unaffected by respawns.
+    pub fn turn_in_level(&self) -> u64 {
+        self.turn.saturating_sub(self.turn_at_depth_start)
+    }
+
     pub fn entity_at(&self, pos: Position) -> Option<EntityView> {
         self.ecs.entity_at(pos).and_then(|id| self.ecs.view(id))
     }
@@ -554,6 +576,8 @@ impl World {
         self.known_rule_ids.clear();
         self.ending = None;
         self.registry_write_unlocked = false;
+        self.suppression_lifted = false;
+        self.registry = RuleRegistry::core();
         self.held_keys.clear();
         self.held_items.clear();
         self.gauntlet_barrier_locked.clear();
@@ -561,7 +585,6 @@ impl World {
     }
 
     fn respawn(&mut self) {
-        self.wipe_player_state();
         self.clear_all_enemies();
         self.ecs
             .set_hp(self.player_id, Hp::new(self.player_hp().max));
@@ -670,11 +693,12 @@ impl World {
         }
 
         self.ecs.set_position(self.player_id, target);
-        // Evaluate tile-effect rules (e.g. fire/burn)
+        // Evaluate tile-effect rules (e.g. fire/burn). Patched bodies run
+        // instead of the default; unregistered rules don't fire at all.
         let body_form = self
             .registry
             .tile_rule(self.map.tile(target))
-            .map(|r| r.body_form.clone());
+            .and_then(|r| self.registry.active_body(r.id));
         if let Some(body_form) = body_form {
             let tile_env = Env::extend(&self.glyph_env);
             tile_env.bind("*player*", Value::I64(self.player_id.raw() as i64));
@@ -854,8 +878,9 @@ impl World {
                 continue;
             }
 
-            let body_form = match self.registry.get(rule_name) {
-                Some(rule) => rule.body_form.clone(),
+            // Unregistered rules return no body: the enemy stands inert.
+            let body_form = match self.registry.active_body(rule_name) {
+                Some(body) => body,
                 None => continue,
             };
 
@@ -902,6 +927,16 @@ impl World {
                 .inspector_selection
                 .saturating_add(delta as usize)
                 .min(self.registry.len().saturating_sub(1));
+        }
+    }
+
+    fn scroll_sign(&mut self, delta: i32) {
+        if delta < 0 {
+            self.sign_scroll = self
+                .sign_scroll
+                .saturating_sub(delta.unsigned_abs() as usize);
+        } else {
+            self.sign_scroll = self.sign_scroll.saturating_add(delta as usize);
         }
     }
 

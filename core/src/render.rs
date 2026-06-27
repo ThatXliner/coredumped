@@ -60,7 +60,7 @@ pub fn render(ctx: &mut Frame, world: &World) {
 
     let needs_overlay = matches!(
         world.mode,
-        Mode::Inspector | Mode::Keybindings | Mode::Memories
+        Mode::Inspector | Mode::Keybindings | Mode::Memories | Mode::ReadingSign
     );
     if needs_overlay {
         render_overlay_backdrop(ctx);
@@ -71,6 +71,7 @@ pub fn render(ctx: &mut Frame, world: &World) {
         Mode::Keybindings => render_keybindings(ctx, world),
         Mode::Memories => render_memories(ctx, world),
         Mode::Console => render_console(ctx, world),
+        Mode::ReadingSign => render_sign(ctx, world),
         _ => {}
     }
 }
@@ -90,7 +91,13 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
             let pos = Position::new(map_x, map_y);
 
             if !world.map.contains(pos) {
-                ctx.set(MAP_X + vx, MAP_Y + vy, RGB::named(BLACK), RGB::named(BLACK), ' ');
+                ctx.set(
+                    MAP_X + vx,
+                    MAP_Y + vy,
+                    RGB::named(BLACK),
+                    RGB::named(BLACK),
+                    ' ',
+                );
                 continue;
             }
 
@@ -99,7 +106,13 @@ fn render_map(ctx: &mut Frame, world: &World, lit_tiles: &HashSet<Position>) {
 
             // Fog of war: unexplored tiles are hidden
             if !lit && !explored {
-                ctx.set(MAP_X + vx, MAP_Y + vy, RGB::named(BLACK), RGB::named(BLACK), ' ');
+                ctx.set(
+                    MAP_X + vx,
+                    MAP_Y + vy,
+                    RGB::named(BLACK),
+                    RGB::named(BLACK),
+                    ' ',
+                );
                 continue;
             }
 
@@ -233,7 +246,7 @@ fn render_side_panel(ctx: &mut Frame, world: &World) {
     let c2 = panel_x + 13;
     let w = panel_width - 4;
 
-    print_clipped(ctx, c1, y, w, &format!("turn  {}", world.turn));
+    print_clipped(ctx, c1, y, w, &format!("turn  {}", world.turn_in_level()));
     print_clipped(ctx, c2, y, 10, &format!("depth {}", world.depth));
     y += 1;
     print_clipped(
@@ -302,7 +315,14 @@ fn render_side_panel(ctx: &mut Frame, world: &World) {
         let hint_y = panel_y + panel_height - 1;
         let hint_x = panel_x + panel_width - 1 - hint.len() as i32;
         if hint_x > panel_x {
-            print_clipped_color(ctx, hint_x, hint_y, hint.len() as i32, &hint, RGB::named(CYAN));
+            print_clipped_color(
+                ctx,
+                hint_x,
+                hint_y,
+                hint.len() as i32,
+                &hint,
+                RGB::named(CYAN),
+            );
         }
     }
 }
@@ -391,14 +411,20 @@ fn render_binding_summary(
         summary.label.clone()
     };
 
-    let should_rainbow = (summary.command == "(descend!)"
-        && player_tile == TileType::StairsDown)
+    let should_rainbow = (summary.command == "(descend!)" && player_tile == TileType::StairsDown)
         || (summary.command == "(ascend!)" && player_tile == TileType::StairsUp);
 
     if should_rainbow {
         print_rainbow(ctx, x, y, label_width, &label, frame);
         if key_width > 0 && label_width + 1 < width {
-            print_rainbow(ctx, x + label_width + 1, y, width - label_width - 1, &key_text, frame);
+            print_rainbow(
+                ctx,
+                x + label_width + 1,
+                y,
+                width - label_width - 1,
+                &key_text,
+                frame,
+            );
         }
     } else {
         let label_color = if summary.is_new {
@@ -468,6 +494,7 @@ fn binding_label(command: &str) -> String {
         "(toggle-inspector!)" => "inspector".into(),
         "(toggle-console!)" => "console".into(),
         "(toggle-keybindings!)" => "bindings".into(),
+        "(toggle-memories!)" => "memories".into(),
         "(quit!)" => "quit".into(),
         command if command.contains("do-attack") => "attack".into(),
         command => command.to_string(),
@@ -488,8 +515,9 @@ fn binding_command_priority(command: &str) -> usize {
         "(toggle-inspector!)" => 9,
         "(toggle-console!)" => 10,
         "(toggle-keybindings!)" => 11,
-        "(quit!)" => 12,
-        command if command.contains("do-attack") => 13,
+        "(toggle-memories!)" => 12,
+        "(quit!)" => 13,
+        command if command.contains("do-attack") => 14,
         _ => 100,
     }
 }
@@ -569,11 +597,16 @@ fn render_inspector(ctx: &mut Frame, world: &World) {
             RGB::named(GRAY)
         };
 
-        let header = if is_new {
-            format!("{prefix} {} [NEW]", rule.name)
+        let status = if world.registry.is_disabled(rule.id) {
+            " [UNREGISTERED]"
+        } else if world.registry.is_patched(rule.id) {
+            " [PATCHED]"
+        } else if is_new {
+            " [NEW]"
         } else {
-            format!("{prefix} {}", rule.name)
+            ""
         };
+        let header = format!("{prefix} {}{status}", rule.name);
         ctx.print_color(x + 2, line_y, hl, RGB::named(BLACK), &header);
         line_y += 1;
 
@@ -588,7 +621,7 @@ fn render_inspector(ctx: &mut Frame, world: &World) {
         line_y += 1;
 
         if expanded {
-            for src in rule.source_lines {
+            for src in world.registry.display_lines(rule) {
                 let src_line = format!("   {src}");
                 let spans = highlight::highlight(&src_line);
                 print_highlighted(ctx, x + 2, line_y, inner_w, &spans);
@@ -766,12 +799,13 @@ fn render_console(ctx: &mut Frame, world: &World) {
     .enumerate()
     {
         let trimmed: String = line.chars().take(inner_width as usize).collect();
-        ctx.print_color(
+        ctx.print_color_styled(
             x + 2,
             y + 2 + i as i32,
-            RGB::named(WHITE),
+            RGB::from_u8(120, 120, 120),
             RGB::named(BLACK),
             &trimmed,
+            true,
         );
     }
 
@@ -819,12 +853,20 @@ fn render_console(ctx: &mut Frame, world: &World) {
         let visible_output = output_available as usize;
         let max_start = lines.len().saturating_sub(visible_output);
         let start = max_start.saturating_sub(world.console_output_scroll);
-        let highlight_output = console_output_uses_syntax_highlighting(&world.console_output);
+        let output_kind = console_output_highlight_kind(&world.console_output);
         for (i, line) in lines[start..].iter().enumerate().take(visible_output) {
             let y = output_y + i as i32;
+            // Help pages mix prose with code examples: highlight only the lines
+            // that are Glyph code, leaving prose plain so words aren't colored
+            // at random. Echoed console input/output is all code, so highlight
+            // every line.
+            let highlight_line = match output_kind {
+                OutputHighlight::None => false,
+                OutputHighlight::CodeLinesOnly => help_line_is_code(line),
+            };
             if let Some(color) = world.console_output_color {
                 print_clipped_color(ctx, x + 2, y, inner_width, line, color);
-            } else if highlight_output {
+            } else if highlight_line {
                 let spans = highlight::highlight(line);
                 print_highlighted(ctx, x + 2, y, inner_width, &spans);
             } else {
@@ -907,8 +949,37 @@ fn is_diagnostic_output(text: &str) -> bool {
     text.contains("Error: syntax error") && text.contains("[glyph:")
 }
 
-fn console_output_uses_syntax_highlighting(text: &str) -> bool {
-    text.starts_with("=> Glyph help ")
+/// How a block of console output should be syntax-highlighted.
+enum OutputHighlight {
+    /// Plain text, no highlighting.
+    None,
+    /// Mixed prose and code (help pages) — highlight only code lines.
+    CodeLinesOnly,
+}
+
+fn console_output_highlight_kind(text: &str) -> OutputHighlight {
+    if text.starts_with("=> Glyph help ") {
+        OutputHighlight::CodeLinesOnly
+    } else {
+        OutputHighlight::None
+    }
+}
+
+/// Heuristic: does a help-page line read as Glyph code rather than prose?
+///
+/// Help text is indented code examples interleaved with left-aligned prose and
+/// section headers. Treat a line as code when, after trimming, it begins with a
+/// token that only appears in Glyph source: an open paren / bracket / brace, a
+/// quote, a reader macro, or a `:keyword`. Everything else stays prose.
+fn help_line_is_code(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    let mut chars = trimmed.chars();
+    match chars.next() {
+        Some('(') | Some('\'') | Some(':') => true,
+        Some('[') | Some('{') => true,
+        Some('#') => matches!(chars.next(), Some('[') | Some('{')),
+        _ => false,
+    }
 }
 
 fn clipped_lines(text: &str, max_width: usize) -> Vec<String> {
@@ -1014,6 +1085,59 @@ fn render_keybindings(ctx: &mut Frame, world: &World) {
     print_clipped(ctx, inner_x, line_y, inner_w, "tab/esc close");
 }
 
+fn render_sign(ctx: &mut Frame, world: &World) {
+    let width = (ctx.width() - 4).clamp(1, 72);
+    let height = (ctx.height() - 4).clamp(1, 30);
+    let x = ((ctx.width() - width) / 2).max(0);
+    let y = ((ctx.height() - height) / 2).max(0);
+
+    fill_rect(ctx, x, y, width, height, RGB::named(BLACK));
+    draw_box(ctx, x, y, width, height, " sign ");
+
+    let inner_x = x + 2;
+    let inner_w = (width - 4).max(1) as usize;
+    let content_rows = (height - 4).max(0) as usize;
+
+    let mut lines: Vec<(String, RGB)> = Vec::new();
+    for para in world.sign_text.split("\n\n") {
+        let para = para.trim();
+        if para.is_empty() {
+            lines.push((String::new(), RGB::named(WHITE)));
+            continue;
+        }
+        // Rejoin soft-wrapped source lines within a paragraph, then re-wrap to display width
+        let joined = para.lines().collect::<Vec<_>>().join(" ");
+        for wrapped in wrap_text(&joined, inner_w) {
+            lines.push((wrapped, RGB::named(CYAN)));
+        }
+        lines.push((String::new(), RGB::named(WHITE)));
+    }
+    // Drop trailing blank
+    while lines.last().map(|(s, _)| s.is_empty()).unwrap_or(false) {
+        lines.pop();
+    }
+
+    let max_scroll = lines.len().saturating_sub(content_rows);
+    let scroll = world.sign_scroll.min(max_scroll);
+    let mut line_y = y + 2;
+    for (text, color) in lines.iter().skip(scroll).take(content_rows) {
+        print_clipped_color(ctx, inner_x, line_y, inner_w as i32, text, *color);
+        line_y += 1;
+    }
+
+    let at_end = scroll >= max_scroll;
+    let footer = if at_end {
+        "esc/space close".to_string()
+    } else {
+        format!(
+            "j/k scroll  esc/space close  ({}/{})",
+            scroll + 1,
+            max_scroll + 1
+        )
+    };
+    print_clipped(ctx, inner_x, y + height - 2, inner_w as i32, &footer);
+}
+
 fn render_memories(ctx: &mut Frame, world: &World) {
     let width = (ctx.width() - 4).clamp(1, 92);
     let height = (ctx.height() - 4).clamp(1, 38);
@@ -1095,7 +1219,7 @@ fn render_death_screen(ctx: &mut Frame, world: &World) {
         inner_x,
         line_y,
         inner_w,
-        &format!("Depth: {}  |  Turn: {}", world.depth, world.turn),
+        &format!("Depth: {}  |  Turn: {}", world.depth, world.turn_in_level()),
     );
     line_y += 2;
 
@@ -1278,6 +1402,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn help_lines_highlight_code_but_not_prose() {
+        // Code examples (indented or not) are highlighted...
+        assert!(help_line_is_code("  (let x 2 (+ x 3))"));
+        assert!(help_line_is_code("(if test then else)"));
+        assert!(help_line_is_code("  'form"));
+        assert!(help_line_is_code("  :north        — keywords"));
+        assert!(help_line_is_code("  #[1 2 3]      — vectors"));
+        // ...prose and section headers stay plain.
+        assert!(!help_line_is_code("Glyph help (page 2/6): special forms"));
+        assert!(!help_line_is_code("Examples:"));
+        assert!(!help_line_is_code("  arithmetic (variadic)"));
+        assert!(!help_line_is_code(""));
+        // A bare `#` that is not a reader macro is prose, not code.
+        assert!(!help_line_is_code("# not a macro"));
+    }
+
+    #[test]
+    fn only_help_output_requests_code_line_highlighting() {
+        assert!(matches!(
+            console_output_highlight_kind("=> Glyph help (page 1/6)\n..."),
+            OutputHighlight::CodeLinesOnly
+        ));
+        assert!(matches!(
+            console_output_highlight_kind("=> 42"),
+            OutputHighlight::None
+        ));
+    }
+
+    #[test]
     fn console_header_wraps_to_two_lines_at_eighty() {
         let text = "Glyph REPL — press Ctrl+E to open an external editor for multi-line input. Try (help). ESC or ` to close.";
         let lines = wrap_text(text, 80);
@@ -1394,9 +1547,15 @@ mod tests {
 
     #[test]
     fn help_output_uses_syntax_highlighting() {
-        assert!(console_output_uses_syntax_highlighting(
-            "=> Glyph help (page 5/6): language reference\n  (if test then else)"
+        assert!(matches!(
+            console_output_highlight_kind(
+                "=> Glyph help (page 5/6): language reference\n  (if test then else)"
+            ),
+            OutputHighlight::CodeLinesOnly
         ));
-        assert!(!console_output_uses_syntax_highlighting("=> (1 2 3)"));
+        assert!(matches!(
+            console_output_highlight_kind("=> (1 2 3)"),
+            OutputHighlight::None
+        ));
     }
 }

@@ -84,11 +84,41 @@ pub fn build_level(world: &mut World, depth: u32) {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeSet, HashSet, VecDeque};
 
-    use crate::{EntityKind, World};
+    use crate::{entity::Position, EntityKind, World};
 
     use super::build_level;
+
+    /// Flood-fill of walkable tiles from `start`, ignoring entities.
+    fn reachable_tiles(world: &World, start: Position) -> HashSet<Position> {
+        reachable_tiles_with(world, start, |_| false)
+    }
+
+    /// Flood-fill that additionally passes through tiles the player can open
+    /// or wait out (locked doors, shifting walls).
+    fn reachable_tiles_with(
+        world: &World,
+        start: Position,
+        extra_passable: impl Fn(Position) -> bool,
+    ) -> HashSet<Position> {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        visited.insert(start);
+        queue.push_back(start);
+        while let Some(pos) = queue.pop_front() {
+            for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
+                let next = pos.offset(dx, dy);
+                if world.map.contains(next)
+                    && (world.map.is_walkable(next) || extra_passable(next))
+                    && visited.insert(next)
+                {
+                    queue.push_back(next);
+                }
+            }
+        }
+        visited
+    }
 
     #[test]
     fn campaign_fragment_spawns_are_walkable_and_cover_findable_memories() {
@@ -178,5 +208,200 @@ mod tests {
             blocked.is_empty(),
             "quiet halls gate barrels spawned on blocked tiles: {blocked:?}"
         );
+    }
+
+    #[test]
+    fn first_scar_gates_combat_rooms_with_walkable_barrels() {
+        use crate::map::TileType;
+
+        // Procedural layout varies per build; check several so we exercise the
+        // gate logic rather than one lucky seed.
+        let mut saw_barrels = false;
+        for _ in 0..16 {
+            let mut world = World::new_game();
+            build_level(&mut world, 4);
+
+            let player = world.player_pos();
+            for id in world.ecs.entity_ids() {
+                if world.ecs.kind(id) != Some(crate::EntityKind::Barrel) {
+                    continue;
+                }
+                saw_barrels = true;
+                let pos = world.ecs.position(id).expect("barrel has a position");
+                assert!(
+                    world.map.is_walkable(pos),
+                    "depth 4 gate barrel on a blocked tile: {pos:?}"
+                );
+                assert_ne!(pos, player, "barrel sealed the player at spawn");
+                let tile = world.map.tile(pos);
+                assert!(
+                    !matches!(tile, TileType::StairsDown | TileType::StairsUp),
+                    "barrel covered stairs at {pos:?}"
+                );
+            }
+        }
+
+        assert!(
+            saw_barrels,
+            "depth 4 produced no gate barrels across 16 builds"
+        );
+    }
+
+    #[test]
+    fn first_scar_wizard_and_sign_are_reachable() {
+        // Procedural layout varies per build; the old midpoint placement put
+        // the wizard inside a wall on almost every generation.
+        for _ in 0..32 {
+            let mut world = World::new_game();
+            build_level(&mut world, 4);
+
+            let wizard_pos = world
+                .wizard_id
+                .and_then(|id| world.ecs.position(id))
+                .expect("depth 4 spawns a wizard");
+            let sign_pos = world
+                .ecs
+                .entity_ids()
+                .find(|id| world.ecs.kind(*id) == Some(EntityKind::Sign))
+                .and_then(|id| world.ecs.position(id))
+                .expect("depth 4 spawns a sign");
+
+            assert!(
+                world.map.is_walkable(wizard_pos),
+                "depth 4 wizard in a wall: {wizard_pos:?}"
+            );
+            assert!(
+                world.map.is_walkable(sign_pos),
+                "depth 4 sign in a wall: {sign_pos:?}"
+            );
+
+            let reachable = reachable_tiles(&world, world.player_pos());
+            assert!(
+                reachable.contains(&wizard_pos),
+                "depth 4 wizard unreachable from start: {wizard_pos:?}"
+            );
+            assert!(
+                reachable.contains(&sign_pos),
+                "depth 4 sign unreachable from start: {sign_pos:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn counting_room_key_goblins_are_reachable_without_keys() {
+        let mut world = World::new_game();
+        build_level(&mut world, 8);
+
+        // Locked doors are wall tiles until a key is spent, so the flood fill
+        // covers exactly the hub area the player can reach key-less.
+        let reachable = reachable_tiles(&world, world.player_pos());
+        let goblins: Vec<Position> = world
+            .ecs
+            .entity_ids()
+            .filter(|id| world.ecs.kind(*id) == Some(EntityKind::Goblin))
+            .filter_map(|id| world.ecs.position(id))
+            .collect();
+
+        assert_eq!(goblins.len(), 3, "counting room should have 3 key-goblins");
+        for pos in goblins {
+            assert!(
+                reachable.contains(&pos),
+                "key-goblin sealed behind a locked door at {pos:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn same_run_seed_reproduces_generated_levels() {
+        // 4 = room gen, 5 = cave gen, 10 = room gen + shifting walls,
+        // 18 = procedural fallback.
+        for depth in [4u32, 5, 10, 18] {
+            let build = |seed: u64| {
+                let mut world = World::new_game();
+                world.run_seed = seed;
+                world.depth = depth;
+                build_level(&mut world, depth);
+                world
+            };
+            let a = build(0xDECAF);
+            let b = build(0xDECAF);
+            let c = build(0xC0FFEE);
+
+            assert_eq!(
+                tile_fingerprint(&a),
+                tile_fingerprint(&b),
+                "depth {depth}: same seed produced different maps"
+            );
+            assert_eq!(
+                a.maze_shifting_walls, b.maze_shifting_walls,
+                "depth {depth}: same seed produced different shifting walls"
+            );
+            assert_ne!(
+                tile_fingerprint(&a),
+                tile_fingerprint(&c),
+                "depth {depth}: map generation ignores the seed"
+            );
+        }
+    }
+
+    fn tile_fingerprint(world: &World) -> Vec<crate::map::TileType> {
+        let mut tiles = Vec::new();
+        for y in 0..world.map.height {
+            for x in 0..world.map.width {
+                tiles.push(world.map.tile(Position::new(x, y)));
+            }
+        }
+        tiles
+    }
+
+    #[test]
+    fn all_depths_pass_level_lint() {
+        for depth in 0..=17u32 {
+            for seed in 1..=4u64 {
+                let mut world = World::new_game();
+                world.run_seed = seed;
+                world.depth = depth;
+                build_level(&mut world, depth);
+
+                let start = world.player_pos();
+                assert!(
+                    world.map.is_walkable(start),
+                    "depth {depth} seed {seed}: player start blocked at {start:?}"
+                );
+
+                // Locked doors are key-openable and shifting walls toggle
+                // open, so both count as passable for reachability.
+                let reachable = reachable_tiles_with(&world, start, |pos| {
+                    world.maze_shifting_walls.contains(&pos)
+                        || (depth == 8 && World::counting_room_locked_door(pos))
+                });
+
+                for y in 0..world.map.height {
+                    for x in 0..world.map.width {
+                        let pos = Position::new(x, y);
+                        if world.map.tile(pos) == crate::map::TileType::StairsDown {
+                            assert!(
+                                reachable.contains(&pos),
+                                "depth {depth} seed {seed}: stairs down unreachable at {pos:?}"
+                            );
+                        }
+                    }
+                }
+
+                for id in world.ecs.entity_ids() {
+                    if id == world.player_id {
+                        continue;
+                    }
+                    let Some(pos) = world.ecs.position(id) else {
+                        continue;
+                    };
+                    let kind = world.ecs.kind(id);
+                    assert!(
+                        reachable.contains(&pos),
+                        "depth {depth} seed {seed}: {kind:?} unreachable at {pos:?}"
+                    );
+                }
+            }
+        }
     }
 }

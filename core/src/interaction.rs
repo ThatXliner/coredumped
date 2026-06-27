@@ -28,7 +28,7 @@ impl World {
             self.event_log
                 .push_colored("The wizard raises a glowing hand...", RGB::named(CYAN));
             self.event_log.push_colored(
-                "\"You've wandered far enough. It's time you learned to strike back.\"",
+                "\"I can't keep everything off you forever. It's time you learned to strike back.\"",
                 RGB::named(CYAN),
             );
             self.event_log.push_colored(
@@ -48,7 +48,7 @@ impl World {
                 RGB::named(GREEN),
             );
             self.event_log.push_colored(
-                "\"Strike with purpose, traveler — once you bind it, the way down will open.\"",
+                "\"Bind it, and the way down will open. I'll be just ahead of you. I always am.\"",
                 RGB::named(CYAN),
             );
             return;
@@ -74,20 +74,28 @@ impl World {
     }
 
     pub(crate) fn interact_with_sign(&mut self, sign_id: EntityId) {
-        self.event_log.push("===================================");
-        self.event_log
-            .push_colored("              SIGN", RGB::named(CYAN));
-        self.event_log.push("===================================");
+        let message = self.ecs.sign_message(sign_id).unwrap_or("").to_string();
 
-        let message = self.ecs.sign_message(sign_id).unwrap_or("");
-        for line in message.lines() {
-            if line.is_empty() {
-                self.event_log.push("");
-            } else {
-                self.event_log
-                    .push_colored(line.to_string(), RGB::named(CYAN));
+        // Echo the sign into the event log the first time it's read this level,
+        // so the player can scroll back and re-read it after closing the
+        // overlay. Re-bumping the same sign just reopens the overlay without
+        // spamming the log.
+        if self.read_signs.insert(sign_id) {
+            self.event_log
+                .push_colored("-- sign --", RGB::named(DARK_GRAY));
+            for line in message.lines() {
+                if line.trim().is_empty() {
+                    self.event_log.push("");
+                } else {
+                    self.event_log
+                        .push_colored(line.to_string(), RGB::named(CYAN));
+                }
             }
         }
+
+        self.sign_text = message;
+        self.sign_scroll = 0;
+        self.mode = crate::game::Mode::ReadingSign;
     }
 
     pub(crate) fn interact_with_fragment(&mut self, fragment_id: EntityId) {

@@ -1,7 +1,9 @@
-use bracket_color::prelude::{CYAN, YELLOW, RGB};
+use bracket_color::prelude::{CYAN, RGB, YELLOW};
 use bracket_random::prelude::RandomNumberGenerator;
 
-use super::helpers::{apply_map, find_stairs_down, spawn_fragment_near_open_floor};
+use super::helpers::{
+    apply_map, find_stairs_down, spawn_fragment_near_open_floor, spawn_sign_near_open_floor,
+};
 use crate::{
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
@@ -20,7 +22,7 @@ use crate::{
 // The player doesn't need to submit — just typing it is enough.
 
 pub(crate) fn build_maze_of_regret(world: &mut World) {
-    let gen = Map::generate(MAP_WIDTH, MAP_HEIGHT, 10);
+    let gen = Map::generate(MAP_WIDTH, MAP_HEIGHT, 10, world.level_seed(10));
     for pos in &gen.combat_spawns {
         world.spawn_enemy_at(*pos, 10);
     }
@@ -31,8 +33,9 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
     world.maze_shift_frozen = false;
 
     // Mark certain floor tiles as "shifting walls"
-    // These will toggle between Wall and Floor each tick
-    let mut rng = RandomNumberGenerator::new();
+    // These will toggle between Wall and Floor each tick. Salted so the wall
+    // pattern doesn't replay the map generator's random stream.
+    let mut rng = RandomNumberGenerator::seeded(world.level_seed(10) ^ 0x4D41_5A45);
     let player_pos = gen.player_start;
     let stairs_pos = find_stairs_down(&world.map);
 
@@ -49,7 +52,10 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
             }
 
             // Skip tiles near enemy spawn positions
-            let near_spawn = gen.combat_spawns.iter().any(|sp| pos.manhattan_distance(*sp) < 3);
+            let near_spawn = gen
+                .combat_spawns
+                .iter()
+                .any(|sp| pos.manhattan_distance(*sp) < 3);
             if near_spawn {
                 continue;
             }
@@ -74,8 +80,16 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
         Position::new(player_pos.x + 5, player_pos.y + 2),
         "frag-007",
     );
-    spawn_fragment_near_open_floor(world, Position::new(stairs_pos.x - 4, stairs_pos.y - 2), "frag-008");
-    spawn_fragment_near_open_floor(world, Position::new(stairs_pos.x + 2, stairs_pos.y + 4), "frag-009");
+    spawn_fragment_near_open_floor(
+        world,
+        Position::new(stairs_pos.x - 4, stairs_pos.y - 2),
+        "frag-008",
+    );
+    spawn_fragment_near_open_floor(
+        world,
+        Position::new(stairs_pos.x + 2, stairs_pos.y + 4),
+        "frag-009",
+    );
 
     // Wizard at entrance — hints at the shifting but also at the exploit
     let wizard_pos = Position::new(player_pos.x + 2, player_pos.y - 2);
@@ -85,6 +99,14 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
     // Make maze/shift rule visible
     world.known_rule_ids.insert("maze-shift".into());
     world.new_rule_ids.insert("maze-shift".into());
+
+    // For players who broke the write-protect at the Boiling Heart: the
+    // permanent solution. (The console-buffer trick still works without it.)
+    spawn_sign_near_open_floor(
+        world,
+        Position::new(player_pos.x - 2, player_pos.y + 2),
+        "The walls obey maze/shift. maze/shift is registered.\n\nRegistered things can be unregistered — if you have write access to the registry.\n\n  (let r (open-registry :rule-registry)\n    (r :unregister :maze/shift))\n\nEach patch costs HP. Check the inspector (i) to see the rule before you change it.",
+    );
 
     world.event_log.push_colored(
         "The walls here shift and breathe. The maze remembers differently each moment.",

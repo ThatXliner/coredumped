@@ -56,7 +56,11 @@ pub fn wipe() {
 pub struct SaveData {
     pub version: u32,
     pub depth: u32,
+    #[serde(default)]
+    pub run_seed: u64,
     pub turn: u64,
+    #[serde(default)]
+    pub turn_at_depth_start: u64,
     pub player_id_raw: usize,
     pub player_facing: String,
     pub player_can_attack: bool,
@@ -92,6 +96,11 @@ pub struct SaveData {
     pub maze_shifting_walls: Vec<(i32, i32)>,
     #[serde(default)]
     pub maze_shift_frozen: bool,
+    /// Player rule patches: (rule id, patch source if any, disabled).
+    #[serde(default)]
+    pub rule_patches: Vec<(String, Option<String>, bool)>,
+    #[serde(default)]
+    pub suppression_lifted: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -268,7 +277,9 @@ impl World {
         SaveData {
             version: 1,
             depth: self.depth,
+            run_seed: self.run_seed,
             turn: self.turn,
+            turn_at_depth_start: self.turn_at_depth_start,
             player_id_raw: self.player_id.raw(),
             player_facing: direction_to_string(self.player_facing),
             player_can_attack: self.player_can_attack,
@@ -302,8 +313,18 @@ impl World {
                 .collect(),
             known_rule_ids: self.known_rule_ids.iter().cloned().collect(),
             console_history: self.console_history.clone(),
-            maze_shifting_walls: self.maze_shifting_walls.iter().map(|p| (p.x, p.y)).collect(),
+            maze_shifting_walls: self
+                .maze_shifting_walls
+                .iter()
+                .map(|p| (p.x, p.y))
+                .collect(),
             maze_shift_frozen: self.maze_shift_frozen,
+            rule_patches: self
+                .registry
+                .patches()
+                .map(|(id, p)| (id.clone(), p.source.clone(), p.disabled))
+                .collect(),
+            suppression_lifted: self.suppression_lifted,
         }
     }
 }
@@ -393,7 +414,9 @@ impl World {
         world.player_id = EntityId::new(data.player_id_raw);
         world.player_facing = direction_from_string(&data.player_facing);
         world.depth = data.depth;
+        world.run_seed = data.run_seed;
         world.turn = data.turn;
+        world.turn_at_depth_start = data.turn_at_depth_start;
         world.player_can_attack = data.player_can_attack;
         world.wizard_taught = data.wizard_taught;
         world.wizard_id = data.wizard_id_raw.map(EntityId::new);
@@ -475,6 +498,20 @@ impl World {
             .map(|(x, y)| Position { x: *x, y: *y })
             .collect();
         world.maze_shift_frozen = data.maze_shift_frozen;
+
+        // --- Rule patches ---
+        // Reapply player modifications to the freshly built registry. Save
+        // data is trusted as far as parseability; unparseable patches are
+        // silently dropped (the default rule takes over again).
+        for (id, source, disabled) in &data.rule_patches {
+            if let Some(src) = source {
+                let _ = world.registry.patch(id, src);
+            }
+            if *disabled {
+                let _ = world.registry.unregister(id);
+            }
+        }
+        world.suppression_lifted = data.suppression_lifted;
 
         // --- Rebuild Glyph envs on top of minimal env ---
         world.glyph_env = crate::game::setup_glyph_env();

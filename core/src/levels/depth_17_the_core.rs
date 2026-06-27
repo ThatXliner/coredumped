@@ -40,7 +40,7 @@ pub(crate) fn build_the_core(world: &mut World) {
     // The pedestal — the vessel/suppress rule
     world.ecs.spawn_sign(
         Position::new(rx + rw / 2, ry + rh / 2),
-        "THE CORE\n\nvessel/suppress is here.\n\nOpen the inspector (i) to read the rule.\nOpen the console (`) to modify it.\n\nTry:\n(let r (open-registry :rule-registry)\n  (r :write :vessel/suppress\n     '(set! *threshold* 0)))\n\nThe choice is yours.",
+        "THE CORE\n\nvessel/suppress is here. Open the inspector (i) to read the rule. Open the console (`) to modify it.\n\nTry:\n\n  (let r (open-registry :rule-registry)\n\n    (r :write :vessel/suppress '(set! *threshold* 0)))\n\nOr touch nothing and ascend. The rule will keep doing what it has always done.\n\nEither way, the stairs up end this. The choice is yours.",
     );
 
     // No enemies, no wizard, no items

@@ -2,9 +2,9 @@
 
 use bracket_color::prelude::{RED, RGB};
 
+use crate::game::{Intent, Mode};
 use crate::glyph::{self, Value};
 use crate::world::World;
-use crate::game::{Intent, Mode};
 
 impl World {
     pub(crate) fn console_insert(&mut self, ch: char) {
@@ -85,15 +85,13 @@ impl World {
     }
 
     pub(crate) fn console_kill_to_start(&mut self) {
-        self.console_cursor =
-            clamp_to_char_boundary(&self.console_buffer, self.console_cursor);
+        self.console_cursor = clamp_to_char_boundary(&self.console_buffer, self.console_cursor);
         self.console_buffer.drain(..self.console_cursor);
         self.console_cursor = 0;
     }
 
     pub(crate) fn console_kill_to_end(&mut self) {
-        self.console_cursor =
-            clamp_to_char_boundary(&self.console_buffer, self.console_cursor);
+        self.console_cursor = clamp_to_char_boundary(&self.console_buffer, self.console_cursor);
         self.console_buffer.truncate(self.console_cursor);
     }
 

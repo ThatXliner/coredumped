@@ -88,14 +88,14 @@ impl Map {
 
     /// Generate a random room-based dungeon with depth-scaled difficulty.
     /// Uses region-based placement, Kruskal MST corridors, and room typing.
-    pub fn generate(width: i32, height: i32, depth: u32) -> MapGenOutput {
+    pub fn generate(width: i32, height: i32, depth: u32, seed: u64) -> MapGenOutput {
         let mut map = Self {
             width,
             height,
             tiles: vec![TileType::Wall; (width * height) as usize],
         };
 
-        let mut rng = RandomNumberGenerator::new();
+        let mut rng = RandomNumberGenerator::seeded(seed);
         let mut rooms: Vec<Room> = Vec::new();
 
         // --- Region-based room placement ---
@@ -247,6 +247,8 @@ impl Map {
 
         let mut combat_spawns: Vec<Position> = Vec::new();
         let mut boss_spawns: Vec<Position> = Vec::new();
+        let mut barrel_gates: Vec<Position> = Vec::new();
+        let reserved = [player_start, stairs_up, stairs_down];
         for room in &rooms {
             match room.kind {
                 RoomType::Combat | RoomType::Treasure => {
@@ -257,6 +259,20 @@ impl Map {
                 }
                 _ => {}
             }
+
+            // Gate combat encounters: drop a barrel at one corridor mouth so the
+            // player chews through instead of running into the whole pack at
+            // once. One per room keeps loop routes open.
+            if matches!(room.kind, RoomType::Combat | RoomType::Boss) {
+                if let Some(mouth) = room.ring_tiles().into_iter().find(|&p| {
+                    map.contains(p)
+                        && map.tile(p) == TileType::Floor
+                        && !reserved.contains(&p)
+                        && !barrel_gates.contains(&p)
+                }) {
+                    barrel_gates.push(mouth);
+                }
+            }
         }
 
         MapGenOutput {
@@ -266,23 +282,24 @@ impl Map {
             stairs_down,
             combat_spawns,
             boss_spawns,
+            barrel_gates,
         }
     }
 
     /// Generate a cellular automata cave with depth-scaled enemies (default size).
-    pub fn generate_cave(depth: u32) -> MapGenOutput {
-        Self::generate_cave_sized(MAP_WIDTH, MAP_HEIGHT, depth)
+    pub fn generate_cave(depth: u32, seed: u64) -> MapGenOutput {
+        Self::generate_cave_sized(MAP_WIDTH, MAP_HEIGHT, depth, seed)
     }
 
     /// Generate a cellular automata cave with custom dimensions.
-    pub fn generate_cave_sized(width: i32, height: i32, depth: u32) -> MapGenOutput {
+    pub fn generate_cave_sized(width: i32, height: i32, depth: u32, seed: u64) -> MapGenOutput {
         let mut map = Self {
             width,
             height,
             tiles: vec![TileType::Wall; (width * height) as usize],
         };
 
-        let mut rng = RandomNumberGenerator::new();
+        let mut rng = RandomNumberGenerator::seeded(seed);
 
         // 1. Random noise: 45% floor, borders always wall
         for y in 1..height - 1 {
@@ -311,6 +328,33 @@ impl Map {
                 }
             }
             map.tiles = next;
+        }
+
+        // 2b. Widen 1-tile pinch passages so packs can't fully surround the
+        //     player in a corridor. A wall flips to floor when it sits between
+        //     two opposing floor tiles (N/S or E/W) — this opens chokepoints
+        //     without dissolving the cave walls. Computed against a snapshot so
+        //     the pass doesn't cascade within a single iteration.
+        let snapshot = map.tiles.clone();
+        let is_floor = |x: i32, y: i32| {
+            x >= 0
+                && x < width
+                && y >= 0
+                && y < height
+                && snapshot[(y * width + x) as usize] != TileType::Wall
+        };
+        for y in 1..height - 1 {
+            for x in 1..width - 1 {
+                let pos = Position::new(x, y);
+                if snapshot[(y * width + x) as usize] != TileType::Wall {
+                    continue;
+                }
+                let vertical_pinch = is_floor(x, y - 1) && is_floor(x, y + 1);
+                let horizontal_pinch = is_floor(x - 1, y) && is_floor(x + 1, y);
+                if vertical_pinch || horizontal_pinch {
+                    map.set_tile(pos, TileType::Floor);
+                }
+            }
         }
 
         // 3. Flood-fill: keep only the largest connected floor region
@@ -366,6 +410,7 @@ impl Map {
             stairs_down,
             combat_spawns,
             boss_spawns: Vec::new(),
+            barrel_gates: Vec::new(),
         }
     }
 
@@ -730,6 +775,8 @@ pub struct MapGenOutput {
     pub stairs_down: Position,
     pub combat_spawns: Vec<Position>,
     pub boss_spawns: Vec<Position>,
+    /// Corridor-mouth tiles where a destructible barrel can gate a room.
+    pub barrel_gates: Vec<Position>,
 }
 
 struct Room {
@@ -743,6 +790,26 @@ struct Room {
 impl Room {
     fn center(&self) -> Position {
         Position::new(self.x + self.w / 2, self.y + self.h / 2)
+    }
+
+    /// Tiles on the room's outer ring (rect inflated by 1). A corridor enters
+    /// the room through one of these, so any ring tile that the map carved as
+    /// floor is a chokepoint we can gate with a barrel.
+    fn ring_tiles(&self) -> Vec<Position> {
+        let mut tiles = Vec::new();
+        let x0 = self.x - 1;
+        let x1 = self.x + self.w;
+        let y0 = self.y - 1;
+        let y1 = self.y + self.h;
+        for x in x0..=x1 {
+            tiles.push(Position::new(x, y0));
+            tiles.push(Position::new(x, y1));
+        }
+        for y in (y0 + 1)..y1 {
+            tiles.push(Position::new(x0, y));
+            tiles.push(Position::new(x1, y));
+        }
+        tiles
     }
 
     fn overlaps(&self, other: &Room) -> bool {

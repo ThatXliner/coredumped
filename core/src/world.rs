@@ -32,7 +32,16 @@ pub struct World {
     pub player_id: EntityId,
     pub player_facing: Direction,
     pub depth: u32,
+    /// Seed for the whole run. Each depth derives its generation seed from
+    /// this via [`World::level_seed`], so procedural levels are reproducible:
+    /// the same run seed always produces the same layouts.
+    pub run_seed: u64,
     pub turn: u64,
+    /// Absolute turn at which the current depth was entered. The turn shown to
+    /// the player is `turn - turn_at_depth_start` so it counts up from 0 on each
+    /// new level and survives respawns (which rebuild the level without changing
+    /// either value). Updated only on descend/ascend.
+    pub turn_at_depth_start: u64,
     pub mode: Mode,
     pub event_log: EventLog,
     pub console_buffer: String,
@@ -108,6 +117,14 @@ pub struct World {
     /// All rule ids that have ever been discovered by the player.
     pub known_rule_ids: HashSet<String>,
 
+    /// Text currently being read in the sign overlay. Cleared when leaving ReadingSign mode.
+    pub sign_text: String,
+    /// Scrollback offset for the sign overlay. 0 = top.
+    pub sign_scroll: usize,
+    /// Signs already echoed into the event log this level. Prevents re-bumping
+    /// the same sign from spamming the log. Cleared on level build.
+    pub(crate) read_signs: HashSet<EntityId>,
+
     /// Memory fragment registry — tracks all 42 fragments and collected status.
     pub fragment_registry: FragmentRegistry,
 
@@ -121,6 +138,10 @@ pub struct World {
 
     /// Set when the Rage impact overflow has disabled registry write-protect.
     pub registry_write_unlocked: bool,
+
+    /// Set when the player patches or unregisters vessel/suppress. Releases
+    /// the suppressed fragments and changes the ending at the Core.
+    pub suppression_lifted: bool,
 
     /// Force of the last attack. Used by the rage-impact exploit.
     pub last_impact_force: i32,
@@ -177,7 +198,9 @@ impl World {
             player_id: EntityId::new(0),
             player_facing: Direction::East,
             depth: 0,
+            run_seed: 0,
             turn: 0,
+            turn_at_depth_start: 0,
             mode: Mode::Normal,
             event_log: EventLog::new(),
             console_buffer: String::new(),
@@ -213,12 +236,16 @@ impl World {
             seen_tile_types: HashSet::new(),
             new_rule_ids: HashSet::new(),
             known_rule_ids: HashSet::new(),
+            sign_text: String::new(),
+            sign_scroll: 0,
+            read_signs: HashSet::new(),
             fragment_registry: FragmentRegistry::new(),
             cached_flashlight: HashSet::new(),
             cached_flashlight_pos: Position::new(-1, -1),
             cached_flashlight_facing: Direction::East,
             ending: None,
             registry_write_unlocked: false,
+            suppression_lifted: false,
             last_impact_force: 0,
             last_impact_target: None,
             held_keys: Vec::new(),
@@ -235,6 +262,17 @@ impl World {
             explored_tiles: HashSet::new(),
             render_frame: 0,
         }
+    }
+
+    /// Generation seed for a depth, derived from the run seed via a
+    /// splitmix64 finalizer so adjacent depths get uncorrelated streams.
+    pub fn level_seed(&self, depth: u32) -> u64 {
+        let mut z = self
+            .run_seed
+            .wrapping_add(u64::from(depth).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
     }
 
     pub(crate) fn clear_dijkstra_cache(&mut self) {

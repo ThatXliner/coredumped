@@ -23,8 +23,9 @@ impl World {
         );
         self.event_log
             .push(format!("You descend to depth {}.", self.depth));
-        let _ = self.save_to_disk(0);
         self.turn += 1;
+        self.turn_at_depth_start = self.turn;
+        let _ = self.save_to_disk(0);
     }
 
     pub(crate) fn ascend(&mut self) {
@@ -33,15 +34,20 @@ impl World {
             return;
         }
         if self.depth == 17 {
-            let had_memories = self.fragment_registry.collected_count();
-            self.fragment_registry.suppress_collected();
-            self.ending = Some(if had_memories > 0 {
-                format!(
-                    "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\n{} memories return to static.\nThe weight lifts. The details fade.\nWere they yours? It doesn't matter now.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.",
-                    had_memories
-                )
+            self.ending = Some(if self.suppression_lifted {
+                "RELEASE\n\nThe rule is gone. Nothing redirects the weight anymore.\nAll of it is yours again — the bench, the dog in the sweater,\nthe Sundays, the silence, the name.\n\nAdrian.\n\nIt hurts the whole way up.\nIt is supposed to.\nThat's what carrying something feels like.\n\nConsciousness destabilized.\nConsciousness rebuilding.\n\nYou are not safe.\nYou are awake.\n\nPress q to quit."
+                    .into()
             } else {
-                "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.".into()
+                let had_memories = self.fragment_registry.collected_count();
+                self.fragment_registry.suppress_collected();
+                if had_memories > 0 {
+                    format!(
+                        "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\n{} memories return to static.\nThe weight lifts. The details fade.\nWere they yours? It doesn't matter now.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.",
+                        had_memories
+                    )
+                } else {
+                    "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.".into()
+                }
             });
             return;
         }
@@ -64,8 +70,9 @@ impl World {
         );
         self.event_log
             .push(format!("You ascend to depth {}.", self.depth));
-        let _ = self.save_to_disk(0);
         self.turn += 1;
+        self.turn_at_depth_start = self.turn;
+        let _ = self.save_to_disk(0);
     }
 
     pub(crate) fn clear_all_enemies(&mut self) {
@@ -94,5 +101,6 @@ impl World {
         self.maze_shifting_walls.clear();
         self.maze_shift_frozen = false;
         self.explored_tiles.clear();
+        self.read_signs.clear();
     }
 }

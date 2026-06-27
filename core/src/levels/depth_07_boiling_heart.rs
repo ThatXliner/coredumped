@@ -111,13 +111,25 @@ pub(crate) fn build_boiling_heart(world: &mut World) {
     // Sign near entrance warning about fire
     world.ecs.spawn_sign(
         Position::new(rx + 2, ry + rh / 2 - 2),
-        "The air shimmers with heat.\nFire pools on the floor ahead —\nit will burn you every step.\n\nSomething cold might quench it.",
+        "The air shimmers with heat. Fire pools on the floor ahead — it will burn you on every step you take through it.\n\nSomething cold might quench it.",
+    );
+
+    // Maintenance log — the breadcrumb that teaches the overflow exploit.
+    // The rage-impact source in the inspector shows the vulnerable code;
+    // this sign gives the player the numbers to weaponize it.
+    world.ecs.spawn_sign(
+        Position::new(rx + 2, ry + rh / 2 + 4),
+        "MAINTENANCE LOG // rage-impact v12\n\nImpact telemetry buffer: 64 bytes. Payload size = force x mass. Rage mass: 8.\n\nQA note: forces above 12 overflow the telemetry buffer into the registry write-protect flag. WONTFIX.\n\nNobody hits that hard. Nobody sane.",
     );
 }
 
 fn wizard_interact(world: &mut World) -> bool {
     world.event_log.push_colored(
-        "\"There's something down there — remains of something I couldn't protect you from.\"",
+        "\"You're angry. Good. Anger is honest — it remembers what hurt.\"",
+        RGB::named(CYAN),
+    );
+    world.event_log.push_colored(
+        "\"There's something down there. Remains of what I couldn't protect you from. Hit hard enough and you'll see what I sealed away.\"",
         RGB::named(CYAN),
     );
     true

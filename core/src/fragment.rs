@@ -90,6 +90,15 @@ impl FragmentRegistry {
             .count()
     }
 
+    /// Reset all collected fragments back to hidden (suppression reasserted).
+    pub fn suppress_collected(&mut self) {
+        for f in &mut self.fragments {
+            if f.status == FragmentStatus::Collected {
+                f.status = FragmentStatus::Hidden;
+            }
+        }
+    }
+
     /// Total number of findable fragments (not Suppressed).
     pub fn findable_count(&self) -> usize {
         self.fragments

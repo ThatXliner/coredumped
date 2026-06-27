@@ -38,8 +38,16 @@ impl World {
                 "RELEASE\n\nThe rule is gone. Nothing redirects the weight anymore.\nAll of it is yours again — the bench, the dog in the sweater,\nthe Sundays, the silence, the name.\n\nAdrian.\n\nIt hurts the whole way up.\nIt is supposed to.\nThat's what carrying something feels like.\n\nConsciousness destabilized.\nConsciousness rebuilding.\n\nYou are not safe.\nYou are awake.\n\nPress q to quit."
                     .into()
             } else {
-                "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit."
-                    .into()
+                let had_memories = self.fragment_registry.collected_count();
+                self.fragment_registry.suppress_collected();
+                if had_memories > 0 {
+                    format!(
+                        "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\n{} memories return to static.\nThe weight lifts. The details fade.\nWere they yours? It doesn't matter now.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.",
+                        had_memories
+                    )
+                } else {
+                    "MAINTAIN SUPPRESSION\n\nYou leave the rule unchanged.\nYou walk back toward the surface.\n\nConsciousness stabilized.\nSuppression maintained.\n\nYou are safe.\nYou are safe.\nYou are safe.\n\nPress q to quit.".into()
+                }
             });
             return;
         }

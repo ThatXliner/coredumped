@@ -1,6 +1,5 @@
-use bracket_color::prelude::{CYAN, RGB};
-
 use crate::{
+    dialogue::WizardDialogue,
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -91,14 +90,9 @@ pub(crate) fn build_counting_room(world: &mut World) {
     );
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"Everything down here is a bargain. Give up one thing, keep another. I've been making that trade for you for years.\"",
-        RGB::named(CYAN),
-    );
-    world.event_log.push_colored(
-        "\"Three keys, four doors. You can't save all of it. Choose what matters — and notice how much that costs.\"",
-        RGB::named(CYAN),
-    );
-    true
+fn wizard_interact(_world: &mut World) -> WizardDialogue {
+    WizardDialogue::healing_lines(&[
+        "Everything down here is a bargain. Give up one thing, keep another. I've been making that trade for you for years.",
+        "Three keys, four doors. You can't save all of it. Choose what matters -- and notice how much that costs.",
+    ])
 }

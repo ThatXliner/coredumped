@@ -1,6 +1,5 @@
-use bracket_color::prelude::{CYAN, RGB};
-
 use crate::{
+    dialogue::WizardDialogue,
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -80,10 +79,8 @@ pub(crate) fn build_the_clearing(world: &mut World) {
     world.on_wizard_interact = Some(wizard_interact);
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"I was so sure I was protecting you. But protection isn't supposed to make the world smaller. I'm sorry; I made it a cage.\"",
-        RGB::named(CYAN),
-    );
-    true
+fn wizard_interact(_world: &mut World) -> WizardDialogue {
+    WizardDialogue::healing_lines(&[
+        "I was so sure I was protecting you. But protection isn't supposed to make the world smaller. I'm sorry; I made it a cage.",
+    ])
 }

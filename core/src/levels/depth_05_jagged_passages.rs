@@ -1,7 +1,5 @@
-use bracket_color::prelude::{CYAN, RGB};
-
 use super::helpers::{apply_map, nearest_open_floor, spawn_wizard_near_player};
-use crate::{entity::Position, map::Map, world::World};
+use crate::{dialogue::WizardDialogue, entity::Position, map::Map, world::World};
 
 // ---------------------------------------------------------------------------
 // Depth 5 — Jagged Passages (Anger: hostile terrain)
@@ -27,10 +25,6 @@ pub(crate) fn build_jagged_passages(world: &mut World) {
     );
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"You're hurt. Let me — no. I can't. Not here. Keep moving.\"",
-        RGB::named(CYAN),
-    );
-    false
+fn wizard_interact(_world: &mut World) -> WizardDialogue {
+    WizardDialogue::no_heal_lines(&["You're hurt. Let me — no. I can't. Not here. Keep moving."])
 }

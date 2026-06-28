@@ -1,6 +1,5 @@
-use bracket_color::prelude::{CYAN, RGB};
-
 use crate::{
+    dialogue::WizardDialogue,
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -65,14 +64,9 @@ pub(crate) fn build_ash_field(world: &mut World) {
     world.on_wizard_interact = Some(wizard_interact);
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"You crossed the ash. I used to think reaching this place meant I'd failed you. Now I'm not sure failing you and freeing you were ever different things.\"",
-        RGB::named(CYAN),
-    );
-    world.event_log.push_colored(
-        "\"You know you can rewrite the fire by now. You don't need me to tell you that anymore.\"",
-        RGB::named(CYAN),
-    );
-    true
+fn wizard_interact(_world: &mut World) -> WizardDialogue {
+    WizardDialogue::healing_lines(&[
+        "You crossed the ash. I used to think reaching this place meant I'd failed you. Now I'm not sure failing you and freeing you were ever different things.",
+        "You know you can rewrite the fire by now. You don't need me to tell you that anymore.",
+    ])
 }

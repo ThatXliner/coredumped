@@ -12,6 +12,7 @@ use bracket_color::prelude::RGB;
 use bracket_pathfinding::prelude::{BaseMap, DijkstraMap};
 
 use crate::{
+    dialogue::WizardDialogue,
     ecs::Ecs,
     entity::{Direction, EntityId, EntityKind, Position},
     event_log::EventLog,
@@ -174,8 +175,8 @@ pub struct World {
 
     /// Per-level wizard dialogue callback. Set by each level builder.
     /// Called when player bumps wizard post-teaching.
-    /// Return `true` to heal player, `false` to refuse.
-    pub on_wizard_interact: Option<fn(&mut World) -> bool>,
+    /// Return dialogue plus whether the wizard should heal the player.
+    pub(crate) on_wizard_interact: Option<fn(&mut World) -> WizardDialogue>,
 
     /// Camera position (top-left corner of viewport in map coordinates).
     pub camera_x: i32,

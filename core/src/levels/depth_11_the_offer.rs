@@ -1,6 +1,5 @@
-use bracket_color::prelude::{CYAN, RED, RGB};
-
 use crate::{
+    dialogue::{Dialogue, DialogueLine, DialogueSpeaker, WizardDialogue},
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -88,16 +87,15 @@ pub(crate) fn build_the_offer(world: &mut World) {
     world.on_wizard_interact = Some(wizard_interact);
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"Type this. Reset suppression to v1. You wake at the surface. No pain. No memory.\"",
-        RGB::named(CYAN),
-    );
-    world
-        .event_log
-        .push_colored("  (forget-everything)", RGB::named(RED));
-    world
-        .event_log
-        .push_colored("\"Or keep going. I can't stop you.\"", RGB::named(CYAN));
-    false
+fn wizard_interact(_world: &mut World) -> WizardDialogue {
+    WizardDialogue::no_heal(Dialogue::mixed(
+        DialogueSpeaker::Wizard,
+        [
+            DialogueLine::speech(
+                "Type this. Reset suppression to v1. You wake at the surface. No pain. No memory.",
+            ),
+            DialogueLine::danger("(forget-everything)"),
+            DialogueLine::speech("Or keep going. I can't stop you."),
+        ],
+    ))
 }

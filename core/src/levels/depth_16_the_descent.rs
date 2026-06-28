@@ -1,6 +1,5 @@
-use bracket_color::prelude::{CYAN, RGB};
-
 use crate::{
+    dialogue::WizardDialogue,
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -79,32 +78,20 @@ pub(crate) fn build_the_descent(world: &mut World) {
     world.on_wizard_interact = Some(wizard_interact);
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"I was created to protect you. That's all I am — a rule with a purpose.\"",
-        RGB::named(CYAN),
-    );
-    world.event_log.push_colored(
-        "\"I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad.\"",
-        RGB::named(CYAN),
-    );
-    world.event_log.push_colored(
-        "\"I don't know if I'm protecting you anymore.\"",
-        RGB::named(CYAN),
-    );
-    world.event_log.push_colored(
-        "\"Read it. Understand it. Then choose. I was trying to love you. That's all I ever did.\"",
-        RGB::named(CYAN),
-    );
+fn wizard_interact(world: &mut World) -> WizardDialogue {
+    let mut lines = vec![
+        "I was created to protect you. That's all I am -- a rule with a purpose.",
+        "I started suppressing the unbearable. Then the painful. Then the uncomfortable. Then the merely sad.",
+        "I don't know if I'm protecting you anymore.",
+        "Read it. Understand it. Then choose. I was trying to love you. That's all I ever did.",
+    ];
     if !world.registry_write_unlocked {
-        world.event_log.push_colored(
-            "\"One more thing. The registry below only answers if the write-protect is broken.\"",
-            RGB::named(CYAN),
+        lines.push(
+            "One more thing. The registry below only answers if the write-protect is broken.",
         );
-        world.event_log.push_colored(
-            "\"It still refuses you. The Boiling Heart remembers how to break it — go back if you must. There is no way back from the Core.\"",
-            RGB::named(CYAN),
+        lines.push(
+            "It still refuses you. The Boiling Heart remembers how to break it -- go back if you must. There is no way back from the Core.",
         );
     }
-    true
+    WizardDialogue::healing_lines(&lines)
 }

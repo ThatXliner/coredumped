@@ -1,7 +1,6 @@
-use bracket_color::prelude::{CYAN, RGB};
-
 use super::helpers::{apply_map, nearest_open_floor};
 use crate::{
+    dialogue::WizardDialogue,
     entity::Position,
     map::{Map, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -43,10 +42,8 @@ pub(crate) fn build_first_scar(world: &mut World) {
     );
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"Ah, you made it past the... the. I'm sorry. The air down here is different.\"",
-        RGB::named(CYAN),
-    );
-    true
+fn wizard_interact(_world: &mut World) -> WizardDialogue {
+    WizardDialogue::healing_lines(&[
+        "Ah, you made it past the... the. I'm sorry. The air down here is different.",
+    ])
 }

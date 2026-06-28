@@ -1,10 +1,11 @@
-use bracket_color::prelude::{CYAN, RGB, YELLOW};
+use bracket_color::prelude::{RGB, YELLOW};
 use bracket_random::prelude::RandomNumberGenerator;
 
 use super::helpers::{
     apply_map, find_stairs_down, spawn_fragment_near_open_floor, spawn_sign_near_open_floor,
 };
 use crate::{
+    dialogue::WizardDialogue,
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -114,21 +115,15 @@ pub(crate) fn build_maze_of_regret(world: &mut World) {
     );
 }
 
-fn wizard_interact(world: &mut World) -> bool {
+fn wizard_interact(world: &mut World) -> WizardDialogue {
     if world.maze_shift_frozen {
-        world.event_log.push_colored(
-            "\"You found it. The rule reads what you type, not what you submit. A debug hook no one removed.\"",
-            RGB::named(CYAN),
-        );
+        WizardDialogue::healing_lines(&[
+            "You found it. The rule reads what you type, not what you submit. A debug hook no one removed.",
+        ])
     } else {
-        world.event_log.push_colored(
-            "\"The maze shifts because it's designed to. But every rule has inputs. Some aren't meant to be touched.\"",
-            RGB::named(CYAN),
-        );
-        world.event_log.push_colored(
-            "\"Look at maze/shift in the inspector. See what it reads. See what it trusts.\"",
-            RGB::named(CYAN),
-        );
+        WizardDialogue::healing_lines(&[
+            "The maze shifts because it's designed to. But every rule has inputs. Some aren't meant to be touched.",
+            "Look at maze/shift in the inspector. See what it reads. See what it trusts.",
+        ])
     }
-    true
 }

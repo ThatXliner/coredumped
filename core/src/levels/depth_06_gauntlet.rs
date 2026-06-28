@@ -1,6 +1,5 @@
-use bracket_color::prelude::{CYAN, RGB};
-
 use crate::{
+    dialogue::WizardDialogue,
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -55,10 +54,8 @@ pub(crate) fn build_gauntlet(world: &mut World) {
     world.on_wizard_interact = Some(wizard_interact);
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"I can't come with you through this. I'll meet you at the end.\"",
-        RGB::named(CYAN),
-    );
-    true
+fn wizard_interact(_world: &mut World) -> WizardDialogue {
+    WizardDialogue::healing_lines(&[
+        "I can't come with you through this. I'll meet you at the end.",
+    ])
 }

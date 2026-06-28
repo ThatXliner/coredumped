@@ -10,6 +10,7 @@ pub(crate) mod combat;
 pub(crate) mod console;
 pub(crate) mod depth;
 pub mod diagnostics;
+pub(crate) mod dialogue;
 pub mod ecs;
 pub mod entity;
 pub mod event_log;

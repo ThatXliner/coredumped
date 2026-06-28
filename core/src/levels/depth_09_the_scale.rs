@@ -1,6 +1,5 @@
-use bracket_color::prelude::{CYAN, RGB};
-
 use crate::{
+    dialogue::WizardDialogue,
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -77,10 +76,8 @@ pub(crate) fn build_the_scale(world: &mut World) {
     world.on_wizard_interact = Some(wizard_interact);
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"I would take the ones that hurt if I could. But that bargain is getting harder to believe.\"",
-        RGB::named(CYAN),
-    );
-    true
+fn wizard_interact(_world: &mut World) -> WizardDialogue {
+    WizardDialogue::healing_lines(&[
+        "I would take the ones that hurt if I could. But that bargain is getting harder to believe.",
+    ])
 }

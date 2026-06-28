@@ -1,6 +1,5 @@
-use bracket_color::prelude::{CYAN, RGB};
-
 use crate::{
+    dialogue::WizardDialogue,
     entity::Position,
     map::{Map, TileType, MAP_HEIGHT, MAP_WIDTH},
     world::World,
@@ -123,14 +122,9 @@ pub(crate) fn build_boiling_heart(world: &mut World) {
     );
 }
 
-fn wizard_interact(world: &mut World) -> bool {
-    world.event_log.push_colored(
-        "\"You're angry. Good. Anger is honest — it remembers what hurt.\"",
-        RGB::named(CYAN),
-    );
-    world.event_log.push_colored(
-        "\"There's something down there. Remains of what I couldn't protect you from. Hit hard enough and you'll see what I sealed away.\"",
-        RGB::named(CYAN),
-    );
-    true
+fn wizard_interact(_world: &mut World) -> WizardDialogue {
+    WizardDialogue::healing_lines(&[
+        "You're angry. Good. Anger is honest -- it remembers what hurt.",
+        "There's something down there. Remains of what I couldn't protect you from. Hit hard enough and you'll see what I sealed away.",
+    ])
 }

@@ -25,26 +25,26 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Setup patched Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.4"
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
         run: |
           cd web-frontend
-          bun install
+          npm ci
 
       - name: Build WASM
         run: |
           cd web-frontend
-          bun run build:wasm
+          npm run build:wasm
 
       - name: Build site
         run: |
           cd web-frontend
-          bun run build
+          npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

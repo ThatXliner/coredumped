@@ -7,16 +7,21 @@
     "dev": "vite",
     "build": "vite build",
     "build:wasm": "wasm-pack build --target web --out-dir pkg",
-    "build:all": "bun run build:wasm && bun run build",
+    "build:all": "npm run build:wasm && npm run build",
     "preview": "vite preview"
   },
   "devDependencies": {
     "vite": "^6.3.5",
-    "vite-plugin-wasm": "^3.4.1"
+    "vite-plugin-wasm": "^3.4.1",
+    "wasm-pack": "0.15.0"
   },
   "dependencies": {
-    "@xterm/xterm": "^5.5.0",
     "@xterm/addon-fit": "^0.10.0",
-    "@xterm/addon-webgl": "^0.18.0"
-  }
+    "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/xterm": "^5.5.0"
+  },
+  "engines": {
+    "node": "^22.23.4 || ^24.22.1 || >=26.12.1"
+  },
+  "packageManager": "npm@10.9.9"
 }

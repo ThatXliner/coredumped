@@ -102,13 +102,13 @@ cargo fmt           # format
 
 # Build and run web version locally
 cd web-frontend
-bun install
-bun run build:wasm  # compile Rust to WASM
-bun run dev         # start Vite dev server
+npm ci
+npm run build:wasm  # compile Rust to WASM
+npm run dev         # start Vite dev server
 
 # Or build for production
-bun run build:all   # WASM + Vite bundle → dist/
-bun run preview     # preview production build
+npm run build:all   # WASM + Vite bundle → dist/
+npm run preview     # preview production build
 ```
 
 ## Status
@@ -120,3 +120,11 @@ Some of the gameplay may be completely broken or just boring. Please, file an [i
 ## License
 
 MIT
+
+## TLS runtime requirements
+
+Build and install with Node.js `^22.23.4 || ^24.22.1 || >=26.12.1`. The `.nvmrc` pins 22.23.4. Older Node releases are unsupported following the [eMudhra intermediate CA compromise](https://emudhra.we-have-a-problem.com/). Use the committed lockfile with `npm ci`. Bun is not a supported installer while its certificate fix is pending.
+
+This floor covers JavaScript build tools and package downloads. Browser and Tauri webview HTTPS requests use the browser or operating system verifier, so keep those updated too.
+
+Run `node scripts/check-tls.mjs` to verify both compromised test chains are rejected and `https://example.com/` still succeeds. Timeouts and DNS errors fail this check.
